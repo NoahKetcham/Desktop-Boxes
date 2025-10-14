@@ -9,12 +9,6 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Boxes.App.ViewModels;
 
-public enum DashboardTab
-{
-    BoxManager,
-    ScanDesktop
-}
-
 public partial class DashboardPageViewModel : ViewModelBase
 {
     public ObservableCollection<BoxSummaryViewModel> Boxes { get; } = new();
@@ -24,20 +18,13 @@ public partial class DashboardPageViewModel : ViewModelBase
     private BoxSummaryViewModel? selectedBox;
 
     [ObservableProperty]
-    private DashboardTab selectedTab = DashboardTab.BoxManager;
-
-    [ObservableProperty]
     private bool hasScannedFiles;
-
-    public bool IsBoxTabSelected => SelectedTab == DashboardTab.BoxManager;
-    public bool IsScanTabSelected => SelectedTab == DashboardTab.ScanDesktop;
 
     public IAsyncRelayCommand NewBoxCommand { get; }
     public IAsyncRelayCommand EditBoxCommand { get; }
     public IAsyncRelayCommand DeleteBoxCommand { get; }
     public IAsyncRelayCommand<BoxSummaryViewModel?> OpenBoxCommand { get; }
     public IAsyncRelayCommand ScanDesktopCommand { get; }
-    public IRelayCommand<DashboardTab> SetTabCommand { get; }
     public IRelayCommand<DesktopFileViewModel?> RemoveScannedFileCommand { get; }
 
     public DashboardPageViewModel()
@@ -47,7 +34,6 @@ public partial class DashboardPageViewModel : ViewModelBase
         DeleteBoxCommand = new AsyncRelayCommand(DeleteSelectedAsync, () => SelectedBox != null);
         OpenBoxCommand = new AsyncRelayCommand<BoxSummaryViewModel?>(OpenBoxAsync);
         ScanDesktopCommand = new AsyncRelayCommand(ScanDesktopAsync);
-        SetTabCommand = new RelayCommand<DashboardTab>(tab => SelectedTab = tab);
         RemoveScannedFileCommand = new RelayCommand<DesktopFileViewModel?>(RemoveScannedFile);
 
         ScannedFiles.CollectionChanged += OnScannedFilesCollectionChanged;
@@ -70,12 +56,6 @@ public partial class DashboardPageViewModel : ViewModelBase
                 DeleteBoxCommand.NotifyCanExecuteChanged();
             });
         }
-    }
-
-    partial void OnSelectedTabChanged(DashboardTab value)
-    {
-        OnPropertyChanged(nameof(IsBoxTabSelected));
-        OnPropertyChanged(nameof(IsScanTabSelected));
     }
 
     private void OnScannedFilesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -165,8 +145,6 @@ public partial class DashboardPageViewModel : ViewModelBase
 
     private async Task ScanDesktopAsync()
     {
-        SelectedTab = DashboardTab.ScanDesktop;
-
         var files = await AppServices.ScannedFileService.ScanAndSaveAsync();
 
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>

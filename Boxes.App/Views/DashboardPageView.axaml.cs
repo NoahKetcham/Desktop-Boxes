@@ -1,13 +1,7 @@
 using System;
 using System.ComponentModel;
-using System.Threading.Tasks;
-using Avalonia;
-using Avalonia.Animation;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Styling;
-using Avalonia.Threading;
 using Boxes.App.ViewModels;
 using Boxes.App.Views.Dialogs;
 
@@ -38,77 +32,9 @@ public partial class DashboardPageView : UserControl
         }
     }
 
-    private async void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (sender is DashboardPageViewModel vm && e.PropertyName == nameof(DashboardPageViewModel.SelectedTab))
-        {
-            await ScrollToSelectedSection(vm.SelectedTab);
-        }
-    }
-
-    private async Task ScrollToSelectedSection(DashboardTab tab)
-    {
-        var scrollViewer = ScrollViewer;
-        if (scrollViewer is null)
-        {
-            return;
-        }
-
-        Control? target = tab switch
-        {
-            DashboardTab.BoxManager => BoxSection,
-            DashboardTab.ScanDesktop => ScanResultsCard,
-            _ => null
-        };
-
-        if (target is null)
-        {
-            return;
-        }
-
-        await Dispatcher.UIThread.InvokeAsync(async () =>
-        {
-            double targetOffset = scrollViewer.Offset.Y + target.Bounds.Top - scrollViewer.Viewport.Height * 0.1;
-            targetOffset = Math.Max(0, targetOffset);
-
-            var animation = new Animation
-            {
-                Duration = TimeSpan.FromMilliseconds(300),
-                FillMode = FillMode.Forward
-            };
-
-            animation.Children.Add(new KeyFrame
-            {
-                Cue = new Cue(0),
-                Setters = { new Setter(ScrollViewer.OffsetProperty, scrollViewer.Offset) }
-            });
-            animation.Children.Add(new KeyFrame
-            {
-                Cue = new Cue(1),
-                Setters = { new Setter(ScrollViewer.OffsetProperty, scrollViewer.Offset.WithY(targetOffset)) }
-            });
-
-            await animation.RunAsync(scrollViewer);
-        });
-    }
-
-    private void ScrollViewer_OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
-    {
-        if (_viewModel is null)
-        {
-            return;
-        }
-
-        if (e.Delta.Y < 0 && _viewModel.SelectedTab != DashboardTab.ScanDesktop)
-        {
-            _viewModel.SelectedTab = DashboardTab.ScanDesktop;
-            e.Handled = true;
-        }
-        else if (e.Delta.Y > 0 && _viewModel.SelectedTab != DashboardTab.BoxManager)
-        {
-            _viewModel.SelectedTab = DashboardTab.BoxManager;
-            e.Handled = true;
-        }
+        // No-op; reserved for future use
     }
 
     private async void CreateShortcutsButton_OnClick(object? sender, RoutedEventArgs e)
@@ -123,7 +49,7 @@ public partial class DashboardPageView : UserControl
             Title = "Choose destination for shortcuts"
         };
 
-        if (this.VisualRoot is not Window window)
+        if (VisualRoot is not Window window)
         {
             return;
         }
@@ -134,12 +60,8 @@ public partial class DashboardPageView : UserControl
             return;
         }
 
-        var confirmationDialog = new ConfirmationDialog
-        {
-            Message = $"Create shortcuts for {_viewModel.ScannedFiles.Count} files in:\n{folder}?",
-            Width = 360,
-            Height = 180
-        };
+        var confirmationDialog = new ConfirmationDialog();
+        confirmationDialog.ViewModel.Message = $"Create shortcuts for {_viewModel.ScannedFiles.Count} files in:\n{folder}?";
 
         var confirmed = await confirmationDialog.ShowDialog<bool>(window);
         if (!confirmed)
