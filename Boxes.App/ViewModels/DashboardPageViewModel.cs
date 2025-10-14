@@ -8,17 +8,32 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Boxes.App.ViewModels;
 
+public enum DashboardTab
+{
+    BoxManager,
+    ScanDesktop
+}
+
 public partial class DashboardPageViewModel : ViewModelBase
 {
     public ObservableCollection<BoxSummaryViewModel> Boxes { get; } = new();
+    public ObservableCollection<DesktopFileViewModel> ScannedFiles { get; } = new();
 
     [ObservableProperty]
     private BoxSummaryViewModel? selectedBox;
+
+    [ObservableProperty]
+    private DashboardTab selectedTab = DashboardTab.BoxManager;
+
+    public bool IsBoxTabSelected => SelectedTab == DashboardTab.BoxManager;
+    public bool IsScanTabSelected => SelectedTab == DashboardTab.ScanDesktop;
 
     public IAsyncRelayCommand NewBoxCommand { get; }
     public IAsyncRelayCommand EditBoxCommand { get; }
     public IAsyncRelayCommand DeleteBoxCommand { get; }
     public IAsyncRelayCommand<BoxSummaryViewModel?> OpenBoxCommand { get; }
+    public IAsyncRelayCommand ScanDesktopCommand { get; }
+    public IRelayCommand<DashboardTab> SetTabCommand { get; }
 
     public DashboardPageViewModel()
     {
@@ -26,6 +41,8 @@ public partial class DashboardPageViewModel : ViewModelBase
         EditBoxCommand = new AsyncRelayCommand(EditSelectedAsync, () => SelectedBox != null);
         DeleteBoxCommand = new AsyncRelayCommand(DeleteSelectedAsync, () => SelectedBox != null);
         OpenBoxCommand = new AsyncRelayCommand<BoxSummaryViewModel?>(OpenBoxAsync);
+        ScanDesktopCommand = new AsyncRelayCommand(ScanDesktopAsync);
+        SetTabCommand = new RelayCommand<DashboardTab>(tab => SelectedTab = tab);
 
         _ = LoadAsync();
     }
@@ -45,6 +62,12 @@ public partial class DashboardPageViewModel : ViewModelBase
                 DeleteBoxCommand.NotifyCanExecuteChanged();
             });
         }
+    }
+
+    partial void OnSelectedTabChanged(DashboardTab value)
+    {
+        OnPropertyChanged(nameof(IsBoxTabSelected));
+        OnPropertyChanged(nameof(IsScanTabSelected));
     }
 
     private async Task LoadAsync()
@@ -67,7 +90,6 @@ public partial class DashboardPageViewModel : ViewModelBase
         {
             await AppServices.BoxWindowManager.ShowAsync(box);
         }
-
     }
 
     private async Task CreateNewBoxAsync()
@@ -126,6 +148,22 @@ public partial class DashboardPageViewModel : ViewModelBase
         await AppServices.BoxWindowManager.CloseAsync(toRemove.Id);
         Boxes.Remove(toRemove);
         SelectedBox = Boxes.FirstOrDefault();
+    }
+
+    private async Task ScanDesktopAsync()
+    {
+        SelectedTab = DashboardTab.ScanDesktop;
+
+        var files = await AppServices.ScannedFileService.ScanAndSaveAsync();
+
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            ScannedFiles.Clear();
+            foreach (var file in files)
+            {
+                ScannedFiles.Add(new DesktopFileViewModel(file));
+            }
+        });
     }
 }
 

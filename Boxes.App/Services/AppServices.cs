@@ -11,6 +11,7 @@ public static class AppServices
     public static BoxService BoxService { get; private set; } = null!;
     public static SettingsService SettingsService { get; private set; } = null!;
     public static BoxWindowManager BoxWindowManager { get; } = new();
+    public static ScannedFileService ScannedFileService { get; private set; } = null!;
 
     public static void Initialize()
     {
@@ -35,6 +36,8 @@ public static class AppServices
 
             BoxService = new BoxService(rootDirectory);
             BoxService.InitializeAsync().GetAwaiter().GetResult();
+            
+            ScannedFileService = new ScannedFileService(rootDirectory);
 
             _initialized = true;
         }
