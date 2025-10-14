@@ -1,0 +1,40 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:vm="using:Boxes.App.ViewModels"
+        x:Class="Boxes.App.Views.Dialogs.NewBoxWindow"
+        x:DataType="vm:NewBoxDialogViewModel"
+        Width="420"
+        Height="360"
+        Title="Create Box"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.DataContext>
+        <vm:NewBoxDialogViewModel/>
+    </Window.DataContext>
+
+    <Border Padding="24">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12">
+            <StackPanel>
+                <TextBlock Text="Create a new desktop box" FontSize="18" FontWeight="SemiBold"/>
+                <TextBlock Text="Group files and folders into a curated space." Opacity="0.7"/>
+            </StackPanel>
+
+            <StackPanel Grid.Row="1" Spacing="12">
+                <TextBox Watermark="Box name" Text="{Binding Name, Mode=TwoWay}"/>
+                <TextBox Watermark="Description" Text="{Binding Description, Mode=TwoWay}" AcceptsReturn="True" Height="80" TextWrapping="Wrap"/>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox Width="240" Watermark="Target folder (optional)" Text="{Binding TargetPath, Mode=TwoWay}"/>
+                    <Button Content="Browse" Command="{Binding BrowseCommand}"/>
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Content="Cancel" Command="{Binding CancelCommand}"/>
+                <Button Content="Create" Command="{Binding CreateCommand}" IsEnabled="{Binding CanCreate}"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+
+</Window>
+

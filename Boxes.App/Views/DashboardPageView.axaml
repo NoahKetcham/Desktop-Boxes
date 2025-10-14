@@ -1,0 +1,50 @@
+<UserControl x:Name="DashboardView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Boxes.App.ViewModels"
+             x:Class="Boxes.App.Views.DashboardPageView"
+             x:DataType="vm:DashboardPageViewModel"
+             mc:Ignorable="d">
+
+    <Design.DataContext>
+        <vm:DashboardPageViewModel/>
+    </Design.DataContext>
+
+    <StackPanel Spacing="24">
+        <StackPanel Spacing="4">
+            <TextBlock Text="Dashboard" FontSize="24" FontWeight="Bold"/>
+            <TextBlock Text="Manage your desktop boxes" Opacity="0.7"/>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Spacing="12">
+            <Button Content="New Box" Command="{Binding NewBoxCommand}"/>
+            <Button Content="Edit" Command="{Binding EditBoxCommand}"/>
+            <Button Content="Delete" Command="{Binding DeleteBoxCommand}" Foreground="#FF5555"/>
+        </StackPanel>
+
+        <ListBox ItemsSource="{Binding Boxes}" SelectedItem="{Binding SelectedBox, Mode=TwoWay}" BorderThickness="0" Background="Transparent">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:BoxSummaryViewModel">
+                    <Border Background="#141B2D" CornerRadius="12" Padding="16" Margin="0,0,0,12">
+                        <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="16"/>
+                                <TextBlock Text="{Binding Description}" Opacity="0.75" FontSize="12"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="12" Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding ItemCount}" FontSize="20" FontWeight="Bold"/>
+                                <Button Content="Open" Command="{Binding DataContext.OpenBoxCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
+                                <Button Content="Edit" Command="{Binding DataContext.EditBoxCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
+                                <Button Content="Delete" Foreground="#FF5555" Command="{Binding DataContext.DeleteBoxCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </StackPanel>
+
+</UserControl>
+

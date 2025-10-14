@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Boxes.App.ViewModels"
+             x:Class="Boxes.App.Views.SettingsPageView"
+             x:DataType="vm:SettingsPageViewModel">
+
+    <Design.DataContext>
+        <vm:SettingsPageViewModel/>
+    </Design.DataContext>
+
+    <StackPanel Spacing="24">
+        <StackPanel Spacing="4">
+            <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="Bold"/>
+            <TextBlock Text="{Binding Description}" Opacity="0.7"/>
+        </StackPanel>
+
+        <StackPanel Spacing="12">
+            <Border Background="#141B2D" CornerRadius="12" Padding="16">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Appearance" FontWeight="SemiBold" FontSize="16"/>
+                    <ComboBox SelectedItem="{Binding ThemePreference, Mode=TwoWay}">
+                        <ComboBoxItem Content="System"/>
+                        <ComboBoxItem Content="Light"/>
+                        <ComboBoxItem Content="Dark"/>
+                    </ComboBox>
+                </StackPanel>
+            </Border>
+
+            <Border Background="#141B2D" CornerRadius="12" Padding="16">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Behavior" FontWeight="SemiBold" FontSize="16"/>
+                    <ToggleSwitch Content="Auto snap new boxes" IsChecked="{Binding AutoSnapEnabled, Mode=TwoWay}"/>
+                    <ToggleSwitch Content="Show box outlines" IsChecked="{Binding ShowBoxOutlines, Mode=TwoWay}"/>
+                </StackPanel>
+            </Border>
+
+            <Border Background="#141B2D" CornerRadius="12" Padding="16">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Integrations" FontWeight="SemiBold" FontSize="16"/>
+                    <ToggleSwitch Content="OneDrive linked" IsChecked="{Binding OneDriveLinked, Mode=TwoWay}"/>
+                    <ToggleSwitch Content="Google Drive linked" IsChecked="{Binding GoogleDriveLinked, Mode=TwoWay}"/>
+                    <Button Content="Save" Command="{Binding SaveCommand}" HorizontalAlignment="Stretch"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </StackPanel>
+
+</UserControl>
+

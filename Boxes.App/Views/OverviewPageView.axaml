@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Boxes.App.ViewModels"
+             x:Class="Boxes.App.Views.OverviewPageView"
+             x:DataType="vm:OverviewPageViewModel">
+
+    <Design.DataContext>
+        <vm:OverviewPageViewModel/>
+    </Design.DataContext>
+
+    <StackPanel Spacing="24">
+        <StackPanel Spacing="4">
+            <TextBlock Text="{Binding Headline}" FontSize="24" FontWeight="Bold"/>
+            <TextBlock Text="{Binding Subtitle}" Opacity="0.7"/>
+        </StackPanel>
+
+        <UniformGrid Columns="3" Rows="1" HorizontalAlignment="Stretch" Margin="0,16,0,0">
+            <Border Padding="16" CornerRadius="12" Background="#1F9AFF" Opacity="0.9">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Active Boxes" FontWeight="Bold"/>
+                    <TextBlock Text="12" FontSize="32" FontWeight="SemiBold"/>
+                </StackPanel>
+            </Border>
+            <Border Padding="16" CornerRadius="12" Background="#7B61FF" Opacity="0.9">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Items Organized" FontWeight="Bold"/>
+                    <TextBlock Text="358" FontSize="32" FontWeight="SemiBold"/>
+                </StackPanel>
+            </Border>
+            <Border Padding="16" CornerRadius="12" Background="#FF8A65" Opacity="0.9">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Automation Savings" FontWeight="Bold"/>
+                    <TextBlock Text="4.5 hrs" FontSize="32" FontWeight="SemiBold"/>
+                </StackPanel>
+            </Border>
+        </UniformGrid>
+
+        <Border Background="#12162A" CornerRadius="12" Padding="20">
+            <StackPanel Spacing="12">
+                <TextBlock Text="Recent activity" FontWeight="SemiBold" FontSize="18"/>
+                <ItemsControl>
+                    <ItemsControl.Items>
+                        <StackPanel>
+                            <TextBlock Text="• Screenshot moved to 'Screenshots'"/>
+                            <TextBlock Text="• Contract pinned in 'Important Files'"/>
+                            <TextBlock Text="• Todo box synced"/>
+                        </StackPanel>
+                    </ItemsControl.Items>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+
+</UserControl>
+

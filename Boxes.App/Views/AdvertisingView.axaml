@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Boxes.App.ViewModels"
+             x:Class="Boxes.App.Views.AdvertisingView"
+             x:DataType="vm:AdvertisingViewModel">
+
+    <Design.DataContext>
+        <vm:AdvertisingViewModel/>
+    </Design.DataContext>
+
+    <Border Background="#1F2740" CornerRadius="16" Padding="24">
+        <StackPanel Spacing="16">
+            <StackPanel Spacing="4">
+                <TextBlock Text="{Binding Header}" FontWeight="Bold" FontSize="20"/>
+                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Opacity="0.8"/>
+            </StackPanel>
+            <Button Content="{Binding ActionLabel}" HorizontalAlignment="Stretch"/>
+            <Border Background="#12162A" CornerRadius="12" Padding="16">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Boxes Pro" FontWeight="SemiBold" FontSize="18"/>
+                    <TextBlock Text="Automations, multi-device sync, AI categorization and more." TextWrapping="Wrap" Opacity="0.7"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </Border>
+
+</UserControl>
+

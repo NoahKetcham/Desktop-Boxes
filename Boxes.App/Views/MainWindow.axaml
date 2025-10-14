@@ -1,0 +1,72 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Boxes.App.ViewModels"
+        xmlns:conv="using:Boxes.App.Converters"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="720"
+        x:Class="Boxes.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="Boxes • Desktop Organizer">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="NavBackgroundBrush" Color="#202233"/>
+        <SolidColorBrush x:Key="ContentBackgroundBrush" Color="#0F111B"/>
+        <SolidColorBrush x:Key="AdvertisingBackgroundBrush" Color="#15182A"/>
+        <conv:BooleanToBrushConverter x:Key="NavSelectionBrush">
+            <conv:BooleanToBrushConverter.TrueBrush>
+                <SolidColorBrush Color="#33FFFFFF"/>
+            </conv:BooleanToBrushConverter.TrueBrush>
+            <conv:BooleanToBrushConverter.FalseBrush>
+                <SolidColorBrush Color="#00000000"/>
+            </conv:BooleanToBrushConverter.FalseBrush>
+        </conv:BooleanToBrushConverter>
+    </Window.Resources>
+
+    <Grid ColumnDefinitions="220,*,320" RowDefinitions="*" ColumnSpacing="24" Margin="24">
+        <Border Grid.Column="0" Background="{StaticResource NavBackgroundBrush}" Padding="20" CornerRadius="16">
+            <StackPanel Spacing="32">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Boxes" FontSize="26" FontWeight="Bold"/>
+                    <TextBlock Text="Your desktop, curated." Opacity="0.75" FontSize="12"/>
+                </StackPanel>
+                <ListBox ItemsSource="{Binding NavigationItems}"
+                         SelectedItem="{Binding SelectedNavigationItem, Mode=TwoWay}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         ScrollViewer.VerticalScrollBarVisibility="Hidden">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="10"/>
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:NavigationItemViewModel">
+                            <Border Background="{Binding IsSelected, Converter={StaticResource NavSelectionBrush}}"
+                                    CornerRadius="12" Padding="14" Margin="0,0,0,4">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="15"/>
+                                    <TextBlock Text="{Binding Description}" FontSize="12" Opacity="0.75" TextWrapping="Wrap" MaxWidth="180"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Column="1" Background="{StaticResource ContentBackgroundBrush}" Padding="32" CornerRadius="16">
+            <ContentControl Content="{Binding CurrentPage}"/>
+        </Border>
+
+        <Border Grid.Column="2" Background="{StaticResource AdvertisingBackgroundBrush}" Padding="28" CornerRadius="16">
+            <ContentControl Content="{Binding Advertising}"/>
+        </Border>
+    </Grid>
+
+</Window>
