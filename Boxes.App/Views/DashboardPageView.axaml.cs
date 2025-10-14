@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Boxes.App.ViewModels;
@@ -46,7 +47,8 @@ public partial class DashboardPageView : UserControl
 
     private async Task ScrollToSelectedSection(DashboardTab tab)
     {
-        if (ScrollViewer is null)
+        var scrollViewer = ScrollViewer;
+        if (scrollViewer is null)
         {
             return;
         }
@@ -65,7 +67,7 @@ public partial class DashboardPageView : UserControl
 
         await Dispatcher.UIThread.InvokeAsync(async () =>
         {
-            double targetOffset = ScrollViewer.Offset.Y + target.Bounds.Top - ScrollViewer.Viewport.Height * 0.1;
+            double targetOffset = scrollViewer.Offset.Y + target.Bounds.Top - scrollViewer.Viewport.Height * 0.1;
             targetOffset = Math.Max(0, targetOffset);
 
             var animation = new Animation
@@ -77,15 +79,15 @@ public partial class DashboardPageView : UserControl
             animation.Children.Add(new KeyFrame
             {
                 Cue = new Cue(0),
-                Setters = { new Setter(ScrollViewer.OffsetProperty, new Vector(ScrollViewer.Offset.X, ScrollViewer.Offset.Y)) }
+                Setters = { new Setter(ScrollViewer.OffsetProperty, scrollViewer.Offset) }
             });
             animation.Children.Add(new KeyFrame
             {
                 Cue = new Cue(1),
-                Setters = { new Setter(ScrollViewer.OffsetProperty, new Vector(ScrollViewer.Offset.X, targetOffset)) }
+                Setters = { new Setter(ScrollViewer.OffsetProperty, scrollViewer.Offset.WithY(targetOffset)) }
             });
 
-            await animation.RunAsync(ScrollViewer);
+            await animation.RunAsync(scrollViewer);
         });
     }
 
@@ -106,6 +108,32 @@ public partial class DashboardPageView : UserControl
             _viewModel.SelectedTab = DashboardTab.BoxManager;
             e.Handled = true;
         }
+    }
+
+    private async void CreateShortcutsButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Choose destination for shortcuts"
+        };
+
+        if (this.VisualRoot is not Window window)
+        {
+            return;
+        }
+
+        var folder = await dialog.ShowAsync(window);
+        if (string.IsNullOrWhiteSpace(folder))
+        {
+            return;
+        }
+
+        await _viewModel.CreateShortcutsAsync(folder);
     }
 }
 

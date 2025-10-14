@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Threading.Tasks;
 using Boxes.App.Models;
@@ -25,6 +26,9 @@ public partial class DashboardPageViewModel : ViewModelBase
     [ObservableProperty]
     private DashboardTab selectedTab = DashboardTab.BoxManager;
 
+    [ObservableProperty]
+    private bool hasScannedFiles;
+
     public bool IsBoxTabSelected => SelectedTab == DashboardTab.BoxManager;
     public bool IsScanTabSelected => SelectedTab == DashboardTab.ScanDesktop;
 
@@ -34,6 +38,7 @@ public partial class DashboardPageViewModel : ViewModelBase
     public IAsyncRelayCommand<BoxSummaryViewModel?> OpenBoxCommand { get; }
     public IAsyncRelayCommand ScanDesktopCommand { get; }
     public IRelayCommand<DashboardTab> SetTabCommand { get; }
+    public IRelayCommand<DesktopFileViewModel?> RemoveScannedFileCommand { get; }
 
     public DashboardPageViewModel()
     {
@@ -43,6 +48,9 @@ public partial class DashboardPageViewModel : ViewModelBase
         OpenBoxCommand = new AsyncRelayCommand<BoxSummaryViewModel?>(OpenBoxAsync);
         ScanDesktopCommand = new AsyncRelayCommand(ScanDesktopAsync);
         SetTabCommand = new RelayCommand<DashboardTab>(tab => SelectedTab = tab);
+        RemoveScannedFileCommand = new RelayCommand<DesktopFileViewModel?>(RemoveScannedFile);
+
+        ScannedFiles.CollectionChanged += OnScannedFilesCollectionChanged;
 
         _ = LoadAsync();
     }
@@ -68,6 +76,11 @@ public partial class DashboardPageViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(IsBoxTabSelected));
         OnPropertyChanged(nameof(IsScanTabSelected));
+    }
+
+    private void OnScannedFilesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        HasScannedFiles = ScannedFiles.Count > 0;
     }
 
     private async Task LoadAsync()
@@ -163,7 +176,35 @@ public partial class DashboardPageViewModel : ViewModelBase
             {
                 ScannedFiles.Add(new DesktopFileViewModel(file));
             }
+            HasScannedFiles = ScannedFiles.Count > 0;
         });
+    }
+
+    private void RemoveScannedFile(DesktopFileViewModel? file)
+    {
+        if (file is null)
+        {
+            return;
+        }
+
+        if (ScannedFiles.Contains(file))
+        {
+            ScannedFiles.Remove(file);
+        }
+    }
+
+    public async Task CreateShortcutsAsync(string destinationFolder)
+    {
+        var files = ScannedFiles
+            .Select(f => new ScannedFile { FileName = f.FileName, FilePath = f.FilePath })
+            .ToList();
+
+        if (files.Count == 0)
+        {
+            return;
+        }
+
+        await AppServices.ScannedFileService.CreateShortcutsAsync(files, destinationFolder);
     }
 }
 

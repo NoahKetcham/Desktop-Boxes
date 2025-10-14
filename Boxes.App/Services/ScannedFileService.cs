@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,17 +28,7 @@ public class ScannedFileService
             .Select(p => new ScannedFile { FilePath = p, FileName = Path.GetFileName(p) })
             .ToList();
 
-        await _gate.WaitAsync();
-        try
-        {
-            await using var stream = File.Create(_storagePath);
-            await JsonSerializer.SerializeAsync(stream, files, _serializerOptions);
-        }
-        finally
-        {
-            _gate.Release();
-        }
-
+        await SaveAsync(files);
         return files;
     }
 
@@ -59,5 +50,54 @@ public class ScannedFileService
         {
             _gate.Release();
         }
+    }
+
+    public async Task SaveAsync(List<ScannedFile> files)
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            await using var stream = File.Create(_storagePath);
+            await JsonSerializer.SerializeAsync(stream, files, _serializerOptions);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task CreateShortcutsAsync(IEnumerable<ScannedFile> files, string destinationDirectory)
+    {
+        Directory.CreateDirectory(destinationDirectory);
+
+        foreach (var file in files)
+        {
+            var shortcutPath = Path.Combine(destinationDirectory, file.FileName + ".lnk");
+            await Task.Run(() => CreateShortcut(file.FilePath, shortcutPath));
+        }
+    }
+
+    private static void CreateShortcut(string targetPath, string shortcutPath)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var shellType = Type.GetTypeFromProgID("WScript.Shell");
+        if (shellType is null)
+        {
+            return;
+        }
+
+        dynamic? shell = Activator.CreateInstance(shellType);
+        if (shell is null)
+        {
+            return;
+        }
+
+        dynamic shortcut = shell.CreateShortcut(shortcutPath);
+        shortcut.TargetPath = targetPath;
+        shortcut.Save();
     }
 }
