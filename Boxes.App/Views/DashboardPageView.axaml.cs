@@ -9,6 +9,7 @@ using Avalonia.Interactivity;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Boxes.App.ViewModels;
+using Boxes.App.Views.Dialogs;
 
 namespace Boxes.App.Views;
 
@@ -129,6 +130,19 @@ public partial class DashboardPageView : UserControl
 
         var folder = await dialog.ShowAsync(window);
         if (string.IsNullOrWhiteSpace(folder))
+        {
+            return;
+        }
+
+        var confirmationDialog = new ConfirmationDialog
+        {
+            Message = $"Create shortcuts for {_viewModel.ScannedFiles.Count} files in:\n{folder}?",
+            Width = 360,
+            Height = 180
+        };
+
+        var confirmed = await confirmationDialog.ShowDialog<bool>(window);
+        if (!confirmed)
         {
             return;
         }
