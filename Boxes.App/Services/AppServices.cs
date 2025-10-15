@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Avalonia.Controls;
 
 namespace Boxes.App.Services;
 
@@ -11,6 +12,9 @@ public static class AppServices
     public static BoxService BoxService { get; private set; } = null!;
     public static SettingsService SettingsService { get; private set; } = null!;
     public static BoxWindowManager BoxWindowManager { get; } = new();
+    public static ScannedFileService ScannedFileService { get; private set; } = null!;
+    public static DesktopCleanupService DesktopCleanupService { get; private set; } = null!;
+    public static Window? MainWindowOwner { get; set; }
 
     public static void Initialize()
     {
@@ -35,6 +39,9 @@ public static class AppServices
 
             BoxService = new BoxService(rootDirectory);
             BoxService.InitializeAsync().GetAwaiter().GetResult();
+
+            ScannedFileService = new ScannedFileService(rootDirectory);
+            DesktopCleanupService = new DesktopCleanupService(rootDirectory);
 
             _initialized = true;
         }

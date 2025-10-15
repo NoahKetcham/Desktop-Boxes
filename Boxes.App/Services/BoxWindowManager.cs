@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Boxes.App.Extensions;
 using Boxes.App.Models;
 using Boxes.App.ViewModels;
 using Boxes.App.Views;
+using System.IO;
 
 namespace Boxes.App.Services;
 
@@ -17,6 +19,23 @@ public class BoxWindowManager
 
     public async Task ShowAsync(DesktopBox box)
     {
+        var shortcutsData = await AppServices.ScannedFileService.GetScannedFilesAsync();
+        var archivedShortcuts = await AppServices.ScannedFileService.GetStoredShortcutsAsync();
+        var filteredShortcuts = shortcutsData
+            .Where(s => box.ShortcutIds.Contains(s.Id))
+            .Select(s =>
+            {
+                var info = archivedShortcuts.FirstOrDefault(a => a.Id == s.Id);
+                if (info != null)
+                {
+                    s.ShortcutPath = Path.Combine(AppServices.ScannedFileService.ShortcutArchiveDirectory, info.Id.ToString("N") + ".lnk");
+                    s.ArchivedContentPath = info.TargetPath;
+                    s.IsArchived = !File.Exists(s.FilePath);
+                }
+                return s;
+            })
+            .ToList();
+
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             if (_windows.TryGetValue(box.Id, out var existing))
@@ -24,6 +43,7 @@ public class BoxWindowManager
                 if (existing.DataContext is DesktopBoxWindowViewModel vmExisting)
                 {
                     vmExisting.Update(box);
+                    vmExisting.SetShortcuts(filteredShortcuts);
                 }
                 if (!existing.IsVisible)
                 {
@@ -34,6 +54,7 @@ public class BoxWindowManager
             }
 
             var vm = new DesktopBoxWindowViewModel(box);
+            vm.SetShortcuts(filteredShortcuts);
             var window = new DesktopBoxWindow
             {
                 DataContext = vm
@@ -57,11 +78,27 @@ public class BoxWindowManager
 
     public async Task UpdateAsync(DesktopBox box)
     {
+        var shortcutsData = await AppServices.ScannedFileService.GetScannedFilesAsync();
+        var archivedShortcuts = await AppServices.ScannedFileService.GetStoredShortcutsAsync();
+        var filteredShortcuts = shortcutsData
+            .Where(s => box.ShortcutIds.Contains(s.Id))
+            .Select(s =>
+            {
+                var info = archivedShortcuts.FirstOrDefault(a => a.Id == s.Id);
+                if (info != null)
+                {
+                    s.ShortcutPath = Path.Combine(AppServices.ScannedFileService.ShortcutArchiveDirectory, info.Id.ToString("N") + ".lnk");
+                }
+                return s;
+            })
+            .ToList();
+
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             if (_windows.TryGetValue(box.Id, out var window) && window.DataContext is DesktopBoxWindowViewModel vm)
             {
                 vm.Update(box);
+                vm.SetShortcuts(filteredShortcuts);
             }
         });
     }

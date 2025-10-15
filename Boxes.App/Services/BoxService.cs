@@ -82,6 +82,7 @@ public class BoxService
                 existing.Description = box.Description;
                 existing.TargetPath = box.TargetPath;
                 existing.ItemCount = box.ItemCount;
+                existing.ShortcutIds = new List<Guid>(box.ShortcutIds);
             }
 
             await PersistAsync().ConfigureAwait(false);
@@ -123,7 +124,8 @@ public class BoxService
         Name = box.Name,
         Description = box.Description,
         TargetPath = box.TargetPath,
-        ItemCount = box.ItemCount
+        ItemCount = box.ItemCount,
+        ShortcutIds = new List<Guid>(box.ShortcutIds)
     };
 }
 
