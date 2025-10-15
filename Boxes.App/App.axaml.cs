@@ -30,6 +30,7 @@ public partial class App : Application
             {
                 DataContext = new MainWindowViewModel(),
             };
+            AppServices.MainWindowOwner = desktop.MainWindow;
             DialogService.Initialize(desktop.MainWindow);
         }
 

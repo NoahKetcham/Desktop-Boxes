@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Boxes.App.Models;
 
 namespace Boxes.App.ViewModels;
@@ -28,6 +29,8 @@ public class BoxSummaryViewModel : ViewModelBase
         set => SetProperty(ref _itemCount, value);
     }
 
+    public List<Guid> ShortcutIds { get; set; } = new();
+
     public static BoxSummaryViewModel FromModel(DesktopBox model)
     {
         return new BoxSummaryViewModel
@@ -35,7 +38,8 @@ public class BoxSummaryViewModel : ViewModelBase
             Id = model.Id,
             Name = model.Name,
             Description = model.Description,
-            ItemCount = model.ItemCount
+            ItemCount = model.ItemCount,
+            ShortcutIds = new List<Guid>(model.ShortcutIds)
         };
     }
 
@@ -45,6 +49,7 @@ public class BoxSummaryViewModel : ViewModelBase
         Name = model.Name;
         Description = model.Description;
         ItemCount = model.ItemCount;
+        ShortcutIds = new List<Guid>(model.ShortcutIds);
     }
 
     public DesktopBox ToModel()
@@ -54,7 +59,8 @@ public class BoxSummaryViewModel : ViewModelBase
             Id = Id,
             Name = Name,
             Description = Description,
-            ItemCount = ItemCount
+            ItemCount = ItemCount,
+            ShortcutIds = new List<Guid>(ShortcutIds)
         };
     }
 }

@@ -25,6 +25,7 @@
                     <Button Content="New Box" Command="{Binding NewBoxCommand}"/>
                     <Button Content="Edit" Command="{Binding EditBoxCommand}"/>
                     <Button Content="Delete" Command="{Binding DeleteBoxCommand}" Foreground="#FF5555"/>
+                    <Button Content="{Binding DesktopCleanupButtonText}" Command="{Binding ToggleDesktopCleanupCommand}" IsEnabled="{Binding CanToggleDesktopCleanup}"/>
                 </StackPanel>
 
                 <ListBox ItemsSource="{Binding Boxes}" SelectedItem="{Binding SelectedBox, Mode=TwoWay}" BorderThickness="0" Background="Transparent">
@@ -39,7 +40,7 @@
                                     <StackPanel Orientation="Horizontal" Spacing="12" Grid.Column="1" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding ItemCount}" FontSize="20" FontWeight="Bold"/>
                                         <Button Content="Open" Command="{Binding DataContext.OpenBoxCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
-                                        <Button Content="Edit" Command="{Binding DataContext.EditBoxCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
+                                        <Button Content="Shortcuts" Command="{Binding DataContext.ConfigureShortcutsCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
                                         <Button Content="Delete" Foreground="#FF5555" Command="{Binding DataContext.DeleteBoxCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
                                     </StackPanel>
                                 </Grid>

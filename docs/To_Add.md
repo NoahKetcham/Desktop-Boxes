@@ -1,6 +1,6 @@
 # Future implementations and idea board
 
-# General
+## General
 - Make a settings page that allows the user to change the theme of the app.
 - Make a page that allows the user to create a new box.
 - Make a page that allows the user to import a layout.

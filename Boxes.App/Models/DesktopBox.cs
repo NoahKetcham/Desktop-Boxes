@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Boxes.App.Models;
 
@@ -9,5 +10,6 @@ public class DesktopBox
     public string Description { get; set; } = string.Empty;
     public string TargetPath { get; set; } = string.Empty;
     public int ItemCount { get; set; }
+    public List<Guid> ShortcutIds { get; set; } = new();
 }
 

@@ -1,0 +1,36 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Boxes.App.ViewModels"
+        x:Class="Boxes.App.Views.Dialogs.ShortcutSelectionDialog"
+        x:DataType="vm:ShortcutSelectionViewModel"
+        Width="480"
+        Height="360"
+        CanResize="True"
+        WindowStartupLocation="CenterOwner">
+    <Border Padding="16" Background="{DynamicResource ThemeBackgroundBrush}">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="16">
+            <StackPanel Spacing="4">
+                <TextBlock Text="Select shortcuts to display" FontSize="16" FontWeight="SemiBold"/>
+                <TextBlock Text="Box: {Binding BoxName}" Opacity="0.8"/>
+            </StackPanel>
+            <ScrollViewer Grid.Row="1">
+                <ItemsControl ItemsSource="{Binding Shortcuts}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ShortcutSelectionItemViewModel">
+                            <ToggleButton IsChecked="{Binding IsSelected}" Width="140" Height="80" Margin="6" Content="{Binding FileName}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Content="Cancel" Command="{Binding CancelCommand}"/>
+                <Button Content="Save" Command="{Binding SaveCommand}"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

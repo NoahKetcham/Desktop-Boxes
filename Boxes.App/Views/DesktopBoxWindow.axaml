@@ -27,9 +27,20 @@
         <Border Grid.Row="1" Padding="16" BorderBrush="#2D3654" BorderThickness="1" CornerRadius="0,0,8,8">
             <StackPanel Spacing="12">
                 <TextBlock Text="{Binding Description}" Opacity="0.75" TextWrapping="Wrap"/>
-                <Border Background="#141B2D" CornerRadius="8" Height="160">
-                    <TextBlock Text="File portal placeholder" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.5"/>
-                </Border>
+                <ItemsControl ItemsSource="{Binding Shortcuts}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DesktopFileViewModel">
+                            <Border Width="100" Height="80" Background="#141B2D" CornerRadius="6" Padding="6" Margin="4" Cursor="Hand" DoubleTapped="ShortcutTile_OnDoubleTapped">
+                                <TextBlock Text="{Binding FileName}" TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
         </Border>
 

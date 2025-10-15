@@ -1,5 +1,7 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Boxes.App.ViewModels;
 
 namespace Boxes.App.Views;
 
@@ -9,6 +11,8 @@ public partial class DesktopBoxWindow : Window
     {
         InitializeComponent();
     }
+
+    private DesktopBoxWindowViewModel ViewModel => (DesktopBoxWindowViewModel)DataContext!;
 
     private void Header_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -35,6 +39,14 @@ public partial class DesktopBoxWindow : Window
                 BeginResizeDrag(edge.Value, e);
                 e.Handled = true;
             }
+        }
+    }
+
+    private void ShortcutTile_OnDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Border border && border.DataContext is DesktopFileViewModel file)
+        {
+            ViewModel.LaunchShortcutCommand.Execute(file);
         }
     }
 }
