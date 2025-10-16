@@ -57,13 +57,22 @@
                             <TextBlock Text="Scan Desktop" FontSize="18" FontWeight="SemiBold"/>
                             <TextBlock Text="Find all files on your desktop to organize them." Opacity="0.7"/>
                         </StackPanel>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <Button Content="Scan Now" Command="{Binding ScanDesktopCommand}"/>
-                            <Button Content="Create Shortcuts" IsEnabled="{Binding HasScannedFiles}" Click="CreateShortcutsButton_OnClick"/>
+                            <Button Content="Create Shortcuts" Command="{Binding CreateShortcutsCommand}"/>
                         </StackPanel>
                     </Grid>
 
-                    <ItemsControl ItemsSource="{Binding ScannedFiles}">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Current location" FontSize="12" Opacity="0.7"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Button Content="Home" Command="{Binding NavigateHomeCommand}"/>
+                            <Button Content="Up" Command="{Binding NavigateUpCommand}"/>
+                            <TextBlock Text="{Binding CurrentScanPath}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding CurrentScannedItems}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <WrapPanel />
@@ -71,14 +80,16 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:DesktopFileViewModel">
-                                <Border Width="120" Height="100" Background="#232B46" CornerRadius="8" Padding="8" Margin="4">
+                                <Border Width="140" Height="110" Background="#232B46" CornerRadius="8" Padding="8" Margin="4" DoubleTapped="ScanTile_OnDoubleTapped">
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
                                         <Button Content="×" Width="20" Height="20" HorizontalAlignment="Right" Command="{Binding DataContext.RemoveScannedFileCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
                                         <TextBlock Grid.Row="1" Text="{Binding FileName}" TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <TextBlock Grid.Row="2" Text="{Binding TypeLabel}" FontSize="10" Opacity="0.6" HorizontalAlignment="Center"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

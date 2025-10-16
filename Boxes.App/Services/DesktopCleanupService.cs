@@ -87,7 +87,8 @@ public class DesktopCleanupService
                         }
 
                         var isDirectory = (attributes & FileAttributes.Directory) != 0;
-                        var storedName = Guid.NewGuid().ToString("N");
+                        var extension = isDirectory ? string.Empty : Path.GetExtension(path);
+                        var storedName = Guid.NewGuid().ToString("N") + extension;
                         var destinationPath = Path.Combine(_archivePath, storedName);
 
                         if (isDirectory)
@@ -138,7 +139,7 @@ public class DesktopCleanupService
 
             foreach (var entry in state.Entries)
             {
-                var storedPath = Path.Combine(_archivePath, entry.StoredName);
+                    var storedPath = Path.Combine(_archivePath, entry.StoredName);
                 if (!File.Exists(storedPath) && !Directory.Exists(storedPath))
                 {
                     continue;

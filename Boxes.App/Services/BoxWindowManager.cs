@@ -21,20 +21,7 @@ public class BoxWindowManager
     {
         var shortcutsData = await AppServices.ScannedFileService.GetScannedFilesAsync();
         var archivedShortcuts = await AppServices.ScannedFileService.GetStoredShortcutsAsync();
-        var filteredShortcuts = shortcutsData
-            .Where(s => box.ShortcutIds.Contains(s.Id))
-            .Select(s =>
-            {
-                var info = archivedShortcuts.FirstOrDefault(a => a.Id == s.Id);
-                if (info != null)
-                {
-                    s.ShortcutPath = Path.Combine(AppServices.ScannedFileService.ShortcutArchiveDirectory, info.Id.ToString("N") + ".lnk");
-                    s.ArchivedContentPath = info.TargetPath;
-                    s.IsArchived = !File.Exists(s.FilePath);
-                }
-                return s;
-            })
-            .ToList();
+        var filteredShortcuts = BuildShortcutList(box, shortcutsData, archivedShortcuts);
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -80,18 +67,7 @@ public class BoxWindowManager
     {
         var shortcutsData = await AppServices.ScannedFileService.GetScannedFilesAsync();
         var archivedShortcuts = await AppServices.ScannedFileService.GetStoredShortcutsAsync();
-        var filteredShortcuts = shortcutsData
-            .Where(s => box.ShortcutIds.Contains(s.Id))
-            .Select(s =>
-            {
-                var info = archivedShortcuts.FirstOrDefault(a => a.Id == s.Id);
-                if (info != null)
-                {
-                    s.ShortcutPath = Path.Combine(AppServices.ScannedFileService.ShortcutArchiveDirectory, info.Id.ToString("N") + ".lnk");
-                }
-                return s;
-            })
-            .ToList();
+        var filteredShortcuts = BuildShortcutList(box, shortcutsData, archivedShortcuts);
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -126,6 +102,55 @@ public class BoxWindowManager
 
             _windows.Clear();
         });
+    }
+    private static List<ScannedFile> BuildShortcutList(DesktopBox box, List<ScannedFile> allFiles, IReadOnlyList<ScannedFileService.StoredShortcut> storedShortcuts)
+    {
+        if (box.ShortcutIds.Count == 0)
+        {
+            return new List<ScannedFile>();
+        }
+
+        var archiveDirectory = AppServices.ScannedFileService.ShortcutArchiveDirectory;
+        var storedLookup = storedShortcuts.ToDictionary(s => s.Id, s => s);
+        var allLookup = allFiles.ToDictionary(f => f.Id, f => f);
+
+        foreach (var file in allFiles)
+        {
+            if (storedLookup.TryGetValue(file.Id, out var stored))
+            {
+                file.ShortcutPath = Path.Combine(archiveDirectory, stored.Id.ToString("N") + ".lnk");
+                file.ItemType = stored.ItemType;
+                if (stored.ParentId.HasValue)
+                {
+                    file.ParentId = stored.ParentId;
+                }
+            }
+        }
+
+        var selected = new HashSet<Guid>(box.ShortcutIds);
+
+        bool IsDescendantSelected(ScannedFile file)
+        {
+            var current = file.ParentId;
+            while (current.HasValue)
+            {
+                if (selected.Contains(current.Value))
+                {
+                    return true;
+                }
+
+                if (!allLookup.TryGetValue(current.Value, out var parent))
+                {
+                    break;
+                }
+
+                current = parent.ParentId;
+            }
+
+            return false;
+        }
+
+        return allFiles.Where(file => selected.Contains(file.Id) || IsDescendantSelected(file)).ToList();
     }
 }
 

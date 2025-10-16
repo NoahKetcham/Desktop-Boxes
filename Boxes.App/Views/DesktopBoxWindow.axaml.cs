@@ -46,7 +46,14 @@ public partial class DesktopBoxWindow : Window
     {
         if (sender is Border border && border.DataContext is DesktopFileViewModel file)
         {
-            ViewModel.LaunchShortcutCommand.Execute(file);
+            if (file.IsFolder)
+            {
+                ViewModel.EnterFolderCommand.Execute(file);
+            }
+            else
+            {
+                ViewModel.LaunchShortcutCommand.Execute(file);
+            }
         }
     }
 }

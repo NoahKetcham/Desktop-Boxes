@@ -12,6 +12,17 @@ public class DesktopFileViewModel : ViewModelBase
     public string? ShortcutPath { get; private set; }
     public bool IsArchived { get; private set; }
     public string? ArchivedContentPath { get; private set; }
+    public ScannedItemType ItemType { get; }
+    public Guid? ParentId { get; }
+    public bool IsFolder => ItemType == ScannedItemType.Folder;
+    public bool IsFile => ItemType == ScannedItemType.File;
+    public string DisplayName => FileName;
+    public string TypeLabel => ItemType switch
+    {
+        ScannedItemType.Folder => "Folder",
+        ScannedItemType.Shortcut => "Shortcut",
+        _ => "File"
+    };
 
     public DesktopFileViewModel(ScannedFile model)
     {
@@ -21,6 +32,8 @@ public class DesktopFileViewModel : ViewModelBase
         ShortcutPath = model.ShortcutPath;
         IsArchived = model.IsArchived;
         ArchivedContentPath = model.ArchivedContentPath;
+        ItemType = model.ItemType;
+        ParentId = model.ParentId;
     }
 
     public void SetShortcutPath(string? path)

@@ -17,7 +17,7 @@ public class ScannedFileService
     private readonly JsonSerializerOptions _serializerOptions = new() { WriteIndented = true };
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    public record StoredShortcut(Guid Id, string FileName, string TargetPath);
+    public record StoredShortcut(Guid Id, string FileName, string TargetPath, Guid? ParentId, ScannedItemType ItemType);
 
     public ScannedFileService(string rootDirectory)
     {
@@ -30,48 +30,72 @@ public class ScannedFileService
     public async Task<List<ScannedFile>> ScanAndSaveAsync()
     {
         var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-        var currentFiles = Directory.EnumerateFiles(desktopPath)
-            .Select(p => new { Path = p, Name = Path.GetFileName(p) })
-            .ToList();
+        var scanRoot = new DirectoryInfo(desktopPath);
+        var flattened = new List<ScannedFile>();
 
         await _gate.WaitAsync();
         try
         {
             var existing = await LoadScannedFilesAsync();
-            var existingByPath = new Dictionary<string, ScannedFile>(StringComparer.OrdinalIgnoreCase);
-            foreach (var entry in existing)
-            {
-                existingByPath[entry.FilePath] = entry;
-            }
-            var result = new List<ScannedFile>();
+            var existingByPath = existing.ToDictionary(e => e.FilePath, StringComparer.OrdinalIgnoreCase);
 
-            foreach (var file in currentFiles)
+            Guid ProcessDirectory(DirectoryInfo directory, Guid? parentId, Guid? rootId)
             {
-                if (existingByPath.TryGetValue(file.Path, out var existingEntry))
+                var fullPath = directory.FullName;
+                existingByPath.TryGetValue(fullPath, out var existingEntry);
+                var id = existingEntry?.Id ?? Guid.NewGuid();
+
+                var directoryEntry = existingEntry ?? new ScannedFile
                 {
-                    existingEntry.FileName = file.Name;
-                    existingEntry.IsArchived = false;
-                    existingEntry.ArchivedContentPath = null;
-                    result.Add(existingEntry);
-                    existingByPath.Remove(file.Path);
-                }
-                else
+                    Id = id,
+                    FilePath = fullPath,
+                    FileName = directory.Name,
+                    ItemType = ScannedItemType.Folder
+                };
+
+                directoryEntry.FileName = directory.Name;
+                directoryEntry.ParentId = parentId;
+                directoryEntry.ItemType = ScannedItemType.Folder;
+                directoryEntry.IsArchived = false;
+                directoryEntry.ArchivedContentPath = null;
+                directoryEntry.RootId = rootId ?? id;
+
+                flattened.Add(directoryEntry);
+                existingByPath.Remove(fullPath);
+
+                foreach (var subDirectory in SafeEnumerateDirectories(directory))
                 {
-                    result.Add(new ScannedFile
-                    {
-                        FilePath = file.Path,
-                        FileName = file.Name
-                    });
+                    ProcessDirectory(subDirectory, id, rootId ?? id);
+                }
+
+                foreach (var file in SafeEnumerateFiles(directory))
+                {
+                    ProcessFile(file, id, rootId ?? id, existingByPath, flattened);
+                }
+
+                return id;
+            }
+
+            void ProcessRoot()
+            {
+                foreach (var directory in SafeEnumerateDirectories(scanRoot))
+                {
+                    ProcessDirectory(directory, null, null);
+                }
+
+                foreach (var file in SafeEnumerateFiles(scanRoot))
+                {
+                    ProcessFile(file, null, null, existingByPath, flattened);
                 }
             }
 
-            foreach (var remaining in existingByPath.Values)
-            {
-                result.Add(remaining);
-            }
+            ProcessRoot();
 
-            await SaveScannedFilesAsync(result);
-            return result;
+            // Include remaining entries (archived items, etc.)
+            flattened.AddRange(existingByPath.Values);
+
+            await SaveScannedFilesAsync(flattened);
+            return flattened;
         }
         finally
         {
@@ -143,7 +167,7 @@ public class ScannedFileService
             var scannedFiles = await LoadScannedFilesAsync();
             var scannedLookup = scannedFiles.ToDictionary(f => f.Id, f => f);
 
-            foreach (var file in files)
+            foreach (var file in files.Where(f => f.ItemType != ScannedItemType.Folder))
             {
                 var shortcutId = file.Id != Guid.Empty ? file.Id : Guid.NewGuid();
                 var shortcutName = Path.GetFileNameWithoutExtension(file.FileName) + ".lnk";
@@ -153,12 +177,14 @@ public class ScannedFileService
                 await CreateShortcutFileAsync(file.FilePath, archivePath);
 
                 manifest.RemoveAll(s => s.Id == shortcutId);
-                manifest.Add(new StoredShortcut(shortcutId, shortcutName, file.FilePath));
+                manifest.Add(new StoredShortcut(shortcutId, shortcutName, file.FilePath, file.ParentId, ScannedItemType.Shortcut));
 
                 if (scannedLookup.TryGetValue(shortcutId, out var existing))
                 {
                     existing.ShortcutPath = archivePath;
                     existing.IsArchived = file.IsArchived;
+                    existing.ParentId = file.ParentId;
+                    existing.ItemType = file.ItemType;
                 }
                 else
                 {
@@ -168,7 +194,9 @@ public class ScannedFileService
                         FileName = file.FileName,
                         FilePath = file.FilePath,
                         ShortcutPath = archivePath,
-                        IsArchived = file.IsArchived
+                        IsArchived = file.IsArchived,
+                        ParentId = file.ParentId,
+                        ItemType = file.ItemType
                     });
                 }
             }
@@ -184,7 +212,8 @@ public class ScannedFileService
 
     public async Task MarkFilesAsArchivedAsync(IEnumerable<(string OriginalPath, string ArchiveLocation)> archivedItems)
     {
-        var pathLookup = archivedItems.ToDictionary(item => item.OriginalPath, item => item.ArchiveLocation, StringComparer.OrdinalIgnoreCase);
+        var archiveList = archivedItems.ToList();
+        var pathLookup = archiveList.ToDictionary(item => item.OriginalPath, item => item.ArchiveLocation, StringComparer.OrdinalIgnoreCase);
 
         await _gate.WaitAsync();
         try
@@ -196,6 +225,19 @@ public class ScannedFileService
                 {
                     file.IsArchived = true;
                     file.ArchivedContentPath = archiveLocation;
+                    continue;
+                }
+
+                // If the item resides within a directory that was archived, map it to the archived location
+                foreach (var (originalPath, location) in archiveList)
+                {
+                    if (IsDescendantOf(file.FilePath, originalPath))
+                    {
+                        var relative = file.FilePath.Substring(originalPath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                        file.IsArchived = true;
+                        file.ArchivedContentPath = Path.Combine(location, relative);
+                        break;
+                    }
                 }
             }
 
@@ -276,7 +318,7 @@ public class ScannedFileService
 
         await using var stream = File.OpenRead(_shortcutManifestPath);
         var shortcuts = await JsonSerializer.DeserializeAsync<List<StoredShortcut>>(stream, _serializerOptions);
-        return (IReadOnlyList<StoredShortcut>?)shortcuts ?? Array.Empty<StoredShortcut>();
+        return shortcuts ?? new List<StoredShortcut>();
     }
 
     private async Task SaveShortcutManifestAsync(List<StoredShortcut> manifest)
@@ -312,5 +354,69 @@ public class ScannedFileService
         dynamic shortcut = shell.CreateShortcut(shortcutPath);
         shortcut.TargetPath = targetPath;
         shortcut.Save();
+    }
+
+    private static IEnumerable<DirectoryInfo> SafeEnumerateDirectories(DirectoryInfo directory)
+    {
+        try
+        {
+            return directory.EnumerateDirectories();
+        }
+        catch
+        {
+            return Array.Empty<DirectoryInfo>();
+        }
+    }
+
+    private static IEnumerable<FileInfo> SafeEnumerateFiles(DirectoryInfo directory)
+    {
+        try
+        {
+            return directory.EnumerateFiles();
+        }
+        catch
+        {
+            return Array.Empty<FileInfo>();
+        }
+    }
+
+    private static void ProcessFile(FileInfo file, Guid? parentId, Guid? rootId, Dictionary<string, ScannedFile> existingByPath, List<ScannedFile> flattened)
+    {
+        var fullPath = file.FullName;
+        existingByPath.TryGetValue(fullPath, out var existingEntry);
+        var id = existingEntry?.Id ?? Guid.NewGuid();
+
+        var fileEntry = existingEntry ?? new ScannedFile
+        {
+            Id = id,
+            FilePath = fullPath,
+            FileName = file.Name,
+            ItemType = ScannedItemType.File
+        };
+
+        fileEntry.FileName = file.Name;
+        fileEntry.ParentId = parentId;
+        fileEntry.ItemType = ScannedItemType.File;
+        fileEntry.IsArchived = false;
+        fileEntry.ArchivedContentPath = null;
+        fileEntry.RootId = rootId ?? parentId;
+
+        flattened.Add(fileEntry);
+        existingByPath.Remove(fullPath);
+    }
+
+    private static bool IsDescendantOf(string path, string potentialParent)
+    {
+        if (path.Equals(potentialParent, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!potentialParent.EndsWith(Path.DirectorySeparatorChar) && !potentialParent.EndsWith(Path.AltDirectorySeparatorChar))
+        {
+            potentialParent += Path.DirectorySeparatorChar;
+        }
+
+        return path.StartsWith(potentialParent, StringComparison.OrdinalIgnoreCase);
     }
 }

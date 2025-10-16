@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System;
 using Boxes.App.Models;
 using Boxes.App.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -19,6 +20,12 @@ public partial class DashboardPageViewModel : ViewModelBase
 {
     public ObservableCollection<BoxSummaryViewModel> Boxes { get; } = new();
     public ObservableCollection<DesktopFileViewModel> ScannedFiles { get; } = new();
+    public ObservableCollection<DesktopFileViewModel> CurrentScannedItems { get; } = new();
+    public ObservableCollection<DesktopFileViewModel> ScanNavigationStack { get; } = new();
+
+    public string CurrentScanPath => ScanNavigationStack.Count == 0
+        ? "Desktop"
+        : string.Join(" / ", ScanNavigationStack.Select(f => f.FileName));
 
     [ObservableProperty]
     private BoxSummaryViewModel? selectedBox;
@@ -40,9 +47,13 @@ public partial class DashboardPageViewModel : ViewModelBase
     public IAsyncRelayCommand DeleteBoxCommand { get; }
     public IAsyncRelayCommand<BoxSummaryViewModel?> OpenBoxCommand { get; }
     public IAsyncRelayCommand ScanDesktopCommand { get; }
+    public IRelayCommand<DesktopFileViewModel?> EnterFolderCommand { get; }
+    public IRelayCommand NavigateUpCommand { get; }
+    public IRelayCommand NavigateHomeCommand { get; }
     public IRelayCommand<DesktopFileViewModel?> RemoveScannedFileCommand { get; }
     public IAsyncRelayCommand<BoxSummaryViewModel?> ConfigureShortcutsCommand { get; }
     public IAsyncRelayCommand ToggleDesktopCleanupCommand { get; }
+    public IAsyncRelayCommand CreateShortcutsCommand { get; }
 
     public DashboardPageViewModel()
     {
@@ -54,6 +65,10 @@ public partial class DashboardPageViewModel : ViewModelBase
         RemoveScannedFileCommand = new RelayCommand<DesktopFileViewModel?>(RemoveScannedFile);
         ConfigureShortcutsCommand = new AsyncRelayCommand<BoxSummaryViewModel?>(ConfigureShortcutsAsync);
         ToggleDesktopCleanupCommand = new AsyncRelayCommand(ToggleDesktopCleanupAsync);
+        EnterFolderCommand = new RelayCommand<DesktopFileViewModel?>(EnterFolder);
+        NavigateUpCommand = new RelayCommand(NavigateUp, () => ScanNavigationStack.Count > 0);
+        NavigateHomeCommand = new RelayCommand(NavigateHome, () => ScanNavigationStack.Count > 0);
+        CreateShortcutsCommand = new AsyncRelayCommand(CreateShortcutsAsync, () => CurrentScannedItems.Count > 0);
 
         ScannedFiles.CollectionChanged += OnScannedFilesCollectionChanged;
 
@@ -90,6 +105,7 @@ public partial class DashboardPageViewModel : ViewModelBase
     private void OnScannedFilesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         HasScannedFiles = ScannedFiles.Count > 0;
+        CreateShortcutsCommand.NotifyCanExecuteChanged();
     }
 
     private async Task InitializeAsync()
@@ -242,12 +258,13 @@ public partial class DashboardPageViewModel : ViewModelBase
                 {
                     file.ShortcutPath = Path.Combine(AppServices.ScannedFileService.ShortcutArchiveDirectory, shortcut.Id.ToString("N") + ".lnk");
                     file.IsArchived = true;
+                    file.ParentId = shortcut.ParentId;
+                    file.ItemType = shortcut.ItemType;
                 }
 
                 ScannedFiles.Add(new DesktopFileViewModel(file));
             }
 
-            // Include any archived shortcuts that were not part of the current desktop scan (e.g., cleaned files)
             foreach (var shortcut in storedShortcuts)
             {
                 if (files.Any(f => f.Id == shortcut.Id))
@@ -261,11 +278,14 @@ public partial class DashboardPageViewModel : ViewModelBase
                     FileName = shortcut.FileName,
                     FilePath = shortcut.TargetPath,
                     ShortcutPath = Path.Combine(AppServices.ScannedFileService.ShortcutArchiveDirectory, shortcut.Id.ToString("N") + ".lnk"),
-                    IsArchived = true
+                    IsArchived = true,
+                    ParentId = shortcut.ParentId,
+                    ItemType = shortcut.ItemType
                 };
                 ScannedFiles.Add(new DesktopFileViewModel(archived));
             }
 
+            UpdateCurrentScannedItems(null);
             HasScannedFiles = ScannedFiles.Count > 0;
         });
     }
@@ -277,10 +297,61 @@ public partial class DashboardPageViewModel : ViewModelBase
             return;
         }
 
-        if (ScannedFiles.Contains(file))
+        if (!ScannedFiles.Contains(file))
         {
-            ScannedFiles.Remove(file);
+            return;
         }
+
+        ScannedFiles.Remove(file);
+        if (ScanNavigationStack.Contains(file))
+        {
+            ScanNavigationStack.Remove(file);
+        }
+
+        var currentParent = ScanNavigationStack.LastOrDefault();
+        UpdateCurrentScannedItems(currentParent?.Id);
+    }
+
+    private void EnterFolder(DesktopFileViewModel? folder)
+    {
+        if (folder is null || folder.ItemType != ScannedItemType.Folder)
+        {
+            return;
+        }
+
+        ScanNavigationStack.Add(folder);
+        UpdateCurrentScannedItems(folder.Id);
+    }
+
+    private void NavigateUp()
+    {
+        if (ScanNavigationStack.Count == 0)
+        {
+            return;
+        }
+
+        ScanNavigationStack.RemoveAt(ScanNavigationStack.Count - 1);
+        var parent = ScanNavigationStack.LastOrDefault();
+        UpdateCurrentScannedItems(parent?.Id);
+    }
+
+    private void NavigateHome()
+    {
+        ScanNavigationStack.Clear();
+        UpdateCurrentScannedItems(null);
+    }
+
+    private void UpdateCurrentScannedItems(Guid? parentId)
+    {
+        CurrentScannedItems.Clear();
+        foreach (var item in ScannedFiles.Where(f => f.ParentId == parentId))
+        {
+            CurrentScannedItems.Add(item);
+        }
+        CreateShortcutsCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CurrentScanPath));
+        NavigateUpCommand.NotifyCanExecuteChanged();
+        NavigateHomeCommand.NotifyCanExecuteChanged();
     }
 
     private async Task ConfigureShortcutsAsync(BoxSummaryViewModel? box)
@@ -317,8 +388,18 @@ public partial class DashboardPageViewModel : ViewModelBase
 
     public async Task CreateShortcutsAsync()
     {
-        var files = ScannedFiles
-            .Select(f => new ScannedFile { Id = f.Id, FileName = f.FileName, FilePath = f.FilePath, ShortcutPath = f.ShortcutPath, IsArchived = f.ShortcutPath != null })
+        var files = CurrentScannedItems
+            .Where(f => !f.IsFolder)
+            .Select(f => new ScannedFile
+            {
+                Id = f.Id,
+                FileName = f.FileName,
+                FilePath = f.FilePath,
+                ParentId = f.ParentId,
+                ItemType = f.ItemType,
+                ShortcutPath = f.ShortcutPath,
+                IsArchived = f.ShortcutPath != null
+            })
             .ToList();
 
         if (files.Count == 0)

@@ -14,8 +14,17 @@ public class DesktopBoxWindowViewModel : ViewModelBase
     public DesktopBox Model { get; private set; }
 
     public ObservableCollection<DesktopFileViewModel> Shortcuts { get; } = new();
+    public ObservableCollection<DesktopFileViewModel> CurrentItems { get; } = new();
+    public ObservableCollection<DesktopFileViewModel> NavigationStack { get; } = new();
 
     public IRelayCommand<DesktopFileViewModel?> LaunchShortcutCommand { get; }
+    public IRelayCommand<DesktopFileViewModel?> EnterFolderCommand { get; }
+    public IRelayCommand NavigateUpCommand { get; }
+    public IRelayCommand NavigateHomeCommand { get; }
+
+    public string CurrentPath => NavigationStack.Count == 0
+        ? "Desktop"
+        : string.Join(" / ", NavigationStack.Select(f => f.FileName));
 
     public string Name
     {
@@ -51,6 +60,9 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         Model = model;
         CloseCommand = new RelayCommand(() => RequestClose?.Invoke(this, EventArgs.Empty));
         LaunchShortcutCommand = new RelayCommand<DesktopFileViewModel?>(LaunchShortcut);
+        EnterFolderCommand = new RelayCommand<DesktopFileViewModel?>(EnterFolder);
+        NavigateUpCommand = new RelayCommand(NavigateUp, () => NavigationStack.Count > 0);
+        NavigateHomeCommand = new RelayCommand(NavigateHome, () => NavigationStack.Count > 0);
     }
 
     public void Update(DesktopBox model)
@@ -67,6 +79,55 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         {
             Shortcuts.Add(new DesktopFileViewModel(file));
         }
+        NavigationStack.Clear();
+        UpdateCurrentItems(null);
+        RaiseNavigationCommands();
+    }
+
+    public void UpdateCurrentItems(Guid? parentId)
+    {
+        CurrentItems.Clear();
+        foreach (var item in Shortcuts.Where(s => s.ParentId == parentId))
+        {
+            CurrentItems.Add(item);
+        }
+        OnPropertyChanged(nameof(CurrentPath));
+    }
+
+    public void EnterFolder(DesktopFileViewModel? folder)
+    {
+        if (folder is null || folder.ItemType != ScannedItemType.Folder)
+        {
+            if (folder is not null)
+            {
+                LaunchShortcut(folder);
+            }
+            return;
+        }
+
+        NavigationStack.Add(folder);
+        UpdateCurrentItems(folder.Id);
+        RaiseNavigationCommands();
+    }
+
+    public void NavigateUp()
+    {
+        if (NavigationStack.Count == 0)
+        {
+            return;
+        }
+
+        NavigationStack.RemoveAt(NavigationStack.Count - 1);
+        var parent = NavigationStack.LastOrDefault();
+        UpdateCurrentItems(parent?.Id);
+        RaiseNavigationCommands();
+    }
+
+    public void NavigateHome()
+    {
+        NavigationStack.Clear();
+        UpdateCurrentItems(null);
+        RaiseNavigationCommands();
     }
 
     private void LaunchShortcut(DesktopFileViewModel? file)
@@ -100,6 +161,13 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         {
             // Swallow failures for now; consider logging in future.
         }
+    }
+
+    private void RaiseNavigationCommands()
+    {
+        OnPropertyChanged(nameof(CurrentPath));
+        NavigateUpCommand.NotifyCanExecuteChanged();
+        NavigateHomeCommand.NotifyCanExecuteChanged();
     }
 }
 
