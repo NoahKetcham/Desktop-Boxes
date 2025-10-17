@@ -1,6 +1,8 @@
 using System;
-using System.IO;
+using System.Threading.Tasks;
+using Avalonia.Media.Imaging;
 using Boxes.App.Models;
+using Boxes.App.Services;
 
 namespace Boxes.App.ViewModels;
 
@@ -23,6 +25,22 @@ public class DesktopFileViewModel : ViewModelBase
         ScannedItemType.Shortcut => "Shortcut",
         _ => "File"
     };
+    public Bitmap? Icon
+    {
+        get => _icon;
+        private set
+        {
+            if (_icon == value)
+            {
+                return;
+            }
+
+            _icon = value;
+            OnPropertyChanged();
+        }
+    }
+
+    private Bitmap? _icon;
 
     public DesktopFileViewModel(ScannedFile model)
     {
@@ -34,12 +52,36 @@ public class DesktopFileViewModel : ViewModelBase
         ArchivedContentPath = model.ArchivedContentPath;
         ItemType = model.ItemType;
         ParentId = model.ParentId;
+        _ = LoadIconAsync();
+    }
+
+    private async Task LoadIconAsync()
+    {
+        try
+        {
+            var iconService = AppServices.ShellIconService;
+            string? pathToResolve = ShortcutPath ?? ArchivedContentPath ?? FilePath;
+
+            var fileExists = !string.IsNullOrWhiteSpace(pathToResolve) && (System.IO.File.Exists(pathToResolve) || System.IO.Directory.Exists(pathToResolve));
+            if (!fileExists)
+            {
+                pathToResolve = FilePath;
+            }
+
+            var icon = await iconService.GetIconAsync(pathToResolve, ItemType == ScannedItemType.Folder);
+            Icon = icon;
+        }
+        catch
+        {
+            Icon = null;
+        }
     }
 
     public void SetShortcutPath(string? path)
     {
         ShortcutPath = path;
         OnPropertyChanged(nameof(ShortcutPath));
+        _ = LoadIconAsync();
     }
 
     public void SetArchivedState(bool isArchived, string? archivedContentPath)
@@ -48,5 +90,6 @@ public class DesktopFileViewModel : ViewModelBase
         ArchivedContentPath = archivedContentPath;
         OnPropertyChanged(nameof(IsArchived));
         OnPropertyChanged(nameof(ArchivedContentPath));
+        _ = LoadIconAsync();
     }
 }

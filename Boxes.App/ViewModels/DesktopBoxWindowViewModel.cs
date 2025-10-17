@@ -79,7 +79,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
     {
         Shortcuts.Clear();
         foreach (var file in shortcuts
-                     .OrderByDescending(s => s.ItemType == ScannedItemType.Folder)
+                     .OrderBy(s => s.ItemType != ScannedItemType.Folder)
                      .ThenBy(s => s.FileName, StringComparer.OrdinalIgnoreCase))
         {
             Shortcuts.Add(new DesktopFileViewModel(file));
