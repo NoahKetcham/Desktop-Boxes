@@ -11,7 +11,11 @@
         ShowActivated="True"
         SystemDecorations="BorderOnly">
 
-    <Grid Background="#1C2235" ClipToBounds="True">
+    <Grid Background="#1C2235" ClipToBounds="True"
+          DragDrop.AllowDrop="True"
+          DragDrop.DragEnter="Content_OnDragEnter"
+          DragDrop.DragOver="Content_OnDragOver"
+          DragDrop.Drop="Content_OnDrop">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>

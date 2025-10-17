@@ -56,5 +56,6 @@ public partial class DashboardPageView : UserControl
             }
         }
     }
+
 }
 

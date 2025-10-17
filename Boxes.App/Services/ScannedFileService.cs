@@ -210,6 +210,150 @@ public class ScannedFileService
         }
     }
 
+    public async Task<IReadOnlyList<ScannedFile>> ImportPathsAsync(IEnumerable<string> paths)
+    {
+        if (paths is null)
+        {
+            return Array.Empty<ScannedFile>();
+        }
+
+        await _gate.WaitAsync();
+        try
+        {
+            var normalized = paths
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Select(p => p.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (normalized.Count == 0)
+            {
+                return Array.Empty<ScannedFile>();
+            }
+
+            var scannedFiles = await LoadScannedFilesAsync();
+            var manifest = new List<StoredShortcut>(await LoadShortcutManifestAsync());
+            var scannedByPath = scannedFiles.ToDictionary(f => f.FilePath, StringComparer.OrdinalIgnoreCase);
+            var imported = new List<ScannedFile>();
+
+            foreach (var path in normalized)
+            {
+                if (Directory.Exists(path))
+                {
+                    await ImportDirectoryAsync(new DirectoryInfo(path), null, null);
+                }
+                else if (File.Exists(path))
+                {
+                    var file = await ImportFileAsync(path, null, null);
+                    if (file != null)
+                    {
+                        imported.Add(file);
+                    }
+                }
+            }
+
+            await SaveShortcutManifestAsync(manifest);
+            await SaveScannedFilesAsync(scannedFiles);
+
+            return imported;
+
+            ScannedFile EnsureFolderEntry(DirectoryInfo directory, Guid? parentId, Guid? rootId)
+            {
+                var fullPath = directory.FullName;
+                if (!scannedByPath.TryGetValue(fullPath, out var folderEntry))
+                {
+                    folderEntry = new ScannedFile
+                    {
+                        Id = Guid.NewGuid(),
+                        FilePath = fullPath,
+                        FileName = directory.Name,
+                        ItemType = ScannedItemType.Folder
+                    };
+                    scannedFiles.Add(folderEntry);
+                    scannedByPath[fullPath] = folderEntry;
+                }
+
+                folderEntry.FileName = directory.Name;
+                folderEntry.ParentId = parentId;
+                folderEntry.ItemType = ScannedItemType.Folder;
+                folderEntry.IsArchived = false;
+                folderEntry.ArchivedContentPath = null;
+                folderEntry.ShortcutPath = null;
+                folderEntry.RootId = rootId ?? folderEntry.Id;
+
+                if (!imported.Contains(folderEntry))
+                {
+                    imported.Add(folderEntry);
+                }
+
+                return folderEntry;
+            }
+
+            async Task ImportDirectoryAsync(DirectoryInfo directory, Guid? parentId, Guid? rootId)
+            {
+                var folder = EnsureFolderEntry(directory, parentId, rootId);
+                var folderRoot = rootId ?? folder.Id;
+
+                foreach (var subDirectory in SafeEnumerateDirectories(directory))
+                {
+                    await ImportDirectoryAsync(subDirectory, folder.Id, folderRoot);
+                }
+
+                foreach (var file in SafeEnumerateFiles(directory))
+                {
+                    var importedFile = await ImportFileAsync(file.FullName, folder.Id, folderRoot);
+                    if (importedFile != null)
+                    {
+                        imported.Add(importedFile);
+                    }
+                }
+            }
+
+            async Task<ScannedFile?> ImportFileAsync(string filePath, Guid? parentId, Guid? rootId)
+            {
+                if (!File.Exists(filePath))
+                {
+                    return null;
+                }
+
+                if (!scannedByPath.TryGetValue(filePath, out var fileEntry))
+                {
+                    fileEntry = new ScannedFile
+                    {
+                        Id = Guid.NewGuid(),
+                        FilePath = filePath,
+                        FileName = Path.GetFileName(filePath)
+                    };
+                    scannedFiles.Add(fileEntry);
+                    scannedByPath[filePath] = fileEntry;
+                }
+
+                fileEntry.FileName = Path.GetFileName(filePath) ?? fileEntry.FileName;
+                fileEntry.ParentId = parentId;
+                fileEntry.ItemType = ScannedItemType.Shortcut;
+                fileEntry.IsArchived = false;
+                fileEntry.ArchivedContentPath = null;
+                fileEntry.RootId = rootId ?? parentId ?? fileEntry.Id;
+
+                var archiveName = fileEntry.Id.ToString("N") + ".lnk";
+                var archivePath = Path.Combine(_shortcutArchivePath, archiveName);
+                fileEntry.ShortcutPath = archivePath;
+
+                await CreateShortcutFileAsync(filePath, archivePath);
+
+                var shortcutDisplayName = Path.GetFileNameWithoutExtension(fileEntry.FileName) + ".lnk";
+                manifest.RemoveAll(s => s.Id == fileEntry.Id);
+                manifest.Add(new StoredShortcut(fileEntry.Id, shortcutDisplayName, filePath, parentId, ScannedItemType.Shortcut));
+
+                return fileEntry;
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task MarkFilesAsArchivedAsync(IEnumerable<(string OriginalPath, string ArchiveLocation)> archivedItems)
     {
         var archiveList = archivedItems.ToList();
