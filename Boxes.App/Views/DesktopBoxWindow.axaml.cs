@@ -14,7 +14,7 @@ public partial class DesktopBoxWindow : Window
         InitializeComponent();
     }
 
-    private DesktopBoxWindowViewModel ViewModel => (DesktopBoxWindowViewModel)DataContext!;
+    internal DesktopBoxWindowViewModel ViewModel => (DesktopBoxWindowViewModel)DataContext!;
 
     private void Header_PointerPressed(object? sender, PointerPressedEventArgs e)
     {

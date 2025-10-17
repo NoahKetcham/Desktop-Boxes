@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Threading;
 using Boxes.App.Extensions;
 using Boxes.App.Models;
@@ -14,8 +15,55 @@ namespace Boxes.App.Services;
 public class BoxWindowManager
 {
     private readonly Dictionary<Guid, DesktopBoxWindow> _windows = new();
+    private readonly Dictionary<Guid, (double Width, double Height, double X, double Y)> _windowStates = new();
+    private bool _areWindowsVisible = true;
+
+    public bool AreWindowsVisible => _areWindowsVisible;
 
     public bool HasOpenWindows => _windows.Count > 0;
+
+    public Task ToggleAllWindowsVisibility()
+    {
+        var targetState = !_areWindowsVisible;
+        return SetWindowsVisibility(targetState);
+    }
+
+    public async Task SetWindowsVisibility(bool visible)
+    {
+        if (_areWindowsVisible == visible)
+        {
+            return;
+        }
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (visible)
+            {
+                foreach (var window in _windows.Values)
+                {
+                    if (_windowStates.TryGetValue(window.ViewModel.Model.Id, out var state))
+                    {
+                        window.Width = state.Width;
+                        window.Height = state.Height;
+                        window.Position = new PixelPoint((int)state.X, (int)state.Y);
+                    }
+
+                    window.Show();
+                    window.Activate();
+                }
+            }
+            else
+            {
+                foreach (var window in _windows.Values)
+                {
+                    _windowStates[window.ViewModel.Model.Id] = (window.Width, window.Height, window.Position.X, window.Position.Y);
+                    window.Hide();
+                }
+            }
+
+            _areWindowsVisible = visible;
+        });
+    }
 
     public async Task ShowAsync(DesktopBox box)
     {

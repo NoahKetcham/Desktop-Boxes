@@ -45,7 +45,6 @@ public static class AppServices
 
             ScannedFileService = new ScannedFileService(rootDirectory);
             DesktopCleanupService = new DesktopCleanupService(rootDirectory);
-
             _initialized = true;
         }
     }
