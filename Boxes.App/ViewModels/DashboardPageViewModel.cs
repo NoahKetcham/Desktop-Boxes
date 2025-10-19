@@ -210,7 +210,13 @@ public partial class DashboardPageViewModel : ViewModelBase
             return;
         }
 
-        await AppServices.BoxWindowManager.ShowAsync(target.ToModel());
+        var latest = await AppServices.BoxService.GetBoxAsync(target.Id).ConfigureAwait(false);
+        if (latest == null)
+        {
+            latest = target.ToModel();
+        }
+
+        await AppServices.BoxWindowManager.ShowAsync(latest).ConfigureAwait(false);
     }
 
     private async Task EditSelectedAsync()

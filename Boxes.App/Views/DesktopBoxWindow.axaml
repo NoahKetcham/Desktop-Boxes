@@ -9,6 +9,7 @@
         CanMinimize="False"
         CanMaximize="False"
         ShowActivated="True"
+        WindowStartupLocation="Manual"
         SystemDecorations="BorderOnly">
 
     <Grid Background="#1C2235" ClipToBounds="True"

@@ -39,7 +39,12 @@ public class BoxSummaryViewModel : ViewModelBase
             Name = model.Name,
             Description = model.Description,
             ItemCount = model.ItemCount,
-            ShortcutIds = new List<Guid>(model.ShortcutIds)
+            ShortcutIds = new List<Guid>(model.ShortcutIds),
+            _width = model.Width,
+            _height = model.Height,
+            _positionX = model.PositionX,
+            _positionY = model.PositionY,
+            _currentPath = model.CurrentPath
         };
     }
 
@@ -50,6 +55,11 @@ public class BoxSummaryViewModel : ViewModelBase
         Description = model.Description;
         ItemCount = model.ItemCount;
         ShortcutIds = new List<Guid>(model.ShortcutIds);
+        _width = model.Width;
+        _height = model.Height;
+        _positionX = model.PositionX;
+        _positionY = model.PositionY;
+        _currentPath = model.CurrentPath;
     }
 
     public DesktopBox ToModel()
@@ -60,8 +70,19 @@ public class BoxSummaryViewModel : ViewModelBase
             Name = Name,
             Description = Description,
             ItemCount = ItemCount,
-            ShortcutIds = new List<Guid>(ShortcutIds)
+            ShortcutIds = new List<Guid>(ShortcutIds),
+            Width = _width > 0 ? _width : 320,
+            Height = _height > 0 ? _height : 240,
+            PositionX = _positionX,
+            PositionY = _positionY,
+            CurrentPath = _currentPath
         };
     }
+
+    private double _width = 320;
+    private double _height = 240;
+    private double? _positionX;
+    private double? _positionY;
+    private string? _currentPath;
 }
 

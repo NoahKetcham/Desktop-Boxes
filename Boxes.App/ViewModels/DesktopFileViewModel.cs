@@ -55,6 +55,17 @@ public class DesktopFileViewModel : ViewModelBase
         _ = LoadIconAsync();
     }
 
+    internal void UpdateFromModel(ScannedFile model)
+    {
+        ShortcutPath = model.ShortcutPath;
+        IsArchived = model.IsArchived;
+        ArchivedContentPath = model.ArchivedContentPath;
+        OnPropertyChanged(nameof(ShortcutPath));
+        OnPropertyChanged(nameof(IsArchived));
+        OnPropertyChanged(nameof(ArchivedContentPath));
+        _ = LoadIconAsync();
+    }
+
     private async Task LoadIconAsync()
     {
         try
@@ -75,6 +86,12 @@ public class DesktopFileViewModel : ViewModelBase
         {
             Icon = null;
         }
+    }
+
+    public async Task RefreshIconAsync()
+    {
+        Icon = null;
+        await LoadIconAsync().ConfigureAwait(false);
     }
 
     public void SetShortcutPath(string? path)

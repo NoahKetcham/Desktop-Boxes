@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Input;
+using Avalonia.Threading;
 using Boxes.App.Models;
 using Boxes.App.Services;
 using CommunityToolkit.Mvvm.Input;
@@ -28,6 +29,10 @@ public class DesktopBoxWindowViewModel : ViewModelBase
     public string CurrentPath => NavigationStack.Count == 0
         ? "Desktop"
         : string.Join(" / ", NavigationStack.Select(f => f.FileName));
+
+    private string SerializedPath => NavigationStack.Count == 0
+        ? "Desktop"
+        : string.Join(" > ", NavigationStack.Select(f => f.FileName));
 
     public string Name
     {
@@ -58,10 +63,16 @@ public class DesktopBoxWindowViewModel : ViewModelBase
     public RelayCommand CloseCommand { get; }
     public event EventHandler? RequestClose;
 
+    public event EventHandler? RequestStateSave;
+
     public DesktopBoxWindowViewModel(DesktopBox model)
     {
         Model = model;
-        CloseCommand = new RelayCommand(() => RequestClose?.Invoke(this, EventArgs.Empty));
+        CloseCommand = new RelayCommand(() =>
+        {
+            RequestStateSave?.Invoke(this, EventArgs.Empty);
+            RequestClose?.Invoke(this, EventArgs.Empty);
+        });
         LaunchShortcutCommand = new RelayCommand<DesktopFileViewModel?>(LaunchShortcut);
         EnterFolderCommand = new RelayCommand<DesktopFileViewModel?>(EnterFolder);
         NavigateUpCommand = new RelayCommand(NavigateUp, () => NavigationStack.Count > 0);
@@ -87,6 +98,41 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         NavigationStack.Clear();
         UpdateCurrentItems(null);
         RaiseNavigationCommands();
+        Model.CurrentPath = SerializedPath;
+    }
+
+    public void RefreshShortcuts(IEnumerable<ScannedFile> shortcuts)
+    {
+        var ordered = shortcuts
+            .OrderBy(s => s.ItemType != ScannedItemType.Folder)
+            .ThenBy(s => s.FileName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var activeParent = NavigationStack.LastOrDefault();
+        var parentId = activeParent?.Id;
+
+        var itemsToRemove = Shortcuts.Where(s => ordered.All(f => f.Id != s.Id)).ToList();
+        foreach (var remove in itemsToRemove)
+        {
+            Shortcuts.Remove(remove);
+        }
+
+        foreach (var file in ordered)
+        {
+            var existing = Shortcuts.FirstOrDefault(s => s.Id == file.Id);
+            if (existing == null)
+            {
+                var vm = new DesktopFileViewModel(file);
+                InsertShortcutInOrder(vm);
+            }
+            else
+            {
+                existing.UpdateFromModel(file);
+            }
+        }
+
+        NavigateAndSyncCurrentItems(parentId);
+        RaiseNavigationCommands();
     }
 
     public void EnterFolder(DesktopFileViewModel? folder)
@@ -101,7 +147,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         }
 
         NavigationStack.Add(folder);
-        UpdateCurrentItems(folder.Id);
+        NavigateAndSyncCurrentItems(folder.Id);
         RaiseNavigationCommands();
     }
 
@@ -114,14 +160,52 @@ public class DesktopBoxWindowViewModel : ViewModelBase
 
         NavigationStack.RemoveAt(NavigationStack.Count - 1);
         var parent = NavigationStack.LastOrDefault();
-        UpdateCurrentItems(parent?.Id);
+        NavigateAndSyncCurrentItems(parent?.Id);
         RaiseNavigationCommands();
+    }
+
+    public async Task RefreshIconsAsync()
+    {
+        var refreshTasks = Shortcuts.Select(item => item.RefreshIconAsync()).ToList();
+        await Task.WhenAll(refreshTasks).ConfigureAwait(false);
+
+        var activeParent = NavigationStack.LastOrDefault();
+        NavigateAndSyncCurrentItems(activeParent?.Id);
+    }
+
+    private void InsertShortcutInOrder(DesktopFileViewModel vm)
+    {
+        var index = 0;
+        while (index < Shortcuts.Count)
+        {
+            var current = Shortcuts[index];
+            var currentIsFolder = current.ItemType == ScannedItemType.Folder;
+            var vmIsFolder = vm.ItemType == ScannedItemType.Folder;
+
+            if (vmIsFolder && !currentIsFolder)
+            {
+                break;
+            }
+
+            if (currentIsFolder == vmIsFolder)
+            {
+                if (string.Compare(vm.FileName, current.FileName, StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    break;
+                }
+            }
+
+            index++;
+        }
+
+        Shortcuts.Insert(index, vm);
+        SyncWindowState();
     }
 
     public void NavigateHome()
     {
         NavigationStack.Clear();
-        UpdateCurrentItems(null);
+        NavigateAndSyncCurrentItems(null);
         RaiseNavigationCommands();
     }
 
@@ -263,8 +347,9 @@ public class DesktopBoxWindowViewModel : ViewModelBase
             Shortcuts.Add(new DesktopFileViewModel(file));
         }
         NavigationStack.Clear();
-        UpdateCurrentItems(null);
+        NavigateAndSyncCurrentItems(null);
         RaiseNavigationCommands();
+        Model.CurrentPath = SerializedPath;
     }
 
     private bool CanAcceptDrag(DragEventArgs e)
@@ -289,5 +374,23 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         NavigateHomeCommand.NotifyCanExecuteChanged();
     }
 
+    private void NavigateAndSyncCurrentItems(Guid? parentId)
+    {
+        UpdateCurrentItems(parentId);
+        Model.CurrentPath = SerializedPath;
+        SyncWindowState();
+    }
+
+    private void SyncWindowState()
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => RequestStateSave?.Invoke(this, EventArgs.Empty));
+        }
+        else
+        {
+            RequestStateSave?.Invoke(this, EventArgs.Empty);
+        }
+    }
 }
 

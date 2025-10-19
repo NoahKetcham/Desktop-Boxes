@@ -1,3 +1,5 @@
+using System;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -9,12 +11,32 @@ namespace Boxes.App.Views;
 
 public partial class DesktopBoxWindow : Window
 {
+    private PixelPoint _lastKnownPosition;
+
     public DesktopBoxWindow()
     {
         InitializeComponent();
+        Opened += DesktopBoxWindow_Opened;
+        PositionChanged += DesktopBoxWindow_PositionChanged;
     }
 
     internal DesktopBoxWindowViewModel ViewModel => (DesktopBoxWindowViewModel)DataContext!;
+
+    public PixelPoint LastKnownPosition => _lastKnownPosition;
+
+    private void DesktopBoxWindow_PositionChanged(object? sender, PixelPointEventArgs e)
+    {
+        _lastKnownPosition = e.Point;
+    }
+
+    private async void DesktopBoxWindow_Opened(object? sender, EventArgs e)
+    {
+        _lastKnownPosition = Position;
+        if (DataContext is DesktopBoxWindowViewModel vm)
+        {
+            await vm.RefreshIconsAsync().ConfigureAwait(false);
+        }
+    }
 
     private void Header_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
