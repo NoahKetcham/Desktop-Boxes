@@ -75,20 +75,20 @@
                     <ItemsControl ItemsSource="{Binding CurrentScannedItems}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel />
+                                <WrapPanel ItemWidth="120" ItemHeight="140" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:DesktopFileViewModel">
-                                <Border Width="140" Height="110" Background="#232B46" CornerRadius="8" Padding="8" Margin="4" DoubleTapped="ScanTile_OnDoubleTapped">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="*"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
+                                <Border Width="120" Height="140" Background="#232B46" CornerRadius="8" Padding="8" Margin="6" DoubleTapped="ScanTile_OnDoubleTapped">
+                                    <Grid RowDefinitions="Auto,*,Auto">
                                         <Button Content="×" Width="20" Height="20" HorizontalAlignment="Right" Command="{Binding DataContext.RemoveScannedFileCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
-                                        <TextBlock Grid.Row="1" Text="{Binding FileName}" TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+                                            <Border Width="48" Height="48" Background="#101627" CornerRadius="4">
+                                                <Image Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform"/>
+                                            </Border>
+                                            <TextBlock Text="{Binding FileName}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="104" FontSize="12"/>
+                                        </StackPanel>
                                         <TextBlock Grid.Row="2" Text="{Binding TypeLabel}" FontSize="10" Opacity="0.6" HorizontalAlignment="Center"/>
                                     </Grid>
                                 </Border>

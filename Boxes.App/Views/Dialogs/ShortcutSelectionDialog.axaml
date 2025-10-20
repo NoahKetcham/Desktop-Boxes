@@ -23,12 +23,19 @@
                     <ItemsControl ItemsSource="{Binding CurrentItems}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel />
+                                <WrapPanel ItemWidth="120" ItemHeight="120" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:ShortcutSelectionItemViewModel">
-                                <ToggleButton IsChecked="{Binding IsSelected}" Width="140" Height="80" Margin="6" Content="{Binding FileName}" DoubleTapped="ShortcutItem_OnDoubleTapped"/>
+                                <ToggleButton IsChecked="{Binding IsSelected}" Width="120" Height="120" Margin="8" Background="#232B46" BorderBrush="#2D3654" BorderThickness="1" CornerRadius="8" DoubleTapped="ShortcutItem_OnDoubleTapped">
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+                                        <Border Width="48" Height="48" Background="#101627" CornerRadius="4">
+                                            <Image Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding FileName}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="96" FontSize="12" />
+                                    </StackPanel>
+                                </ToggleButton>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

@@ -1,18 +1,42 @@
+using System;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Interactivity;
 using Boxes.App.ViewModels;
 
 namespace Boxes.App.Views;
 
 public partial class DesktopBoxWindow : Window
 {
+    private PixelPoint _lastKnownPosition;
+
     public DesktopBoxWindow()
     {
         InitializeComponent();
+        Opened += DesktopBoxWindow_Opened;
+        PositionChanged += DesktopBoxWindow_PositionChanged;
     }
 
-    private DesktopBoxWindowViewModel ViewModel => (DesktopBoxWindowViewModel)DataContext!;
+    internal DesktopBoxWindowViewModel ViewModel => (DesktopBoxWindowViewModel)DataContext!;
+
+    public PixelPoint LastKnownPosition => _lastKnownPosition;
+
+    private void DesktopBoxWindow_PositionChanged(object? sender, PixelPointEventArgs e)
+    {
+        _lastKnownPosition = e.Point;
+    }
+
+    private async void DesktopBoxWindow_Opened(object? sender, EventArgs e)
+    {
+        _lastKnownPosition = Position;
+        if (DataContext is DesktopBoxWindowViewModel vm)
+        {
+            await vm.RefreshIconsAsync().ConfigureAwait(false);
+        }
+    }
 
     private void Header_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -55,6 +79,29 @@ public partial class DesktopBoxWindow : Window
                 ViewModel.LaunchShortcutCommand.Execute(file);
             }
         }
+    }
+
+    private void Content_OnDragEnter(object? sender, DragEventArgs e)
+    {
+        ViewModel.HandleDragEvent(e);
+        if (!e.Handled)
+        {
+            e.DragEffects = DragDropEffects.Copy;
+        }
+    }
+
+    private void Content_OnDragOver(object? sender, DragEventArgs e)
+    {
+        ViewModel.HandleDragEvent(e);
+        if (!e.Handled)
+        {
+            e.DragEffects = DragDropEffects.Copy;
+        }
+    }
+
+    private async void Content_OnDrop(object? sender, DragEventArgs e)
+    {
+        await ViewModel.HandleDropAsync(e);
     }
 }
 

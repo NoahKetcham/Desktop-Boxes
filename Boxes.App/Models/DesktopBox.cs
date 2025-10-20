@@ -11,5 +11,10 @@ public class DesktopBox
     public string TargetPath { get; set; } = string.Empty;
     public int ItemCount { get; set; }
     public List<Guid> ShortcutIds { get; set; } = new();
+    public double Width { get; set; } = 320;
+    public double Height { get; set; } = 240;
+    public double? PositionX { get; set; }
+    public double? PositionY { get; set; }
+    public string? CurrentPath { get; set; }
 }
 

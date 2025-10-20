@@ -73,6 +73,7 @@ public partial class DashboardPageViewModel : ViewModelBase
         ScannedFiles.CollectionChanged += OnScannedFilesCollectionChanged;
 
         _ = InitializeAsync();
+        AppServices.BoxUpdated += OnBoxUpdated;
     }
 
     partial void OnSelectedBoxChanged(BoxSummaryViewModel? value)
@@ -185,6 +186,7 @@ public partial class DashboardPageViewModel : ViewModelBase
         }
     }
 
+
     private async Task CreateNewBoxAsync()
     {
         var model = await DialogService.ShowNewBoxDialogAsync().ConfigureAwait(false);
@@ -208,7 +210,13 @@ public partial class DashboardPageViewModel : ViewModelBase
             return;
         }
 
-        await AppServices.BoxWindowManager.ShowAsync(target.ToModel());
+        var latest = await AppServices.BoxService.GetBoxAsync(target.Id).ConfigureAwait(false);
+        if (latest == null)
+        {
+            latest = target.ToModel();
+        }
+
+        await AppServices.BoxWindowManager.ShowAsync(latest).ConfigureAwait(false);
     }
 
     private async Task EditSelectedAsync()
@@ -218,9 +226,24 @@ public partial class DashboardPageViewModel : ViewModelBase
             return;
         }
 
-        var updated = await AppServices.BoxService.AddOrUpdateAsync(SelectedBox.ToModel());
+        var model = SelectedBox.ToModel();
+        var updated = await AppServices.BoxService.AddOrUpdateAsync(model);
         await AppServices.BoxWindowManager.UpdateAsync(updated);
         SelectedBox.UpdateFromModel(updated);
+    }
+
+    private async void OnBoxUpdated(object? sender, DesktopBox box)
+    {
+        var target = Boxes.FirstOrDefault(b => b.Id == box.Id);
+        if (target is null)
+        {
+            return;
+        }
+
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            target.UpdateFromModel(box);
+        });
     }
 
     private async Task DeleteSelectedAsync()

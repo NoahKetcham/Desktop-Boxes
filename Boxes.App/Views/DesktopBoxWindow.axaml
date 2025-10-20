@@ -9,9 +9,14 @@
         CanMinimize="False"
         CanMaximize="False"
         ShowActivated="True"
+        WindowStartupLocation="Manual"
         SystemDecorations="BorderOnly">
 
-    <Grid Background="#1C2235" ClipToBounds="True">
+    <Grid Background="#1C2235" ClipToBounds="True"
+          DragDrop.AllowDrop="True"
+          DragDrop.DragEnter="Content_OnDragEnter"
+          DragDrop.DragOver="Content_OnDragOver"
+          DragDrop.Drop="Content_OnDrop">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -34,15 +39,17 @@
                 <ItemsControl ItemsSource="{Binding CurrentItems}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <WrapPanel />
+                            <WrapPanel ItemWidth="96" ItemHeight="96" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:DesktopFileViewModel">
-                            <Border Width="100" Height="80" Background="#141B2D" CornerRadius="6" Padding="6" Margin="4" Cursor="Hand" DoubleTapped="ShortcutTile_OnDoubleTapped">
-                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
-                                    <TextBlock Text="{Binding FileName}" TextWrapping="Wrap" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="{Binding ItemType}" FontSize="10" Opacity="0.6" HorizontalAlignment="Center"/>
+                            <Border Width="96" Height="96" Background="Transparent" Margin="8" Cursor="Hand" DoubleTapped="ShortcutTile_OnDoubleTapped">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+                                    <Border Width="48" Height="48" Background="#101627" CornerRadius="4" HorizontalAlignment="Center">
+                                        <Image Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="96" FontSize="12"/>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>

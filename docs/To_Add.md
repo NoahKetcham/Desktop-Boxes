@@ -32,3 +32,22 @@
     - Ai buddy (personal assistant)
     - Music player
     - Automated tasks
+
+
+
+
+#
+#
+#
+#
+#
+# BUILD:
+- save positioon and sizing of box windows on close to preserve functionality.
+- Change tiles to display as the proper Icons instead, show file names under the icons. (change the icons to the proper ones, and add the file names under the icons.)
+- Add feature to click and drag desktop (highlighted area) to create a new box the shape of highlighted area.
+- start building themes, well organized each theme in its own file probably.
+- Integrate the settings page into the app.
+- toolbar icons to be added to the app for quick settings and settings ui launch.
+- Auto start the app when the computer starts up, only boxes windows should start not settings ui.
+
+- 
