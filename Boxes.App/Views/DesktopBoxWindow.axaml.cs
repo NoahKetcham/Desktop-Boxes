@@ -12,15 +12,37 @@ namespace Boxes.App.Views;
 public partial class DesktopBoxWindow : Window
 {
     private PixelPoint _lastKnownPosition;
+    private ItemsControl? _shortcutsItemsControl;
 
     public DesktopBoxWindow()
     {
         InitializeComponent();
         Opened += DesktopBoxWindow_Opened;
         PositionChanged += DesktopBoxWindow_PositionChanged;
+        _shortcutsItemsControl = this.FindControl<ItemsControl>("ShortcutsItemsControl");
+        if (DataContext is DesktopBoxWindowViewModel vm)
+        {
+            vm.RegisterView(this);
+        }
     }
 
     internal DesktopBoxWindowViewModel ViewModel => (DesktopBoxWindowViewModel)DataContext!;
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (DataContext is DesktopBoxWindowViewModel vm)
+        {
+            vm.RegisterView(this);
+        }
+    }
+
+    public void InvalidateShortcutsLayout()
+    {
+        _shortcutsItemsControl?.InvalidateMeasure();
+        _shortcutsItemsControl?.InvalidateArrange();
+        _shortcutsItemsControl?.InvalidateVisual();
+    }
 
     public PixelPoint LastKnownPosition => _lastKnownPosition;
 

@@ -4,11 +4,13 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Boxes.App.Models;
 using Boxes.App.Services;
+using Boxes.App.Views;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Boxes.App.ViewModels;
@@ -65,6 +67,9 @@ public class DesktopBoxWindowViewModel : ViewModelBase
 
     public event EventHandler? RequestStateSave;
 
+    private DesktopBoxWindow? _view;
+    private CancellationTokenSource? _pendingLoadCts;
+
     public DesktopBoxWindowViewModel(DesktopBox model)
     {
         Model = model;
@@ -79,6 +84,11 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         NavigateHomeCommand = new RelayCommand(NavigateHome, () => NavigationStack.Count > 0);
     }
 
+    internal void RegisterView(DesktopBoxWindow view)
+    {
+        _view = view;
+    }
+
     public void Update(DesktopBox model)
     {
         Model = model;
@@ -86,74 +96,64 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(Description));
     }
 
+    public void PrepareForStagedLoad()
+    {
+        CancelPendingLoad();
+        Shortcuts.Clear();
+        CurrentItems.Clear();
+        NavigationStack.Clear();
+        OnPropertyChanged(nameof(CurrentPath));
+        RaiseNavigationCommands();
+    }
+
+    public void StageLoadShortcuts(IEnumerable<ScannedFile> shortcuts, TimeSpan delay)
+    {
+        CancelPendingLoad();
+        var snapshot = shortcuts.ToList();
+        var cts = new CancellationTokenSource();
+        _pendingLoadCts = cts;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (delay > TimeSpan.Zero)
+                {
+                    await Task.Delay(delay, cts.Token).ConfigureAwait(false);
+                }
+
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (!cts.IsCancellationRequested)
+                    {
+                        ApplyShortcuts(snapshot, resetNavigation: true);
+                    }
+                });
+            }
+            catch (TaskCanceledException)
+            {
+                // ignore, superseded by a newer load
+            }
+            finally
+            {
+                if (_pendingLoadCts == cts)
+                {
+                    CancelPendingLoad();
+                }
+            }
+        });
+    }
+
     public void SetShortcuts(IEnumerable<ScannedFile> shortcuts)
     {
-        Shortcuts.Clear();
-        foreach (var file in DeduplicateShortcuts(shortcuts)
-                     .OrderBy(s => s.ItemType != ScannedItemType.Folder)
-                     .ThenBy(s => s.FileName, StringComparer.OrdinalIgnoreCase))
-        {
-            Shortcuts.Add(new DesktopFileViewModel(file));
-        }
-        NavigationStack.Clear();
-        UpdateCurrentItems(null);
-        RaiseNavigationCommands();
-        Model.CurrentPath = SerializedPath;
+        CancelPendingLoad();
+        ApplyShortcuts(shortcuts, resetNavigation: true);
     }
 
     public void RefreshShortcuts(IEnumerable<ScannedFile> shortcuts)
     {
-        var ordered = DeduplicateShortcuts(shortcuts)
-            .OrderBy(s => s.ItemType != ScannedItemType.Folder)
-            .ThenBy(s => s.FileName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var activeParent = NavigationStack.LastOrDefault();
-        var parentId = activeParent?.Id;
-
-        var itemsToRemove = Shortcuts.Where(s => ordered.All(f => f.Id != s.Id)).ToList();
-        foreach (var remove in itemsToRemove)
-        {
-            Shortcuts.Remove(remove);
-        }
-
-        foreach (var file in ordered)
-        {
-            var existing = Shortcuts.FirstOrDefault(s => s.Id == file.Id);
-            if (existing == null)
-            {
-                var vm = new DesktopFileViewModel(file);
-                InsertShortcutInOrder(vm);
-            }
-            else
-            {
-                existing.UpdateFromModel(file);
-            }
-        }
-
-        NavigateAndSyncCurrentItems(parentId);
-        RaiseNavigationCommands();
-    }
-
-    private static IEnumerable<ScannedFile> DeduplicateShortcuts(IEnumerable<ScannedFile> shortcuts)
-    {
-        var seenIds = new HashSet<Guid>();
-        var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var shortcut in shortcuts)
-        {
-            if (!seenIds.Add(shortcut.Id))
-            {
-                continue;
-            }
-
-            if (!string.IsNullOrWhiteSpace(shortcut.FilePath) && !seenPaths.Add(shortcut.FilePath))
-            {
-                continue;
-            }
-
-            yield return shortcut;
-        }
+        CancelPendingLoad();
+        ApplyShortcuts(shortcuts, resetNavigation: false);
     }
 
     public void EnterFolder(DesktopFileViewModel? folder)
@@ -192,35 +192,6 @@ public class DesktopBoxWindowViewModel : ViewModelBase
 
         var activeParent = NavigationStack.LastOrDefault();
         NavigateAndSyncCurrentItems(activeParent?.Id);
-    }
-
-    private void InsertShortcutInOrder(DesktopFileViewModel vm)
-    {
-        var index = 0;
-        while (index < Shortcuts.Count)
-        {
-            var current = Shortcuts[index];
-            var currentIsFolder = current.ItemType == ScannedItemType.Folder;
-            var vmIsFolder = vm.ItemType == ScannedItemType.Folder;
-
-            if (vmIsFolder && !currentIsFolder)
-            {
-                break;
-            }
-
-            if (currentIsFolder == vmIsFolder)
-            {
-                if (string.Compare(vm.FileName, current.FileName, StringComparison.OrdinalIgnoreCase) < 0)
-                {
-                    break;
-                }
-            }
-
-            index++;
-        }
-
-        Shortcuts.Insert(index, vm);
-        SyncWindowState();
     }
 
     public void NavigateHome()
@@ -359,23 +330,103 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         AppServices.NotifyBoxUpdated(updated);
 
         var shortcutsData = await AppServices.ScannedFileService.GetScannedFilesAsync();
-        var filtered = shortcutsData.Where(s => boxShortcuts.Contains(s.Id))
-            .OrderByDescending(s => s.ItemType == ScannedItemType.Folder)
-            .ThenBy(s => s.FileName, StringComparer.OrdinalIgnoreCase);
-        Shortcuts.Clear();
-        foreach (var file in filtered)
-        {
-            Shortcuts.Add(new DesktopFileViewModel(file));
-        }
-        NavigationStack.Clear();
-        NavigateAndSyncCurrentItems(null);
-        RaiseNavigationCommands();
-        Model.CurrentPath = SerializedPath;
+        var filtered = shortcutsData.Where(s => boxShortcuts.Contains(s.Id));
+        ApplyShortcuts(filtered, resetNavigation: true);
     }
 
     private bool CanAcceptDrag(DragEventArgs e)
     {
         return e.Data.Contains(DataFormats.Files);
+    }
+
+    private void ApplyShortcuts(IEnumerable<ScannedFile> shortcuts, bool resetNavigation)
+    {
+        var ordered = ShortcutCatalog.GetAllShortcutsDeduped(shortcuts)
+            .OrderBy(s => s.ItemType != ScannedItemType.Folder)
+            .ThenBy(s => s.FileName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        LogDuplicateWarnings(ordered);
+
+        List<Guid> breadcrumb = resetNavigation
+            ? new List<Guid>()
+            : NavigationStack.Select(f => f.Id).ToList();
+
+        Shortcuts.Clear();
+        foreach (var file in ordered)
+        {
+            Shortcuts.Add(new DesktopFileViewModel(file));
+        }
+
+        RestoreNavigation(breadcrumb);
+        RaiseNavigationCommands();
+        Model.CurrentPath = SerializedPath;
+        SyncWindowState();
+        _view?.InvalidateShortcutsLayout();
+    }
+
+    private void CancelPendingLoad()
+    {
+        if (_pendingLoadCts is null)
+        {
+            return;
+        }
+
+        _pendingLoadCts.Cancel();
+        _pendingLoadCts.Dispose();
+        _pendingLoadCts = null;
+    }
+
+    private void RestoreNavigation(IReadOnlyList<Guid> breadcrumb)
+    {
+        NavigationStack.Clear();
+
+        if (breadcrumb.Count == 0)
+        {
+            UpdateCurrentItems(null);
+            return;
+        }
+
+        foreach (var id in breadcrumb)
+        {
+            var folderVm = Shortcuts.FirstOrDefault(s => s.Id == id && s.ItemType == ScannedItemType.Folder);
+            if (folderVm is null)
+            {
+                break;
+            }
+
+            NavigationStack.Add(folderVm);
+        }
+
+        var activeParent = NavigationStack.LastOrDefault();
+        UpdateCurrentItems(activeParent?.Id);
+    }
+
+    [Conditional("DEBUG")]
+    private static void LogDuplicateWarnings(IEnumerable<ScannedFile> shortcuts)
+    {
+        var duplicatesById = shortcuts
+            .GroupBy(s => s.Id)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        if (duplicatesById.Count > 0)
+        {
+            Debug.WriteLine($"[Boxes] Duplicate shortcut IDs detected: {string.Join(", ", duplicatesById)}");
+        }
+
+        var duplicatesByPath = shortcuts
+            .Select(s => ShortcutCatalog.GetAllShortcutsDeduped(new[] { s }).First())
+            .GroupBy(s => s.FilePath, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        if (duplicatesByPath.Count > 0)
+        {
+            Debug.WriteLine($"[Boxes] Duplicate shortcut paths detected: {string.Join(", ", duplicatesByPath)}");
+        }
     }
 
     private void UpdateCurrentItems(Guid? parentId)

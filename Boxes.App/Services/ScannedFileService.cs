@@ -29,7 +29,12 @@ public class ScannedFileService
 
     public async Task<List<ScannedFile>> ScanAndSaveAsync()
     {
-        var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        var desktopPath = NormalizePath(Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
+        if (desktopPath is null)
+        {
+            return await LoadScannedFilesAsync();
+        }
+
         var scanRoot = new DirectoryInfo(desktopPath);
         var flattened = new List<ScannedFile>();
 
@@ -37,11 +42,27 @@ public class ScannedFileService
         try
         {
             var existing = await LoadScannedFilesAsync();
-            var existingByPath = existing.ToDictionary(e => e.FilePath, StringComparer.OrdinalIgnoreCase);
+            var existingByPath = new Dictionary<string, ScannedFile>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in existing)
+            {
+                var key = NormalizePath(entry.FilePath);
+                if (string.IsNullOrEmpty(key))
+                {
+                    continue;
+                }
+
+                entry.FilePath = key;
+                existingByPath[key] = entry;
+            }
 
             Guid ProcessDirectory(DirectoryInfo directory, Guid? parentId, Guid? rootId)
             {
-                var fullPath = directory.FullName;
+                var fullPath = NormalizePath(directory.FullName);
+                if (fullPath is null)
+                {
+                    return Guid.NewGuid();
+                }
+
                 existingByPath.TryGetValue(fullPath, out var existingEntry);
                 var id = existingEntry?.Id ?? Guid.NewGuid();
 
@@ -221,8 +242,8 @@ public class ScannedFileService
         try
         {
             var normalized = paths
+                .Select(NormalizePath)
                 .Where(p => !string.IsNullOrWhiteSpace(p))
-                .Select(p => p.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -233,8 +254,20 @@ public class ScannedFileService
 
             var scannedFiles = await LoadScannedFilesAsync();
             var manifest = new List<StoredShortcut>(await LoadShortcutManifestAsync());
-            var scannedByPath = scannedFiles.ToDictionary(f => f.FilePath, StringComparer.OrdinalIgnoreCase);
-            var imported = new List<ScannedFile>();
+            var scannedByPath = new Dictionary<string, ScannedFile>(StringComparer.OrdinalIgnoreCase);
+            foreach (var file in scannedFiles)
+            {
+                var key = NormalizePath(file.FilePath);
+                if (string.IsNullOrEmpty(key))
+                {
+                    continue;
+                }
+
+                file.FilePath = key;
+                scannedByPath[key] = file;
+            }
+
+            var imported = new Dictionary<Guid, ScannedFile>();
 
             foreach (var path in normalized)
             {
@@ -247,7 +280,7 @@ public class ScannedFileService
                     var file = await ImportFileAsync(path, null, null);
                     if (file != null)
                     {
-                        imported.Add(file);
+                        imported[file.Id] = file;
                     }
                 }
             }
@@ -255,11 +288,16 @@ public class ScannedFileService
             await SaveShortcutManifestAsync(manifest);
             await SaveScannedFilesAsync(scannedFiles);
 
-            return imported;
+            return imported.Values.ToList();
 
             ScannedFile EnsureFolderEntry(DirectoryInfo directory, Guid? parentId, Guid? rootId)
             {
-                var fullPath = directory.FullName;
+                var fullPath = NormalizePath(directory.FullName);
+                if (fullPath is null)
+                {
+                    return new ScannedFile();
+                }
+
                 if (!scannedByPath.TryGetValue(fullPath, out var folderEntry))
                 {
                     folderEntry = new ScannedFile
@@ -273,18 +311,20 @@ public class ScannedFileService
                     scannedByPath[fullPath] = folderEntry;
                 }
 
-                folderEntry.FileName = directory.Name;
-                folderEntry.ParentId = parentId;
+                folderEntry.FilePath = fullPath;
+
+                if (folderEntry.ParentId != parentId)
+                {
+                    folderEntry.ParentId = parentId;
+                }
+
                 folderEntry.ItemType = ScannedItemType.Folder;
                 folderEntry.IsArchived = false;
                 folderEntry.ArchivedContentPath = null;
                 folderEntry.ShortcutPath = null;
                 folderEntry.RootId = rootId ?? folderEntry.Id;
 
-                if (!imported.Contains(folderEntry))
-                {
-                    imported.Add(folderEntry);
-                }
+                imported[folderEntry.Id] = folderEntry;
 
                 return folderEntry;
             }
@@ -304,14 +344,15 @@ public class ScannedFileService
                     var importedFile = await ImportFileAsync(file.FullName, folder.Id, folderRoot);
                     if (importedFile != null)
                     {
-                        imported.Add(importedFile);
+                        imported[importedFile.Id] = importedFile;
                     }
                 }
             }
 
             async Task<ScannedFile?> ImportFileAsync(string filePath, Guid? parentId, Guid? rootId)
             {
-                if (!File.Exists(filePath))
+                filePath = NormalizePath(filePath);
+                if (filePath is null || !File.Exists(filePath))
                 {
                     return null;
                 }
@@ -328,6 +369,7 @@ public class ScannedFileService
                     scannedByPath[filePath] = fileEntry;
                 }
 
+                fileEntry.FilePath = filePath;
                 fileEntry.FileName = Path.GetFileName(filePath) ?? fileEntry.FileName;
                 fileEntry.ParentId = parentId;
                 fileEntry.ItemType = ScannedItemType.Shortcut;
@@ -345,6 +387,7 @@ public class ScannedFileService
                 manifest.RemoveAll(s => s.Id == fileEntry.Id);
                 manifest.Add(new StoredShortcut(fileEntry.Id, shortcutDisplayName, filePath, parentId, ScannedItemType.Shortcut));
 
+                imported[fileEntry.Id] = fileEntry;
                 return fileEntry;
             }
         }
@@ -556,7 +599,7 @@ public class ScannedFileService
     {
         var fullPath = file.FullName;
         existingByPath.TryGetValue(fullPath, out var existingEntry);
-        var id = existingEntry?.Id ?? Guid.NewGuid();
+                var id = existingEntry?.Id ?? Guid.NewGuid();
 
         var fileEntry = existingEntry ?? new ScannedFile
         {
@@ -590,5 +633,23 @@ public class ScannedFileService
         }
 
         return path.StartsWith(potentialParent, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? NormalizePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            var full = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return full;
+        }
+        catch
+        {
+            return path.Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        }
     }
 }

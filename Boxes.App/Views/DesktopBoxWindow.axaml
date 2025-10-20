@@ -36,7 +36,7 @@
                     <Button Content="Up" Command="{Binding NavigateUpCommand}"/>
                     <TextBlock Text="{Binding CurrentPath}" VerticalAlignment="Center"/>
                 </StackPanel>
-                <ItemsControl ItemsSource="{Binding CurrentItems}">
+                <ItemsControl x:Name="ShortcutsItemsControl" ItemsSource="{Binding CurrentItems}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel ItemWidth="96" ItemHeight="96" />

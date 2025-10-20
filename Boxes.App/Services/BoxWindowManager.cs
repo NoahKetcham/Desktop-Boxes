@@ -39,9 +39,12 @@ public class BoxWindowManager
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
+            // snapshot to avoid collection modification issues
+            var snapshot = _windows.Values.ToList();
+
             if (visible)
             {
-                foreach (var window in _windows.Values)
+                foreach (var window in snapshot)
                 {
                     if (_windowStates.TryGetValue(window.ViewModel.Model.Id, out var state))
                     {
@@ -59,9 +62,10 @@ public class BoxWindowManager
             }
             else
             {
-                foreach (var window in _windows.Values)
+                foreach (var window in snapshot)
                 {
-                    saveTasks.Add(SaveWindowStateAsync(window.ViewModel.Model, window, window.ViewModel.CurrentPath));
+                    // capture state before hiding
+                    saveTasks.Add(TrySaveWindowStateAsync(window.ViewModel.Model, window, window.ViewModel.CurrentPath));
                     window.Hide();
                 }
             }
@@ -88,9 +92,10 @@ public class BoxWindowManager
                 if (existing.DataContext is DesktopBoxWindowViewModel vmExisting)
                 {
                     vmExisting.Update(box);
-                    vmExisting.SetShortcuts(filteredShortcuts);
+                    vmExisting.PrepareForStagedLoad();
+                    vmExisting.StageLoadShortcuts(filteredShortcuts, TimeSpan.FromMilliseconds(150));
                 }
-                if (!existing.IsVisible)
+                if (!existing.IsVisible && _areWindowsVisible)
                 {
                     existing.Show();
                 }
@@ -99,7 +104,7 @@ public class BoxWindowManager
             }
 
             var vm = new DesktopBoxWindowViewModel(box);
-            vm.SetShortcuts(filteredShortcuts);
+            vm.PrepareForStagedLoad();
             var window = new DesktopBoxWindow
             {
                 DataContext = vm
@@ -150,8 +155,17 @@ public class BoxWindowManager
                 RestorePath(vm, box.CurrentPath);
             }
 
-            window.Show();
-            window.Activate();
+            if (_areWindowsVisible)
+            {
+                window.Show();
+                window.Activate();
+            }
+            else
+            {
+                window.Hide();
+            }
+
+            vm.StageLoadShortcuts(filteredShortcuts, TimeSpan.FromMilliseconds(150));
         });
     }
 
@@ -173,24 +187,53 @@ public class BoxWindowManager
 
     public async Task CloseAsync(Guid id)
     {
+        DesktopBoxWindow? target = null;
+
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            if (_windows.TryGetValue(id, out var window))
+            _windows.TryGetValue(id, out target);
+        });
+
+        if (target is null)
+        {
+            return;
+        }
+
+        // save state before closing
+        await TrySaveWindowStateAsync(target.ViewModel.Model, target, target.ViewModel.CurrentPath).ConfigureAwait(false);
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (_windows.Remove(id, out var w))
             {
-                _ = SaveWindowStateAsync(window.ViewModel.Model, window, window.ViewModel.CurrentPath);
-                window.Close();
-                _windows.Remove(id);
+                w.Close();
             }
         });
     }
 
     public async Task CloseAllAsync()
     {
+        List<DesktopBoxWindow> snapshot = new();
+
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            foreach (var window in _windows.Values)
+            snapshot = _windows.Values.ToList();
+        });
+
+        // Save all states first
+        var saveTasks = snapshot
+            .Select(w => TrySaveWindowStateAsync(w.ViewModel.Model, w, w.ViewModel.CurrentPath))
+            .ToList();
+
+        if (saveTasks.Count > 0)
+        {
+            await Task.WhenAll(saveTasks).ConfigureAwait(false);
+        }
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            foreach (var window in snapshot)
             {
-                _ = SaveWindowStateAsync(window.ViewModel.Model, window, window.ViewModel.CurrentPath);
                 window.Close();
             }
 
@@ -202,13 +245,26 @@ public class BoxWindowManager
     {
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            foreach (var window in _windows.Values)
+            foreach (var window in _windows.Values.ToList())
             {
                 window.Close();
             }
 
             _windows.Clear();
         });
+    }
+
+    private async Task TrySaveWindowStateAsync(DesktopBox model, DesktopBoxWindow window, string currentPath)
+    {
+        try
+        {
+            await SaveWindowStateAsync(model, window, currentPath).ConfigureAwait(false);
+        }
+        catch
+        {
+            // swallow to prevent state-save failures from crashing close/hide flows.
+            // consider plugging in a logging service if available
+        }
     }
 
     private async Task SaveWindowStateAsync(DesktopBox model, DesktopBoxWindow window, string currentPath)
@@ -265,112 +321,9 @@ public class BoxWindowManager
                 currentPath);
         }
     }
+
     private static List<ScannedFile> BuildShortcutList(DesktopBox box, List<ScannedFile> allFiles, IReadOnlyList<ScannedFileService.StoredShortcut> storedShortcuts)
     {
-        if (box.ShortcutIds.Count == 0)
-        {
-            return new List<ScannedFile>();
-        }
-
-        var archiveDirectory = AppServices.ScannedFileService.ShortcutArchiveDirectory;
-        var storedLookup = storedShortcuts.ToDictionary(s => s.Id, s => s);
-        var allLookup = allFiles.ToDictionary(f => f.Id, f => f);
-
-        var selectedSet = new HashSet<Guid>(box.ShortcutIds);
-
-        var results = new List<ScannedFile>();
-        var pathTracker = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var shortcutId in box.ShortcutIds)
-        {
-            if (!allLookup.TryGetValue(shortcutId, out var source))
-            {
-                continue;
-            }
-
-            var clone = Clone(source);
-
-            if (storedLookup.TryGetValue(shortcutId, out var stored))
-            {
-                clone.ShortcutPath = Path.Combine(archiveDirectory, stored.Id.ToString("N") + ".lnk");
-                clone.ItemType = stored.ItemType;
-                clone.ParentId = stored.ParentId;
-            }
-
-            clone.ParentId = null;
-
-            if (!pathTracker.Add(NormalizePathKey(clone)))
-            {
-                continue;
-            }
-
-            results.Add(clone);
-            AppendDescendants(clone, selectedSet, allLookup, storedLookup, archiveDirectory, pathTracker, results);
-        }
-
-        var dedupById = results
-            .GroupBy(f => f.Id)
-            .Select(g => g.First());
-
-        var dedupByPath = dedupById
-            .GroupBy(f => NormalizePathKey(f), StringComparer.OrdinalIgnoreCase)
-            .Select(g => g.First())
-            .ToList();
-
-        return dedupByPath;
+        return ShortcutCatalog.GetBoxShortcuts(box, allFiles, storedShortcuts).ToList();
     }
-
-    private static void AppendDescendants(ScannedFile parent, HashSet<Guid> selected, Dictionary<Guid, ScannedFile> allLookup,
-        Dictionary<Guid, ScannedFileService.StoredShortcut> storedLookup, string archiveDirectory,
-        HashSet<string> pathTracker, List<ScannedFile> results)
-    {
-        foreach (var child in allLookup.Values.Where(f => f.ParentId == parent.Id))
-        {
-            if (!selected.Contains(child.Id))
-            {
-                continue;
-            }
-
-            var clone = Clone(child);
-
-            if (storedLookup.TryGetValue(clone.Id, out var stored))
-            {
-                clone.ShortcutPath = Path.Combine(archiveDirectory, stored.Id.ToString("N") + ".lnk");
-                clone.ItemType = stored.ItemType;
-            }
-
-            clone.ParentId = parent.Id;
-
-            if (!pathTracker.Add(NormalizePathKey(clone)))
-            {
-                continue;
-            }
-
-            results.Add(clone);
-            AppendDescendants(clone, selected, allLookup, storedLookup, archiveDirectory, pathTracker, results);
-        }
-    }
-
-    private static ScannedFile Clone(ScannedFile file) => new()
-    {
-        Id = file.Id,
-        FilePath = file.FilePath,
-        FileName = file.FileName,
-        ItemType = file.ItemType,
-        ParentId = file.ParentId,
-        ShortcutPath = file.ShortcutPath,
-        IsArchived = file.IsArchived,
-        ArchivedContentPath = file.ArchivedContentPath,
-        RootId = file.RootId
-    };
-
-    private static ScannedFile NormalizeClone(ScannedFile file)
-    {
-        return file;
-    }
-
-    private static string NormalizePathKey(ScannedFile file) => string.IsNullOrWhiteSpace(file.ShortcutPath)
-        ? file.FilePath
-        : file.ShortcutPath;
 }
-
