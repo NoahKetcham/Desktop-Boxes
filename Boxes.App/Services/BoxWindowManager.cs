@@ -198,6 +198,19 @@ public class BoxWindowManager
         });
     }
 
+    public async Task CloseAllWithoutSaveAsync()
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            foreach (var window in _windows.Values)
+            {
+                window.Close();
+            }
+
+            _windows.Clear();
+        });
+    }
+
     private async Task SaveWindowStateAsync(DesktopBox model, DesktopBoxWindow window, string currentPath)
     {
         var state = await Dispatcher.UIThread.InvokeAsync(() => WindowStateData.FromWindow(model.Id, window, currentPath));
@@ -263,43 +276,101 @@ public class BoxWindowManager
         var storedLookup = storedShortcuts.ToDictionary(s => s.Id, s => s);
         var allLookup = allFiles.ToDictionary(f => f.Id, f => f);
 
-        foreach (var file in allFiles)
+        var selectedSet = new HashSet<Guid>(box.ShortcutIds);
+
+        var results = new List<ScannedFile>();
+        var pathTracker = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var shortcutId in box.ShortcutIds)
         {
-            if (storedLookup.TryGetValue(file.Id, out var stored))
+            if (!allLookup.TryGetValue(shortcutId, out var source))
             {
-                file.ShortcutPath = Path.Combine(archiveDirectory, stored.Id.ToString("N") + ".lnk");
-                file.ItemType = stored.ItemType;
-                if (stored.ParentId.HasValue)
-                {
-                    file.ParentId = stored.ParentId;
-                }
-            }
-        }
-
-        var selected = new HashSet<Guid>(box.ShortcutIds);
-
-        bool IsDescendantSelected(ScannedFile file)
-        {
-            var current = file.ParentId;
-            while (current.HasValue)
-            {
-                if (selected.Contains(current.Value))
-                {
-                    return true;
-                }
-
-                if (!allLookup.TryGetValue(current.Value, out var parent))
-                {
-                    break;
-                }
-
-                current = parent.ParentId;
+                continue;
             }
 
-            return false;
+            var clone = Clone(source);
+
+            if (storedLookup.TryGetValue(shortcutId, out var stored))
+            {
+                clone.ShortcutPath = Path.Combine(archiveDirectory, stored.Id.ToString("N") + ".lnk");
+                clone.ItemType = stored.ItemType;
+                clone.ParentId = stored.ParentId;
+            }
+
+            clone.ParentId = null;
+
+            if (!pathTracker.Add(NormalizePathKey(clone)))
+            {
+                continue;
+            }
+
+            results.Add(clone);
+            AppendDescendants(clone, selectedSet, allLookup, storedLookup, archiveDirectory, pathTracker, results);
         }
 
-        return allFiles.Where(file => selected.Contains(file.Id) || IsDescendantSelected(file)).ToList();
+        var dedupById = results
+            .GroupBy(f => f.Id)
+            .Select(g => g.First());
+
+        var dedupByPath = dedupById
+            .GroupBy(f => NormalizePathKey(f), StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .ToList();
+
+        return dedupByPath;
     }
+
+    private static void AppendDescendants(ScannedFile parent, HashSet<Guid> selected, Dictionary<Guid, ScannedFile> allLookup,
+        Dictionary<Guid, ScannedFileService.StoredShortcut> storedLookup, string archiveDirectory,
+        HashSet<string> pathTracker, List<ScannedFile> results)
+    {
+        foreach (var child in allLookup.Values.Where(f => f.ParentId == parent.Id))
+        {
+            if (!selected.Contains(child.Id))
+            {
+                continue;
+            }
+
+            var clone = Clone(child);
+
+            if (storedLookup.TryGetValue(clone.Id, out var stored))
+            {
+                clone.ShortcutPath = Path.Combine(archiveDirectory, stored.Id.ToString("N") + ".lnk");
+                clone.ItemType = stored.ItemType;
+            }
+
+            clone.ParentId = parent.Id;
+
+            if (!pathTracker.Add(NormalizePathKey(clone)))
+            {
+                continue;
+            }
+
+            results.Add(clone);
+            AppendDescendants(clone, selected, allLookup, storedLookup, archiveDirectory, pathTracker, results);
+        }
+    }
+
+    private static ScannedFile Clone(ScannedFile file) => new()
+    {
+        Id = file.Id,
+        FilePath = file.FilePath,
+        FileName = file.FileName,
+        ItemType = file.ItemType,
+        ParentId = file.ParentId,
+        ShortcutPath = file.ShortcutPath,
+        IsArchived = file.IsArchived,
+        ArchivedContentPath = file.ArchivedContentPath,
+        RootId = file.RootId
+    };
+
+    private static ScannedFile NormalizeClone(ScannedFile file)
+    {
+        return file;
+    }
+
+    private static string NormalizePathKey(ScannedFile file) => string.IsNullOrWhiteSpace(file.ShortcutPath)
+        ? file.FilePath
+        : file.ShortcutPath;
 }
 

@@ -89,7 +89,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
     public void SetShortcuts(IEnumerable<ScannedFile> shortcuts)
     {
         Shortcuts.Clear();
-        foreach (var file in shortcuts
+        foreach (var file in DeduplicateShortcuts(shortcuts)
                      .OrderBy(s => s.ItemType != ScannedItemType.Folder)
                      .ThenBy(s => s.FileName, StringComparer.OrdinalIgnoreCase))
         {
@@ -103,7 +103,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
 
     public void RefreshShortcuts(IEnumerable<ScannedFile> shortcuts)
     {
-        var ordered = shortcuts
+        var ordered = DeduplicateShortcuts(shortcuts)
             .OrderBy(s => s.ItemType != ScannedItemType.Folder)
             .ThenBy(s => s.FileName, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -133,6 +133,27 @@ public class DesktopBoxWindowViewModel : ViewModelBase
 
         NavigateAndSyncCurrentItems(parentId);
         RaiseNavigationCommands();
+    }
+
+    private static IEnumerable<ScannedFile> DeduplicateShortcuts(IEnumerable<ScannedFile> shortcuts)
+    {
+        var seenIds = new HashSet<Guid>();
+        var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var shortcut in shortcuts)
+        {
+            if (!seenIds.Add(shortcut.Id))
+            {
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(shortcut.FilePath) && !seenPaths.Add(shortcut.FilePath))
+            {
+                continue;
+            }
+
+            yield return shortcut;
+        }
     }
 
     public void EnterFolder(DesktopFileViewModel? folder)

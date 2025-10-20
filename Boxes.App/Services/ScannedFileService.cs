@@ -453,6 +453,34 @@ public class ScannedFileService
         await JsonSerializer.SerializeAsync(stream, files, _serializerOptions);
     }
 
+    public async Task ResetAsync()
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            if (File.Exists(_storagePath))
+            {
+                File.Delete(_storagePath);
+            }
+
+            if (Directory.Exists(_shortcutArchivePath))
+            {
+                Directory.Delete(_shortcutArchivePath, true);
+            }
+
+            Directory.CreateDirectory(_shortcutArchivePath);
+
+            if (File.Exists(_shortcutManifestPath))
+            {
+                File.Delete(_shortcutManifestPath);
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     private async Task<IReadOnlyList<StoredShortcut>> LoadShortcutManifestAsync()
     {
         if (!File.Exists(_shortcutManifestPath))

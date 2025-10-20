@@ -39,7 +39,10 @@
                     <TextBlock Text="Integrations" FontWeight="SemiBold" FontSize="16"/>
                     <ToggleSwitch Content="OneDrive linked" IsChecked="{Binding OneDriveLinked, Mode=TwoWay}"/>
                     <ToggleSwitch Content="Google Drive linked" IsChecked="{Binding GoogleDriveLinked, Mode=TwoWay}"/>
-                    <Button Content="Save" Command="{Binding SaveCommand}" HorizontalAlignment="Stretch"/>
+                    <StackPanel Orientation="Vertical" Spacing="8">
+                        <Button Content="Save" Command="{Binding SaveCommand}" HorizontalAlignment="Stretch"/>
+                        <Button Content="Delete All Saved Data" Command="{Binding ResetDataCommand}" HorizontalAlignment="Stretch" Background="#FF5555" Foreground="White"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
         </StackPanel>

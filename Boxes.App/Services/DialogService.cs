@@ -37,6 +37,18 @@ public static class DialogService
         });
     }
 
+    public static Task<bool> ShowConfirmationAsync(string message)
+    {
+        EnsureInitialized();
+        return DispatchAsync(async () =>
+        {
+            var dialog = new ConfirmationDialog();
+            dialog.ViewModel.Message = message;
+            var result = await dialog.ShowDialog<bool?>(_mainWindow!);
+            return result == true;
+        });
+    }
+
     private static void EnsureInitialized()
     {
         if (_mainWindow == null)

@@ -173,6 +173,25 @@ public class BoxService
         }
     }
 
+    public async Task ResetAsync()
+    {
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            _boxes.Clear();
+            if (File.Exists(_storagePath))
+            {
+                File.Delete(_storagePath);
+            }
+
+            await PersistAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     private async Task PersistAsync()
     {
         await using var stream = File.Create(_storagePath);
