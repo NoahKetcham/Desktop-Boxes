@@ -11,6 +11,7 @@ namespace Boxes.App.ViewModels;
 
 public partial class ShortcutSelectionViewModel : ViewModelBase
 {
+    public Guid BoxId { get; }
     public ObservableCollection<ShortcutSelectionItemViewModel> Shortcuts { get; }
     public ObservableCollection<ShortcutSelectionItemViewModel> CurrentItems { get; } = new();
     public ObservableCollection<ShortcutSelectionItemViewModel> NavigationStack { get; } = new();
@@ -20,6 +21,7 @@ public partial class ShortcutSelectionViewModel : ViewModelBase
 
     public IRelayCommand SaveCommand { get; }
     public IRelayCommand CancelCommand { get; }
+    public IRelayCommand SnapToTaskbarCommand { get; }
     public IRelayCommand<ShortcutSelectionItemViewModel?> EnterFolderCommand { get; }
     public IRelayCommand NavigateUpCommand { get; }
     public IRelayCommand NavigateHomeCommand { get; }
@@ -28,8 +30,11 @@ public partial class ShortcutSelectionViewModel : ViewModelBase
         ? "Desktop"
         : string.Join(" / ", NavigationStack.Select(s => s.File.FileName));
 
-    public ShortcutSelectionViewModel(string boxName, IEnumerable<ScannedFile> files, IEnumerable<Guid> selected)
+    public event EventHandler? SnapRequested;
+
+    public ShortcutSelectionViewModel(Guid boxId, string boxName, IEnumerable<ScannedFile> files, IEnumerable<Guid> selected)
     {
+        BoxId = boxId;
         BoxName = boxName;
         var selectedSet = new HashSet<Guid>(selected);
         Shortcuts = new ObservableCollection<ShortcutSelectionItemViewModel>(
@@ -39,6 +44,7 @@ public partial class ShortcutSelectionViewModel : ViewModelBase
 
         SaveCommand = new RelayCommand(() => CloseRequested?.Invoke(this, true));
         CancelCommand = new RelayCommand(() => CloseRequested?.Invoke(this, false));
+        SnapToTaskbarCommand = new RelayCommand(() => SnapRequested?.Invoke(this, EventArgs.Empty));
         EnterFolderCommand = new RelayCommand<ShortcutSelectionItemViewModel?>(EnterFolder);
         NavigateUpCommand = new RelayCommand(NavigateUp, () => NavigationStack.Count > 0);
         NavigateHomeCommand = new RelayCommand(NavigateHome, () => NavigationStack.Count > 0);

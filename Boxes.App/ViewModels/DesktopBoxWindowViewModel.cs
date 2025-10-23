@@ -27,6 +27,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
     public IRelayCommand<DesktopFileViewModel?> EnterFolderCommand { get; }
     public IRelayCommand NavigateUpCommand { get; }
     public IRelayCommand NavigateHomeCommand { get; }
+    public IRelayCommand ToggleSnapCommand { get; }
 
     public string CurrentPath => NavigationStack.Count == 0
         ? "Desktop"
@@ -66,9 +67,12 @@ public class DesktopBoxWindowViewModel : ViewModelBase
     public event EventHandler? RequestClose;
 
     public event EventHandler? RequestStateSave;
+    public event EventHandler? RequestSnapToTaskbar;
+    public event EventHandler? RequestUnsnapFromTaskbar;
 
     private DesktopBoxWindow? _view;
     private CancellationTokenSource? _pendingLoadCts;
+    private bool _suspendStateSync;
 
     public DesktopBoxWindowViewModel(DesktopBox model)
     {
@@ -82,6 +86,23 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         EnterFolderCommand = new RelayCommand<DesktopFileViewModel?>(EnterFolder);
         NavigateUpCommand = new RelayCommand(NavigateUp, () => NavigationStack.Count > 0);
         NavigateHomeCommand = new RelayCommand(NavigateHome, () => NavigationStack.Count > 0);
+        ToggleSnapCommand = new RelayCommand(ToggleSnap);
+
+        ApplySnapState(model.IsSnappedToTaskbar, model.IsCollapsed, model.ExpandedHeight, model.ExpandedPositionX, model.ExpandedPositionY, suppressSync: true);
+    }
+
+    public void SnapToTaskbar() => RequestSnapToTaskbar?.Invoke(this, EventArgs.Empty);
+
+    private void ToggleSnap()
+    {
+        if (!Model.IsSnappedToTaskbar)
+        {
+            RequestSnapToTaskbar?.Invoke(this, EventArgs.Empty);
+        }
+        else
+        {
+            RequestUnsnapFromTaskbar?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     internal void RegisterView(DesktopBoxWindow view)
@@ -94,6 +115,81 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         Model = model;
         OnPropertyChanged(nameof(Name));
         OnPropertyChanged(nameof(Description));
+        ApplySnapState(model.IsSnappedToTaskbar, model.IsCollapsed, model.ExpandedHeight, model.ExpandedPositionX, model.ExpandedPositionY, suppressSync: true);
+    }
+
+    public const double CollapsedWindowHeight = 40;
+
+    public bool IsSnappedToTaskbar => Model.IsSnappedToTaskbar;
+    public bool IsCollapsed => Model.IsCollapsed;
+    public bool IsExpanded => !Model.IsCollapsed;
+    public double ExpandedHeight => Model.ExpandedHeight ?? Model.Height;
+    public double? ExpandedPositionX => Model.ExpandedPositionX;
+    public double? ExpandedPositionY => Model.ExpandedPositionY;
+    public bool WasSnapExpanded => Model.WasSnapExpanded;
+
+    public void ApplySnapState(bool isSnapped, bool isCollapsed, double? expandedHeight, double? expandedPosX, double? expandedPosY, bool suppressSync)
+    {
+        var previous = _suspendStateSync;
+        if (suppressSync)
+        {
+            _suspendStateSync = true;
+        }
+
+        var effectiveExpandedHeight = expandedHeight.HasValue && expandedHeight.Value > 0
+            ? expandedHeight.Value
+            : Model.ExpandedHeight ?? Model.Height;
+
+        if (effectiveExpandedHeight <= 0)
+        {
+            effectiveExpandedHeight = Model.Height > 0 ? Model.Height : 240;
+        }
+
+        if (Model.IsSnappedToTaskbar != isSnapped)
+        {
+            Model.IsSnappedToTaskbar = isSnapped;
+            OnPropertyChanged(nameof(IsSnappedToTaskbar));
+        }
+
+        if (Model.IsCollapsed != isCollapsed)
+        {
+            Model.IsCollapsed = isCollapsed;
+            OnPropertyChanged(nameof(IsCollapsed));
+            OnPropertyChanged(nameof(IsExpanded));
+        }
+
+        if (!Nullable.Equals(Model.ExpandedHeight, effectiveExpandedHeight))
+        {
+            Model.ExpandedHeight = effectiveExpandedHeight;
+            OnPropertyChanged(nameof(ExpandedHeight));
+        }
+
+        if (!Nullable.Equals(Model.ExpandedPositionX, expandedPosX))
+        {
+            Model.ExpandedPositionX = expandedPosX;
+            OnPropertyChanged(nameof(ExpandedPositionX));
+        }
+
+        if (!Nullable.Equals(Model.ExpandedPositionY, expandedPosY))
+        {
+            Model.ExpandedPositionY = expandedPosY;
+            OnPropertyChanged(nameof(ExpandedPositionY));
+        }
+
+        if (Model.WasSnapExpanded != !isCollapsed)
+        {
+            Model.WasSnapExpanded = !isCollapsed;
+            OnPropertyChanged(nameof(WasSnapExpanded));
+        }
+
+        if (suppressSync)
+        {
+            _suspendStateSync = previous;
+        }
+        else
+        {
+            SyncWindowState();
+        }
     }
 
     public void PrepareForStagedLoad()
@@ -455,6 +551,11 @@ public class DesktopBoxWindowViewModel : ViewModelBase
 
     private void SyncWindowState()
     {
+        if (_suspendStateSync)
+        {
+            return;
+        }
+
         if (!Dispatcher.UIThread.CheckAccess())
         {
             Dispatcher.UIThread.Post(() => RequestStateSave?.Invoke(this, EventArgs.Empty));
@@ -462,6 +563,58 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         else
         {
             RequestStateSave?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private void SetSnapState(bool isSnapped, bool isCollapsed, double? expandedHeight, bool suppressSync)
+    {
+        var effectiveExpanded = expandedHeight.HasValue && expandedHeight.Value > 0
+            ? expandedHeight
+            : (Model.ExpandedHeight is > 0 ? Model.ExpandedHeight : Model.Height);
+
+        if (effectiveExpanded is null || effectiveExpanded <= 0)
+        {
+            effectiveExpanded = Model.Height > 0 ? Model.Height : 240;
+        }
+
+        var previousSuspend = _suspendStateSync;
+        if (suppressSync)
+        {
+            _suspendStateSync = true;
+        }
+
+        var changed = false;
+
+        if (Model.IsSnappedToTaskbar != isSnapped)
+        {
+            Model.IsSnappedToTaskbar = isSnapped;
+            OnPropertyChanged(nameof(IsSnappedToTaskbar));
+            changed = true;
+        }
+
+        if (Model.IsCollapsed != isCollapsed)
+        {
+            Model.IsCollapsed = isCollapsed;
+            OnPropertyChanged(nameof(IsCollapsed));
+            OnPropertyChanged(nameof(IsExpanded));
+            changed = true;
+        }
+
+        if (!Nullable.Equals(Model.ExpandedHeight, effectiveExpanded))
+        {
+            Model.ExpandedHeight = effectiveExpanded;
+            OnPropertyChanged(nameof(ExpandedHeight));
+            changed = true;
+        }
+
+        if (suppressSync)
+        {
+            _suspendStateSync = previousSuspend;
+        }
+
+        if (changed && !suppressSync)
+        {
+            SyncWindowState();
         }
     }
 }

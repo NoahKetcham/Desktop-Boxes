@@ -9,6 +9,8 @@ using Boxes.App.Models;
 using Boxes.App.ViewModels;
 using Boxes.App.Views;
 using System.IO;
+using Avalonia.Controls;
+using Avalonia.Platform;
 
 namespace Boxes.App.Services;
 
@@ -138,6 +140,16 @@ public class BoxWindowManager
                 await SaveWindowStateAsync(vm.Model, window, vm.CurrentPath).ConfigureAwait(false);
             };
 
+            vm.RequestSnapToTaskbar += async (_, _) =>
+            {
+                await SnapToTaskbarAsync(vm.Model.Id).ConfigureAwait(false);
+            };
+
+            vm.RequestUnsnapFromTaskbar += async (_, _) =>
+            {
+                await UnsnapFromTaskbarAsync(vm.Model.Id).ConfigureAwait(false);
+            };
+
             window.Closed += async (_, _) =>
             {
                 await SaveWindowStateAsync(vm.Model, window, vm.CurrentPath).ConfigureAwait(false);
@@ -155,6 +167,9 @@ public class BoxWindowManager
                 RestorePath(vm, box.CurrentPath);
             }
 
+            // Restore snapped layout if needed before showing
+            ApplyInitialSnapLayout(window, vm);
+
             if (_areWindowsVisible)
             {
                 window.Show();
@@ -167,6 +182,129 @@ public class BoxWindowManager
 
             vm.StageLoadShortcuts(filteredShortcuts, TimeSpan.FromMilliseconds(150));
         });
+    }
+
+    public async Task SnapToTaskbarAsync(Guid boxId)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (!_windows.TryGetValue(boxId, out var window))
+            {
+                return;
+            }
+
+            var vm = window.ViewModel;
+            // Record expanded state
+            var expandedHeight = window.Height;
+            var expandedX = window.Position.X;
+            var expandedY = window.Position.Y;
+
+            var working = GetPrimaryWorkingArea(window);
+            var collapsedHeight = DesktopBoxWindowViewModel.CollapsedWindowHeight;
+            var targetY = working.Bottom - (int)collapsedHeight;
+            var targetX = window.Position.X; // keep current X
+
+            vm.ApplySnapState(isSnapped: true, isCollapsed: true,
+                expandedHeight: expandedHeight,
+                expandedPosX: expandedX,
+                expandedPosY: expandedY,
+                suppressSync: false);
+
+            window.Height = collapsedHeight;
+            window.Position = new PixelPoint(targetX, targetY);
+        });
+    }
+
+    public async Task UnsnapFromTaskbarAsync(Guid boxId)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (!_windows.TryGetValue(boxId, out var window))
+            {
+                return;
+            }
+
+            var vm = window.ViewModel;
+            var height = vm.ExpandedHeight > 0 ? vm.ExpandedHeight : window.Height;
+
+            // Restore last expanded position if available
+            var x = vm.ExpandedPositionX.HasValue ? (int)vm.ExpandedPositionX.Value : window.Position.X;
+            var y = vm.ExpandedPositionY.HasValue ? (int)vm.ExpandedPositionY.Value : window.Position.Y;
+
+            vm.ApplySnapState(isSnapped: false, isCollapsed: false,
+                expandedHeight: height,
+                expandedPosX: x,
+                expandedPosY: y,
+                suppressSync: false);
+
+            window.Height = height;
+            window.Position = new PixelPoint(x, y);
+        });
+    }
+
+    public async Task SetSnappedExpandedAsync(Guid boxId, bool expanded)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (!_windows.TryGetValue(boxId, out var window))
+            {
+                return;
+            }
+
+            var vm = window.ViewModel;
+            if (!vm.IsSnappedToTaskbar)
+            {
+                return;
+            }
+
+            var working = GetPrimaryWorkingArea(window);
+            if (expanded)
+            {
+                var height = vm.ExpandedHeight > 0 ? vm.ExpandedHeight : 240;
+                var y = working.Bottom - (int)height;
+                vm.ApplySnapState(true, false, height, window.Position.X, y, suppressSync: false);
+                window.Height = height;
+                window.Position = new PixelPoint(window.Position.X, y);
+            }
+            else
+            {
+                var height = DesktopBoxWindowViewModel.CollapsedWindowHeight;
+                var y = working.Bottom - (int)height;
+                vm.ApplySnapState(true, true, vm.ExpandedHeight, vm.ExpandedPositionX ?? window.Position.X, y, suppressSync: false);
+                window.Height = height;
+                window.Position = new PixelPoint(window.Position.X, y);
+            }
+        });
+    }
+
+    private static PixelRect GetPrimaryWorkingArea(DesktopBoxWindow window)
+    {
+        var screens = window.Screens;
+        var primary = screens?.Primary ?? screens?.All?.FirstOrDefault();
+        return primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
+    }
+
+    private static void ApplyInitialSnapLayout(DesktopBoxWindow window, DesktopBoxWindowViewModel vm)
+    {
+        if (!vm.IsSnappedToTaskbar)
+        {
+            return;
+        }
+
+        var working = GetPrimaryWorkingArea(window);
+        if (vm.IsCollapsed)
+        {
+            var h = DesktopBoxWindowViewModel.CollapsedWindowHeight;
+            window.Height = h;
+            window.Position = new PixelPoint(window.Position.X, working.Bottom - (int)h);
+        }
+        else
+        {
+            var h = vm.ExpandedHeight > 0 ? vm.ExpandedHeight : window.Height;
+            var y = working.Bottom - (int)h;
+            window.Height = h;
+            window.Position = new PixelPoint(window.Position.X, y);
+        }
     }
 
     public async Task UpdateAsync(DesktopBox box)

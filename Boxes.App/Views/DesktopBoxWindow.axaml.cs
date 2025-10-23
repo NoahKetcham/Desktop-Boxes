@@ -64,6 +64,15 @@ public partial class DesktopBoxWindow : Window
     {
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
+            // In snapped mode, clicking header toggles expand/collapse. Alt-drag still moves.
+            if (ViewModel.IsSnappedToTaskbar && !e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+            {
+                var expanded = ViewModel.IsCollapsed;
+                _ = Boxes.App.Services.AppServices.BoxWindowManager.SetSnappedExpandedAsync(ViewModel.Model.Id, expanded);
+                e.Handled = true;
+                return;
+            }
+
             BeginMoveDrag(e);
         }
     }

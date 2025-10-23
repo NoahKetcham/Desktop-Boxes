@@ -144,6 +144,12 @@ public class BoxService
                 existing.PositionX = box.PositionX;
                 existing.PositionY = box.PositionY;
                 existing.CurrentPath = box.CurrentPath;
+                existing.IsSnappedToTaskbar = box.IsSnappedToTaskbar;
+                existing.IsCollapsed = box.IsCollapsed;
+                existing.ExpandedHeight = box.ExpandedHeight;
+                existing.ExpandedPositionX = box.ExpandedPositionX;
+                existing.ExpandedPositionY = box.ExpandedPositionY;
+                existing.WasSnapExpanded = box.WasSnapExpanded;
             }
 
             await PersistAsync().ConfigureAwait(false);
@@ -210,7 +216,13 @@ public class BoxService
         Height = box.Height,
         PositionX = box.PositionX,
         PositionY = box.PositionY,
-        CurrentPath = box.CurrentPath
+        CurrentPath = box.CurrentPath,
+        IsSnappedToTaskbar = box.IsSnappedToTaskbar,
+        IsCollapsed = box.IsCollapsed,
+        ExpandedHeight = box.ExpandedHeight,
+        ExpandedPositionX = box.ExpandedPositionX,
+        ExpandedPositionY = box.ExpandedPositionY,
+        WasSnapExpanded = box.WasSnapExpanded
     };
 }
 

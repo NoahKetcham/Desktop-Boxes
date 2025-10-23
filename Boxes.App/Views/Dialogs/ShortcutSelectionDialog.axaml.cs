@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,6 +19,7 @@ public partial class ShortcutSelectionDialog : Window
         ViewModel = viewModel;
         DataContext = ViewModel;
         ViewModel.CloseRequested += (_, result) => Close(result);
+        ViewModel.SnapRequested += OnSnapRequested;
     }
 
     private void ShortcutItem_OnDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
@@ -44,5 +46,12 @@ public partial class ShortcutSelectionDialog : Window
         }
 
         return null;
+    }
+
+    public event EventHandler? SnapRequested;
+
+    private void OnSnapRequested(object? sender, EventArgs e)
+    {
+        SnapRequested?.Invoke(this, EventArgs.Empty);
     }
 }
