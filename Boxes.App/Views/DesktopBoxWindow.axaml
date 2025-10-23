@@ -23,7 +23,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="#232B46" Padding="12" PointerPressed="Header_PointerPressed">
+        <Border x:Name="HeaderBar" Grid.Row="0" Background="#232B46" Padding="12" MinHeight="40" PointerPressed="Header_PointerPressed" PointerMoved="Header_PointerMoved" PointerReleased="Header_PointerReleased">
             <Grid ColumnDefinitions="*,Auto,Auto" VerticalAlignment="Center">
                 <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 <Button Grid.Column="1" Width="32" Height="24" Content="⇕" Command="{Binding ToggleSnapCommand}" Margin="8,0"/>
