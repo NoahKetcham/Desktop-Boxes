@@ -308,7 +308,10 @@ public class BoxWindowManager
 
     public async Task SetSnappedExpandedAsync(Guid boxId, bool expanded)
     {
+        int startPx = 0;
+        int endPx = 0;
         int newX = 0;
+
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             if (!_taskbarWindows.TryGetValue(boxId, out var window))
@@ -316,31 +319,31 @@ public class BoxWindowManager
                 return;
             }
 
+            newX = window.Position.X;
+            startPx = (int)Math.Round(window.Bounds.Height * window.RenderScaling);
             var working = GetPrimaryWorkingArea(window);
             if (expanded)
             {
-                newX = window.Position.X;
-                // Default expanded height to 50% of monitor
                 var half = Math.Max(120, working.Height / 2);
-                window.Height = half;
-                var y = working.Bottom - half;
-                window.Position = new PixelPoint(window.Position.X, y);
-                if (window.DataContext is TaskbarBoxWindowViewModel tvm)
-                {
-                    tvm.SetExpanded(true);
-                }
+                endPx = (int)Math.Round(half * window.RenderScaling);
             }
             else
             {
-                newX = window.Position.X;
-                var height = DesktopBoxWindowViewModel.CollapsedWindowHeight;
-                var y = working.Bottom - (int)height;
-                window.Height = height;
-                window.Position = new PixelPoint(window.Position.X, y);
-                if (window.DataContext is TaskbarBoxWindowViewModel tvm)
-                {
-                    tvm.SetExpanded(false);
-                }
+                endPx = (int)Math.Round(DesktopBoxWindowViewModel.CollapsedWindowHeight * window.RenderScaling);
+            }
+        });
+
+        if (!_taskbarWindows.TryGetValue(boxId, out var w))
+        {
+            return;
+        }
+        await AnimateTaskbarHeightAsync(w, startPx, endPx, TimeSpan.FromSeconds(1));
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (_taskbarWindows.TryGetValue(boxId, out var window) && window.DataContext is TaskbarBoxWindowViewModel tvm)
+            {
+                tvm.SetExpanded(expanded);
             }
         });
 
@@ -349,7 +352,8 @@ public class BoxWindowManager
         state.X = newX;
         if (expanded && state.ExpandedHeight <= 0)
         {
-            state.ExpandedHeight = Math.Max(120, (await Dispatcher.UIThread.InvokeAsync(() => GetPrimaryWorkingArea(_taskbarWindows[boxId]).Height)) / 2);
+            var workingHeight = await Dispatcher.UIThread.InvokeAsync(() => GetPrimaryWorkingArea(_taskbarWindows[boxId]).Height);
+            state.ExpandedHeight = Math.Max(120, workingHeight / 2);
         }
         await AppServices.WindowStateService.SaveAsync(state).ConfigureAwait(false);
     }
@@ -365,7 +369,16 @@ public class BoxWindowManager
     {
         var working = GetPrimaryWorkingArea(window);
         var height = state.IsCollapsed ? DesktopBoxWindowViewModel.CollapsedWindowHeight : (state.ExpandedHeight > 0 ? state.ExpandedHeight : window.Height);
-        var y = working.Bottom - (int)height;
+        var heightPx = (int)Math.Round(height * window.RenderScaling);
+        int y;
+        if (TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTop, out var monitorRect))
+        {
+            y = taskbarTop - heightPx;
+        }
+        else
+        {
+            y = working.Bottom - heightPx;
+        }
         window.Height = height;
         var x = (int)(state.X == 0 ? window.Position.X : state.X);
         window.Position = new PixelPoint(x, y);
@@ -380,6 +393,59 @@ public class BoxWindowManager
                 s.X = x;
                 await AppServices.WindowStateService.SaveAsync(s).ConfigureAwait(false);
             }).Unwrap();
+    }
+
+    private async Task AnimateTaskbarHeightAsync(TaskbarBoxWindow window, int startHeightPx, int endHeightPx, TimeSpan duration)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var step = TimeSpan.FromMilliseconds(16);
+        var lastApplied = -1;
+        while (sw.Elapsed < duration)
+        {
+            var t = sw.Elapsed.TotalMilliseconds / duration.TotalMilliseconds;
+            var eased = 1 - Math.Pow(1 - t, 3); // ease-out cubic
+            var hPx = (int)Math.Round(startHeightPx + (endHeightPx - startHeightPx) * eased);
+            if (hPx == lastApplied)
+            {
+                await Task.Delay(step).ConfigureAwait(false);
+                continue;
+            }
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                var hLogical = hPx / window.RenderScaling;
+                window.Height = hLogical;
+                int y;
+                if (TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTop, out _))
+                {
+                    y = taskbarTop - hPx;
+                }
+                else
+                {
+                    var working = GetPrimaryWorkingArea(window);
+                    y = working.Bottom - hPx;
+                }
+                window.Position = new PixelPoint(window.Position.X, y);
+            });
+            lastApplied = hPx;
+            await Task.Delay(step).ConfigureAwait(false);
+        }
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var hLogical = endHeightPx / window.RenderScaling;
+            window.Height = hLogical;
+            int y;
+            if (TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTop, out _))
+            {
+                y = taskbarTop - endHeightPx;
+            }
+            else
+            {
+                var working = GetPrimaryWorkingArea(window);
+                y = working.Bottom - endHeightPx;
+            }
+            window.Position = new PixelPoint(window.Position.X, y);
+        });
     }
 
     public async Task UpdateAsync(DesktopBox box)

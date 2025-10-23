@@ -12,14 +12,18 @@
         WindowStartupLocation="Manual"
         SystemDecorations="BorderOnly">
 
-    <Grid Background="#1C2235" ClipToBounds="True">
+    <Grid Background="#1C2235" ClipToBounds="True"
+          DragDrop.AllowDrop="True"
+          DragDrop.DragEnter="Content_OnDragEnter"
+          DragDrop.DragOver="Content_OnDragOver"
+          DragDrop.Drop="Content_OnDrop">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="1" Background="#232B46" Padding="12" MinHeight="40" Cursor="Hand"
-                PointerPressed="Header_OnPointerPressed" PointerMoved="Header_OnPointerMoved" PointerReleased="Header_OnPointerReleased" Tapped="Header_OnTapped">
+        <Border Grid.Row="1" Background="#232B46" Padding="12" MinHeight="40" Cursor="Hand" UseLayoutRounding="True" RenderOptions.EdgeMode="Aliased"
+                PointerPressed="Header_OnPointerPressed" PointerMoved="Header_OnPointerMoved" PointerReleased="Header_OnPointerReleased">
             <TextBlock Text="{Binding Name}"
                        FontSize="16"
                        FontWeight="SemiBold"
@@ -30,7 +34,13 @@
         </Border>
 
         <Border Grid.Row="0" Padding="12" IsVisible="{Binding IsExpanded}">
-            <ItemsControl ItemsSource="{Binding CurrentItems}">
+            <StackPanel Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Content="Home" Command="{Binding NavigateHomeCommand}"/>
+                    <Button Content="Up" Command="{Binding NavigateUpCommand}"/>
+                    <TextBlock Text="{Binding CurrentPath}" VerticalAlignment="Center"/>
+                </StackPanel>
+                <ItemsControl ItemsSource="{Binding CurrentItems}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <WrapPanel ItemWidth="96" ItemHeight="96" />
@@ -48,7 +58,8 @@
                         </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                </ItemsControl>
+            </StackPanel>
         </Border>
     </Grid>
 

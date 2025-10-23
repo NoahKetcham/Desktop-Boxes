@@ -103,7 +103,17 @@ public partial class DesktopBoxWindow : Window
         var working = Screens.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
         var clampedX = Math.Clamp(newX, working.X, working.Right - (int)Bounds.Width);
 
-        var y = working.Bottom - (int)Bounds.Height;
+        int y;
+        if (Boxes.App.Extensions.TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTop, out _))
+        {
+            var heightPx = (int)Math.Round(Bounds.Height * RenderScaling);
+            y = taskbarTop - heightPx;
+        }
+        else
+        {
+            var heightPx = (int)Math.Round(Bounds.Height * RenderScaling);
+            y = working.Bottom - heightPx;
+        }
         Position = new PixelPoint(clampedX, y);
         e.Handled = true;
     }
