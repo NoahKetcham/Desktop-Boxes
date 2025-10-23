@@ -400,6 +400,17 @@ public class BoxWindowManager
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var step = TimeSpan.FromMilliseconds(16);
         var lastApplied = -1;
+        int baseBottomPx;
+        if (TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTopStable, out _))
+        {
+            baseBottomPx = taskbarTopStable;
+        }
+        else
+        {
+            var workingStable = GetPrimaryWorkingArea(window);
+            baseBottomPx = workingStable.Bottom;
+        }
+        var fixedX = window.Position.X;
         while (sw.Elapsed < duration)
         {
             var t = sw.Elapsed.TotalMilliseconds / duration.TotalMilliseconds;
@@ -414,17 +425,8 @@ public class BoxWindowManager
             {
                 var hLogical = hPx / window.RenderScaling;
                 window.Height = hLogical;
-                int y;
-                if (TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTop, out _))
-                {
-                    y = taskbarTop - hPx;
-                }
-                else
-                {
-                    var working = GetPrimaryWorkingArea(window);
-                    y = working.Bottom - hPx;
-                }
-                window.Position = new PixelPoint(window.Position.X, y);
+                var y = baseBottomPx - hPx;
+                window.Position = new PixelPoint(fixedX, y);
             });
             lastApplied = hPx;
             await Task.Delay(step).ConfigureAwait(false);
@@ -434,17 +436,8 @@ public class BoxWindowManager
         {
             var hLogical = endHeightPx / window.RenderScaling;
             window.Height = hLogical;
-            int y;
-            if (TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTop, out _))
-            {
-                y = taskbarTop - endHeightPx;
-            }
-            else
-            {
-                var working = GetPrimaryWorkingArea(window);
-                y = working.Bottom - endHeightPx;
-            }
-            window.Position = new PixelPoint(window.Position.X, y);
+            var y = baseBottomPx - endHeightPx;
+            window.Position = new PixelPoint(fixedX, y);
         });
     }
 
