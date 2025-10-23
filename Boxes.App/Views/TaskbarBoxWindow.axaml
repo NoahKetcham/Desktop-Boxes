@@ -1,0 +1,57 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Boxes.App.ViewModels"
+        x:Class="Boxes.App.Views.TaskbarBoxWindow"
+        x:DataType="vm:TaskbarBoxWindowViewModel"
+        Width="320"
+        Height="240"
+        MinHeight="40"
+        CanResize="False"
+        CanMinimize="False"
+        CanMaximize="False"
+        WindowStartupLocation="Manual"
+        SystemDecorations="BorderOnly">
+
+    <Grid Background="#1C2235" ClipToBounds="True">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="1" Background="#232B46" Padding="12" MinHeight="40" Cursor="Hand"
+                PointerPressed="Header_OnPointerPressed" PointerMoved="Header_OnPointerMoved" PointerReleased="Header_OnPointerReleased" Tapped="Header_OnTapped">
+            <TextBlock Text="{Binding Name}"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Center"
+                       TextWrapping="NoWrap"
+                       TextTrimming="CharacterEllipsis"/>
+        </Border>
+
+        <Border Grid.Row="0" Padding="12" IsVisible="{Binding IsExpanded}">
+            <ItemsControl ItemsSource="{Binding CurrentItems}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel ItemWidth="96" ItemHeight="96" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DesktopFileViewModel">
+                        <Border Width="96" Height="96" Background="Transparent" Margin="8" Cursor="Hand" DoubleTapped="Shortcut_OnDoubleTapped">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+                                <Border Width="48" Height="48" Background="#101627" CornerRadius="4" HorizontalAlignment="Center">
+                                    <Image Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform"/>
+                                </Border>
+                                <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="96" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+    </Grid>
+
+</Window>
+
+

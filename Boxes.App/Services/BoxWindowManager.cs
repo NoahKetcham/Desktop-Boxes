@@ -17,6 +17,7 @@ namespace Boxes.App.Services;
 public class BoxWindowManager
 {
     private readonly Dictionary<Guid, DesktopBoxWindow> _windows = new();
+    private readonly Dictionary<Guid, TaskbarBoxWindow> _taskbarWindows = new();
     private readonly Dictionary<Guid, WindowStateData> _windowStates = new();
     private bool _areWindowsVisible = true;
 
@@ -87,8 +88,16 @@ public class BoxWindowManager
         var archivedShortcuts = await AppServices.ScannedFileService.GetStoredShortcutsAsync();
         var filteredShortcuts = BuildShortcutList(box, shortcutsData, archivedShortcuts);
 
+        var state = await AppServices.WindowStateService.GetAsync(box.Id);
+
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
+            if (state.Mode == WindowMode.Taskbar)
+            {
+                CreateOrShowTaskbarWindow(box, filteredShortcuts, state);
+                return;
+            }
+
             if (_windows.TryGetValue(box.Id, out var existing))
             {
                 if (existing.DataContext is DesktopBoxWindowViewModel vmExisting)
@@ -140,15 +149,8 @@ public class BoxWindowManager
                 await SaveWindowStateAsync(vm.Model, window, vm.CurrentPath).ConfigureAwait(false);
             };
 
-            vm.RequestSnapToTaskbar += async (_, _) =>
-            {
-                await SnapToTaskbarAsync(vm.Model.Id).ConfigureAwait(false);
-            };
-
-            vm.RequestUnsnapFromTaskbar += async (_, _) =>
-            {
-                await UnsnapFromTaskbarAsync(vm.Model.Id).ConfigureAwait(false);
-            };
+            vm.RequestSnapToTaskbar += async (_, _) => await SnapToTaskbarAsync(vm.Model.Id).ConfigureAwait(false);
+            vm.RequestUnsnapFromTaskbar += async (_, _) => await UnsnapFromTaskbarAsync(vm.Model.Id).ConfigureAwait(false);
 
             window.Closed += async (_, _) =>
             {
@@ -158,17 +160,14 @@ public class BoxWindowManager
             };
             _windows[box.Id] = window;
 
-            if (_windowStates.TryGetValue(box.Id, out var state))
+            if (_windowStates.TryGetValue(box.Id, out var stateFromCache))
             {
-                RestorePath(vm, state.Path);
+                RestorePath(vm, stateFromCache.Path);
             }
             else if (!string.IsNullOrEmpty(box.CurrentPath))
             {
                 RestorePath(vm, box.CurrentPath);
             }
-
-            // Restore snapped layout if needed before showing
-            ApplyInitialSnapLayout(window, vm);
 
             if (_areWindowsVisible)
             {
@@ -184,8 +183,59 @@ public class BoxWindowManager
         });
     }
 
+    private void CreateOrShowTaskbarWindow(DesktopBox box, List<ScannedFile> filteredShortcuts, BoxWindowState state)
+    {
+        if (_taskbarWindows.TryGetValue(box.Id, out var existing))
+        {
+            try
+            {
+                existing.DataContext = new TaskbarBoxWindowViewModel(box, state, filteredShortcuts);
+                AnchorTaskbarWindow(existing, state);
+                if (_areWindowsVisible)
+                {
+                    if (!existing.IsVisible)
+                    {
+                        existing.Show();
+                    }
+                    existing.Activate();
+                }
+                else
+                {
+                    existing.Hide();
+                }
+                return;
+            }
+            catch (InvalidOperationException)
+            {
+                // Window instance was closed; recreate a new one
+                _taskbarWindows.Remove(box.Id);
+            }
+        }
+
+        var taskbarVm = new TaskbarBoxWindowViewModel(box, state, filteredShortcuts);
+        var taskbar = new TaskbarBoxWindow { DataContext = taskbarVm };
+        _taskbarWindows[box.Id] = taskbar;
+        taskbar.Closed += (_, _) => _taskbarWindows.Remove(box.Id);
+        AnchorTaskbarWindow(taskbar, state);
+        if (_areWindowsVisible)
+        {
+            taskbar.Show();
+            taskbar.Activate();
+        }
+        else
+        {
+            taskbar.Hide();
+        }
+    }
+
     public async Task SnapToTaskbarAsync(Guid boxId)
     {
+        // capture UI-related values on UI thread
+        DesktopBox? model = null;
+        int expandedHeight = 0;
+        int expandedX = 0;
+        int expandedY = 0;
+
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             if (!_windows.TryGetValue(boxId, out var window))
@@ -193,25 +243,43 @@ public class BoxWindowManager
                 return;
             }
 
-            var vm = window.ViewModel;
-            // Record expanded state
-            var expandedHeight = window.Height;
-            var expandedX = window.Position.X;
-            var expandedY = window.Position.Y;
+            model = window.ViewModel.Model;
+            expandedHeight = (int)window.Height;
+            expandedX = window.Position.X;
+            expandedY = window.Position.Y;
 
-            var working = GetPrimaryWorkingArea(window);
-            var collapsedHeight = DesktopBoxWindowViewModel.CollapsedWindowHeight;
-            var targetY = working.Bottom - (int)collapsedHeight;
-            var targetX = window.Position.X; // keep current X
+            _windows.Remove(boxId);
+            window.Close();
+        });
 
-            vm.ApplySnapState(isSnapped: true, isCollapsed: true,
-                expandedHeight: expandedHeight,
-                expandedPosX: expandedX,
-                expandedPosY: expandedY,
-                suppressSync: false);
+        if (model is null)
+        {
+            model = await AppServices.BoxService.GetBoxAsync(boxId).ConfigureAwait(false);
+            if (model is null)
+            {
+                return;
+            }
+        }
 
-            window.Height = collapsedHeight;
-            window.Position = new PixelPoint(targetX, targetY);
+        var state = await AppServices.WindowStateService.GetAsync(boxId).ConfigureAwait(false);
+        state.Mode = WindowMode.Taskbar;
+        state.IsCollapsed = true;
+        state.ExpandedHeight = expandedHeight;
+        state.ExpandedPosX = expandedX;
+        state.ExpandedPosY = expandedY;
+        state.NormalWidth = model.Width;
+        state.NormalHeight = model.Height;
+        state.NormalX = model.PositionX ?? expandedX;
+        state.NormalY = model.PositionY ?? expandedY;
+        await AppServices.WindowStateService.SaveAsync(state).ConfigureAwait(false);
+
+        var shortcutsData = await AppServices.ScannedFileService.GetScannedFilesAsync().ConfigureAwait(false);
+        var archived = await AppServices.ScannedFileService.GetStoredShortcutsAsync().ConfigureAwait(false);
+        var filtered = BuildShortcutList(model, shortcutsData, archived);
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            CreateOrShowTaskbarWindow(model, filtered, state);
         });
     }
 
@@ -219,40 +287,31 @@ public class BoxWindowManager
     {
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            if (!_windows.TryGetValue(boxId, out var window))
+            if (_taskbarWindows.Remove(boxId, out var taskbar))
             {
-                return;
+                taskbar.Close();
             }
-
-            var vm = window.ViewModel;
-            var height = vm.ExpandedHeight > 0 ? vm.ExpandedHeight : window.Height;
-
-            // Restore last expanded position if available
-            var x = vm.ExpandedPositionX.HasValue ? (int)vm.ExpandedPositionX.Value : window.Position.X;
-            var y = vm.ExpandedPositionY.HasValue ? (int)vm.ExpandedPositionY.Value : window.Position.Y;
-
-            vm.ApplySnapState(isSnapped: false, isCollapsed: false,
-                expandedHeight: height,
-                expandedPosX: x,
-                expandedPosY: y,
-                suppressSync: false);
-
-            window.Height = height;
-            window.Position = new PixelPoint(x, y);
         });
+
+        var state = await AppServices.WindowStateService.GetAsync(boxId).ConfigureAwait(false);
+        state.Mode = WindowMode.Normal;
+        state.IsCollapsed = false;
+        await AppServices.WindowStateService.SaveAsync(state).ConfigureAwait(false);
+
+        var box = await AppServices.BoxService.GetBoxAsync(boxId).ConfigureAwait(false);
+        if (box is null)
+        {
+            return;
+        }
+        await ShowAsync(box).ConfigureAwait(false);
     }
 
     public async Task SetSnappedExpandedAsync(Guid boxId, bool expanded)
     {
+        int newX = 0;
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            if (!_windows.TryGetValue(boxId, out var window))
-            {
-                return;
-            }
-
-            var vm = window.ViewModel;
-            if (!vm.IsSnappedToTaskbar)
+            if (!_taskbarWindows.TryGetValue(boxId, out var window))
             {
                 return;
             }
@@ -260,51 +319,67 @@ public class BoxWindowManager
             var working = GetPrimaryWorkingArea(window);
             if (expanded)
             {
-                var height = vm.ExpandedHeight > 0 ? vm.ExpandedHeight : 240;
-                var y = working.Bottom - (int)height;
-                vm.ApplySnapState(true, false, height, window.Position.X, y, suppressSync: false);
-                window.Height = height;
+                newX = window.Position.X;
+                // Default expanded height to 50% of monitor
+                var half = Math.Max(120, working.Height / 2);
+                window.Height = half;
+                var y = working.Bottom - half;
                 window.Position = new PixelPoint(window.Position.X, y);
+                if (window.DataContext is TaskbarBoxWindowViewModel tvm)
+                {
+                    tvm.SetExpanded(true);
+                }
             }
             else
             {
+                newX = window.Position.X;
                 var height = DesktopBoxWindowViewModel.CollapsedWindowHeight;
                 var y = working.Bottom - (int)height;
-                vm.ApplySnapState(true, true, vm.ExpandedHeight, vm.ExpandedPositionX ?? window.Position.X, y, suppressSync: false);
                 window.Height = height;
                 window.Position = new PixelPoint(window.Position.X, y);
+                if (window.DataContext is TaskbarBoxWindowViewModel tvm)
+                {
+                    tvm.SetExpanded(false);
+                }
             }
         });
+
+        var state = await AppServices.WindowStateService.GetAsync(boxId).ConfigureAwait(false);
+        state.IsCollapsed = !expanded;
+        state.X = newX;
+        if (expanded && state.ExpandedHeight <= 0)
+        {
+            state.ExpandedHeight = Math.Max(120, (await Dispatcher.UIThread.InvokeAsync(() => GetPrimaryWorkingArea(_taskbarWindows[boxId]).Height)) / 2);
+        }
+        await AppServices.WindowStateService.SaveAsync(state).ConfigureAwait(false);
     }
 
-    private static PixelRect GetPrimaryWorkingArea(DesktopBoxWindow window)
+    private static PixelRect GetPrimaryWorkingArea(Window window)
     {
         var screens = window.Screens;
         var primary = screens?.Primary ?? screens?.All?.FirstOrDefault();
         return primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
     }
 
-    private static void ApplyInitialSnapLayout(DesktopBoxWindow window, DesktopBoxWindowViewModel vm)
+    private static void AnchorTaskbarWindow(TaskbarBoxWindow window, BoxWindowState state)
     {
-        if (!vm.IsSnappedToTaskbar)
-        {
-            return;
-        }
-
         var working = GetPrimaryWorkingArea(window);
-        if (vm.IsCollapsed)
-        {
-            var h = DesktopBoxWindowViewModel.CollapsedWindowHeight;
-            window.Height = h;
-            window.Position = new PixelPoint(window.Position.X, working.Bottom - (int)h);
-        }
-        else
-        {
-            var h = vm.ExpandedHeight > 0 ? vm.ExpandedHeight : window.Height;
-            var y = working.Bottom - (int)h;
-            window.Height = h;
-            window.Position = new PixelPoint(window.Position.X, y);
-        }
+        var height = state.IsCollapsed ? DesktopBoxWindowViewModel.CollapsedWindowHeight : (state.ExpandedHeight > 0 ? state.ExpandedHeight : window.Height);
+        var y = working.Bottom - (int)height;
+        window.Height = height;
+        var x = (int)(state.X == 0 ? window.Position.X : state.X);
+        window.Position = new PixelPoint(x, y);
+    }
+
+    public Task SaveTaskbarWindowXAsync(Guid boxId, int x)
+    {
+        return AppServices.WindowStateService.GetAsync(boxId)
+            .ContinueWith(async t =>
+            {
+                var s = t.Result;
+                s.X = x;
+                await AppServices.WindowStateService.SaveAsync(s).ConfigureAwait(false);
+            }).Unwrap();
     }
 
     public async Task UpdateAsync(DesktopBox box)

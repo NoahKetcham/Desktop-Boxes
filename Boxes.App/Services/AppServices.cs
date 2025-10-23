@@ -17,6 +17,7 @@ public static class AppServices
     public static DesktopCleanupService DesktopCleanupService { get; private set; } = null!;
     public static ShellIconService ShellIconService { get; private set; } = null!;
     public static DataMaintenanceService DataMaintenanceService { get; private set; } = null!;
+    public static WindowStateService WindowStateService { get; private set; } = null!;
     public static Window? MainWindowOwner { get; set; }
 
     public static event EventHandler<DesktopBox>? BoxUpdated;
@@ -47,6 +48,8 @@ public static class AppServices
 
             ScannedFileService = new ScannedFileService(rootDirectory);
             DesktopCleanupService = new DesktopCleanupService(rootDirectory);
+            WindowStateService = new WindowStateService(rootDirectory);
+            WindowStateService.InitializeAsync().GetAwaiter().GetResult();
             ShellIconService = new ShellIconService();
             DataMaintenanceService = new DataMaintenanceService(rootDirectory);
             _initialized = true;
