@@ -38,9 +38,7 @@
         <Border x:Name="ContentArea" Grid.Row="0" Padding="12" IsVisible="{Binding IsExpanded}">
             <StackPanel Spacing="8">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <Button Content="Home" Command="{Binding NavigateHomeCommand}"/>
-                    <Button Content="Up" Command="{Binding NavigateUpCommand}"/>
-                    <TextBlock Text="{Binding CurrentPath}" VerticalAlignment="Center"/>
+                    <Button Content="↑" Width="24" Height="24" Command="{Binding NavigateUpCommand}"/>
                 </StackPanel>
                 <ItemsControl ItemsSource="{Binding CurrentItems}">
                 <ItemsControl.ItemsPanel>
