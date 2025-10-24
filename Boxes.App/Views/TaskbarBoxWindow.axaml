@@ -6,7 +6,7 @@
         Width="320"
         Height="240"
         MinHeight="40"
-        CanResize="False"
+        CanResize="True"
         CanMinimize="False"
         CanMaximize="False"
         WindowStartupLocation="Manual"
@@ -61,6 +61,23 @@
                 </ItemsControl>
             </StackPanel>
         </Border>
+
+        <!-- Resize handles active only when expanded -->
+        <Border Tag="Left" HorizontalAlignment="Left" VerticalAlignment="Stretch" Width="6" Background="Transparent"
+                IsHitTestVisible="{Binding IsExpanded}"
+                PointerPressed="ResizeHandle_OnPointerPressed"/>
+        <Border Tag="Right" HorizontalAlignment="Right" VerticalAlignment="Stretch" Width="6" Background="Transparent"
+                IsHitTestVisible="{Binding IsExpanded}"
+                PointerPressed="ResizeHandle_OnPointerPressed"/>
+        <Border Tag="Top" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="6" Background="Transparent"
+                IsHitTestVisible="{Binding IsExpanded}"
+                PointerPressed="ResizeHandle_OnPointerPressed"/>
+        <Border Tag="TopLeft" HorizontalAlignment="Left" VerticalAlignment="Top" Width="12" Height="12" Background="Transparent"
+                IsHitTestVisible="{Binding IsExpanded}"
+                PointerPressed="ResizeHandle_OnPointerPressed"/>
+        <Border Tag="TopRight" HorizontalAlignment="Right" VerticalAlignment="Top" Width="12" Height="12" Background="Transparent"
+                IsHitTestVisible="{Binding IsExpanded}"
+                PointerPressed="ResizeHandle_OnPointerPressed"/>
     </Grid>
 
 </Window>

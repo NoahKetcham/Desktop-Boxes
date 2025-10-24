@@ -121,6 +121,57 @@ public partial class TaskbarBoxWindow : Window
         await Boxes.App.Services.AppServices.BoxWindowManager.SetSnappedExpandedAsync(ViewModel.Model.Id, expanded);
     }
 
+    private void ResizeHandle_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!ViewModel.IsExpanded)
+        {
+            return;
+        }
+
+        if (sender is Border border && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            WindowEdge? edge = border.Tag switch
+            {
+                "Left" => WindowEdge.West,
+                "Right" => WindowEdge.East,
+                "Top" => WindowEdge.North,
+                "TopLeft" => WindowEdge.NorthWest,
+                "TopRight" => WindowEdge.NorthEast,
+                _ => null
+            };
+
+            if (edge.HasValue)
+            {
+                BeginResizeDrag(edge.Value, e);
+                e.Handled = true;
+            }
+        }
+    }
+
+    protected override void OnSizeChanged(SizeChangedEventArgs e)
+    {
+        base.OnSizeChanged(e);
+        // Keep bottom edge anchored to taskbar while resizing
+        var working = Screens.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
+        int y;
+        var heightPx = (int)Math.Round(Bounds.Height * RenderScaling);
+        if (Boxes.App.Extensions.TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTop, out _))
+        {
+            y = taskbarTop - heightPx;
+        }
+        else
+        {
+            y = working.Bottom - heightPx;
+        }
+        Position = new PixelPoint(Position.X, y);
+
+        // Persist expanded height when in expanded state
+        if (ViewModel.IsExpanded)
+        {
+            _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarExpandedHeightAsync(ViewModel.Model.Id, Height);
+        }
+    }
+
     // Drag & drop support (reuse DesktopBoxWindow handlers)
     private void Content_OnDragEnter(object? sender, DragEventArgs e)
     {
