@@ -671,6 +671,34 @@ public class BoxWindowManager
         });
     }
 
+    // Closes both free-form desktop windows and taskbar windows
+    public async Task CloseAllWindowsAsync()
+    {
+        await CloseAllAsync().ConfigureAwait(false);
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            foreach (var t in _taskbarWindows.Values.ToList())
+            {
+                t.Close();
+            }
+            _taskbarWindows.Clear();
+        });
+    }
+
+    // Reopens a window for every box based on saved state (normal or taskbar)
+    public async Task OpenAllWindowsAsync()
+    {
+        // Ensure visibility flag is on so newly created windows are shown
+        await SetWindowsVisibility(true).ConfigureAwait(false);
+
+        var boxes = await AppServices.BoxService.GetBoxesAsync().ConfigureAwait(false);
+        foreach (var box in boxes)
+        {
+            await ShowAsync(box).ConfigureAwait(false);
+        }
+    }
+
     private async Task TrySaveWindowStateAsync(DesktopBox model, DesktopBoxWindow window, string currentPath)
     {
         try
