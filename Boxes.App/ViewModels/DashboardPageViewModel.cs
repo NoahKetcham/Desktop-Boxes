@@ -51,7 +51,7 @@ public partial class DashboardPageViewModel : ViewModelBase
     public IRelayCommand NavigateUpCommand { get; }
     public IRelayCommand NavigateHomeCommand { get; }
     public IRelayCommand<DesktopFileViewModel?> RemoveScannedFileCommand { get; }
-    public IAsyncRelayCommand<BoxSummaryViewModel?> ConfigureShortcutsCommand { get; }
+    public IAsyncRelayCommand<BoxSummaryViewModel?> ConfigureBoxSettingsCommand { get; }
     public IAsyncRelayCommand ToggleDesktopCleanupCommand { get; }
     public IAsyncRelayCommand CreateShortcutsCommand { get; }
 
@@ -63,7 +63,7 @@ public partial class DashboardPageViewModel : ViewModelBase
         OpenBoxCommand = new AsyncRelayCommand<BoxSummaryViewModel?>(OpenBoxAsync);
         ScanDesktopCommand = new AsyncRelayCommand(ScanDesktopAsync);
         RemoveScannedFileCommand = new RelayCommand<DesktopFileViewModel?>(RemoveScannedFile);
-        ConfigureShortcutsCommand = new AsyncRelayCommand<BoxSummaryViewModel?>(ConfigureShortcutsAsync);
+        ConfigureBoxSettingsCommand = new AsyncRelayCommand<BoxSummaryViewModel?>(ConfigureBoxSettingsAsync);
         ToggleDesktopCleanupCommand = new AsyncRelayCommand(ToggleDesktopCleanupAsync);
         EnterFolderCommand = new RelayCommand<DesktopFileViewModel?>(EnterFolder);
         NavigateUpCommand = new RelayCommand(NavigateUp, () => ScanNavigationStack.Count > 0);
@@ -377,7 +377,7 @@ public partial class DashboardPageViewModel : ViewModelBase
         NavigateHomeCommand.NotifyCanExecuteChanged();
     }
 
-    private async Task ConfigureShortcutsAsync(BoxSummaryViewModel? box)
+    private async Task ConfigureBoxSettingsAsync(BoxSummaryViewModel? box)
     {
         box ??= SelectedBox;
         if (box is null)
@@ -386,8 +386,13 @@ public partial class DashboardPageViewModel : ViewModelBase
         }
 
         var scannedFiles = await AppServices.ScannedFileService.GetScannedFilesAsync();
-        var viewModel = new ShortcutSelectionViewModel(box.Name, scannedFiles, box.ShortcutIds);
+        var viewModel = new ShortcutSelectionViewModel(box.Id, box.Name, scannedFiles, box.ShortcutIds);
         var dialog = new ShortcutSelectionDialog(viewModel);
+
+        dialog.SnapRequested += async (_, _) =>
+        {
+            await AppServices.BoxWindowManager.SnapToTaskbarAsync(box.Id).ConfigureAwait(false);
+        };
 
         var owner = AppServices.MainWindowOwner;
         if (owner is null)

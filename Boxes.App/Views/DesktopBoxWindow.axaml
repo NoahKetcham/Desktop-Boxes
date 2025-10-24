@@ -5,6 +5,7 @@
         x:DataType="vm:DesktopBoxWindowViewModel"
         Width="320"
         Height="240"
+        MinHeight="40"
         CanResize="True"
         CanMinimize="False"
         CanMaximize="False"
@@ -22,21 +23,22 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="#232B46" Padding="12" PointerPressed="Header_PointerPressed">
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold"/>
-                <Button Content="×" Grid.Column="1" Width="24" Height="24" Command="{Binding CloseCommand}"/>
+        <Border x:Name="HeaderBar" Grid.Row="0" Background="#232B46" Padding="12" MinHeight="40" PointerPressed="Header_PointerPressed" PointerMoved="Header_PointerMoved" PointerReleased="Header_PointerReleased">
+            <Grid ColumnDefinitions="*,Auto,Auto" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <Button Grid.Column="1" Width="32" Height="24" Content="⇕" Command="{Binding ToggleSnapCommand}" Margin="8,0"/>
+                <Button Content="×" Grid.Column="2" Width="24" Height="24" Command="{Binding CloseCommand}"/>
             </Grid>
         </Border>
 
         <Border Grid.Row="1" Padding="16" BorderBrush="#2D3654" BorderThickness="1" CornerRadius="0,0,8,8">
-            <StackPanel Spacing="12">
+            <StackPanel Spacing="12" IsVisible="{Binding IsExpanded}">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <Button Content="Home" Command="{Binding NavigateHomeCommand}"/>
                     <Button Content="Up" Command="{Binding NavigateUpCommand}"/>
                     <TextBlock Text="{Binding CurrentPath}" VerticalAlignment="Center"/>
                 </StackPanel>
-                <ItemsControl ItemsSource="{Binding CurrentItems}">
+                <ItemsControl x:Name="ShortcutsItemsControl" ItemsSource="{Binding CurrentItems}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel ItemWidth="96" ItemHeight="96" />

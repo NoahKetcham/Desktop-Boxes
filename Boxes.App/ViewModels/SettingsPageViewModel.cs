@@ -1,4 +1,6 @@
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
 using Boxes.App.Models;
 using Boxes.App.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -27,10 +29,12 @@ public partial class SettingsPageViewModel : ViewModelBase
     private bool googleDriveLinked;
 
     public IAsyncRelayCommand SaveCommand { get; }
+    public IAsyncRelayCommand ResetDataCommand { get; }
 
     public SettingsPageViewModel()
     {
         SaveCommand = new AsyncRelayCommand(SaveAsync);
+        ResetDataCommand = new AsyncRelayCommand(ResetDataAsync);
         _ = LoadAsync();
     }
 
@@ -61,6 +65,23 @@ public partial class SettingsPageViewModel : ViewModelBase
         ShowBoxOutlines = settings.ShowBoxOutlines;
         OneDriveLinked = settings.OneDriveLinked;
         GoogleDriveLinked = settings.GoogleDriveLinked;
+    }
+
+    private async Task ResetDataAsync()
+    {
+        var confirmed = await DialogService.ShowConfirmationAsync("This will delete all Boxes saved data and restart the app. Continue?");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await AppServices.DataMaintenanceService.ResetAllAsync();
+
+        var app = Application.Current;
+        if (app is { ApplicationLifetime: IClassicDesktopStyleApplicationLifetime desktopLifetime })
+        {
+            desktopLifetime.Shutdown();
+        }
     }
 }
 

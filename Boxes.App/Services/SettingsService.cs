@@ -82,6 +82,25 @@ public class SettingsService
         await JsonSerializer.SerializeAsync(stream, _cache, _serializerOptions).ConfigureAwait(false);
     }
 
+    public async Task ResetAsync()
+    {
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            _cache = new ApplicationSettings();
+            if (File.Exists(_storagePath))
+            {
+                File.Delete(_storagePath);
+            }
+
+            await PersistAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     private static ApplicationSettings Clone(ApplicationSettings settings) => new()
     {
         ThemePreference = settings.ThemePreference,

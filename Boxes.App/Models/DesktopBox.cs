@@ -16,5 +16,11 @@ public class DesktopBox
     public double? PositionX { get; set; }
     public double? PositionY { get; set; }
     public string? CurrentPath { get; set; }
+    public bool IsSnappedToTaskbar { get; set; }
+    public bool IsCollapsed { get; set; }
+    public double? ExpandedHeight { get; set; }
+    public double? ExpandedPositionX { get; set; }
+    public double? ExpandedPositionY { get; set; }
+    public bool WasSnapExpanded { get; set; }
 }
 

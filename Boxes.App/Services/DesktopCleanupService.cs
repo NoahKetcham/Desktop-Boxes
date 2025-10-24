@@ -187,6 +187,29 @@ public class DesktopCleanupService
         }
     }
 
+    public async Task ResetAsync()
+    {
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (File.Exists(_statePath))
+            {
+                File.Delete(_statePath);
+            }
+
+            if (Directory.Exists(_archivePath))
+            {
+                Directory.Delete(_archivePath, true);
+            }
+
+            Directory.CreateDirectory(_archivePath);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     private async Task<CleanupState> LoadStateAsync()
     {
         await using var stream = File.OpenRead(_statePath);
