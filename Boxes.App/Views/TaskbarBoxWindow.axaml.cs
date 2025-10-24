@@ -4,6 +4,10 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Boxes.App.ViewModels;
 using Avalonia.Interactivity;
+using Boxes.App.Services;
+using Boxes.App.Models;
+using Avalonia.Threading;
+using Avalonia.Media;
 
 namespace Boxes.App.Views;
 
@@ -12,11 +16,19 @@ public partial class TaskbarBoxWindow : Window
     private bool _dragging;
     private PixelPoint _startWindow;
     private Point _startPointer;
+    private Border? _contentArea;
+    private Grid? _rootGrid;
+    private Border? _headerBar;
 
     public TaskbarBoxWindow()
     {
         InitializeComponent();
         HookDataContext();
+        _contentArea = this.FindControl<Border>("ContentArea");
+        _rootGrid = this.FindControl<Grid>("RootGrid");
+        _headerBar = this.FindControl<Border>("HeaderBar");
+        AppServices.SettingsService.SettingsChanged += OnSettingsChanged;
+        ApplyTransparencyFromSettings();
     }
 
     internal TaskbarBoxWindowViewModel ViewModel => (TaskbarBoxWindowViewModel)DataContext!;
@@ -34,6 +46,51 @@ public partial class TaskbarBoxWindow : Window
             vm.ToggleExpandRequested -= OnToggleExpandRequested;
             vm.ToggleExpandRequested += OnToggleExpandRequested;
         }
+    }
+
+    private void OnSettingsChanged(object? sender, ApplicationSettings e)
+    {
+        ApplyTransparency(e);
+    }
+
+    private void ApplyTransparencyFromSettings()
+    {
+        var _ = AppServices.SettingsService.GetAsync().ContinueWith(t =>
+        {
+            if (t.Status == System.Threading.Tasks.TaskStatus.RanToCompletion && t.Result is { } s)
+            {
+                ApplyTransparency(s);
+            }
+        });
+    }
+
+    private void ApplyTransparency(ApplicationSettings settings)
+    {
+        var opacity = Math.Clamp(settings.BoxesTransparencyPercent, 0, 100) / 100.0;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_rootGrid != null)
+            {
+                if (_rootGrid.Background is ISolidColorBrush gridBg)
+                    _rootGrid.Background = new SolidColorBrush(gridBg.Color, opacity);
+                else
+                    _rootGrid.Background = new SolidColorBrush(Color.Parse("#1C2235"), opacity);
+            }
+
+            if (_headerBar != null)
+            {
+                if (_headerBar.Background is ISolidColorBrush headerBg)
+                    _headerBar.Background = new SolidColorBrush(headerBg.Color, opacity);
+                else
+                    _headerBar.Background = new SolidColorBrush(Color.Parse("#232B46"), opacity);
+            }
+        });
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        AppServices.SettingsService.SettingsChanged -= OnSettingsChanged;
     }
 
     private void Header_OnPointerPressed(object? sender, PointerPressedEventArgs e)

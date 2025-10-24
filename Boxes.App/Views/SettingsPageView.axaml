@@ -8,45 +8,58 @@
         <vm:SettingsPageViewModel/>
     </Design.DataContext>
 
-    <StackPanel Spacing="24">
-        <StackPanel Spacing="4">
+    <Grid RowDefinitions="Auto,*">
+        <StackPanel Spacing="4" Grid.Row="0">
             <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="Bold"/>
             <TextBlock Text="{Binding Description}" Opacity="0.7"/>
         </StackPanel>
 
-        <StackPanel Spacing="12">
-            <Border Background="#141B2D" CornerRadius="12" Padding="16">
-                <StackPanel Spacing="10">
-                    <TextBlock Text="Appearance" FontWeight="SemiBold" FontSize="16"/>
-                    <ComboBox SelectedItem="{Binding ThemePreference, Mode=TwoWay}">
-                        <ComboBoxItem Content="System"/>
-                        <ComboBoxItem Content="Light"/>
-                        <ComboBoxItem Content="Dark"/>
-                    </ComboBox>
-                </StackPanel>
-            </Border>
-
-            <Border Background="#141B2D" CornerRadius="12" Padding="16">
-                <StackPanel Spacing="10">
-                    <TextBlock Text="Behavior" FontWeight="SemiBold" FontSize="16"/>
-                    <ToggleSwitch Content="Auto snap new boxes" IsChecked="{Binding AutoSnapEnabled, Mode=TwoWay}"/>
-                    <ToggleSwitch Content="Show box outlines" IsChecked="{Binding ShowBoxOutlines, Mode=TwoWay}"/>
-                </StackPanel>
-            </Border>
-
-            <Border Background="#141B2D" CornerRadius="12" Padding="16">
-                <StackPanel Spacing="10">
-                    <TextBlock Text="Integrations" FontWeight="SemiBold" FontSize="16"/>
-                    <ToggleSwitch Content="OneDrive linked" IsChecked="{Binding OneDriveLinked, Mode=TwoWay}"/>
-                    <ToggleSwitch Content="Google Drive linked" IsChecked="{Binding GoogleDriveLinked, Mode=TwoWay}"/>
-                    <StackPanel Orientation="Vertical" Spacing="8">
-                        <Button Content="Save" Command="{Binding SaveCommand}" HorizontalAlignment="Stretch"/>
-                        <Button Content="Delete All Saved Data" Command="{Binding ResetDataCommand}" HorizontalAlignment="Stretch" Background="#FF5555" Foreground="White"/>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="12">
+                <Border Background="#141B2D" CornerRadius="12" Padding="16">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Appearance" FontWeight="SemiBold" FontSize="16"/>
+                        <ComboBox SelectedItem="{Binding ThemePreference, Mode=TwoWay}">
+                            <ComboBoxItem Content="System"/>
+                            <ComboBoxItem Content="Light"/>
+                            <ComboBoxItem Content="Dark"/>
+                        </ComboBox>
                     </StackPanel>
-                </StackPanel>
-            </Border>
-        </StackPanel>
-    </StackPanel>
+                </Border>
+
+                <Border Background="#141B2D" CornerRadius="12" Padding="16">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Behavior" FontWeight="SemiBold" FontSize="16"/>
+                        <ToggleSwitch Content="Auto snap new boxes" IsChecked="{Binding AutoSnapEnabled, Mode=TwoWay}"/>
+                        <ToggleSwitch Content="Show box outlines" IsChecked="{Binding ShowBoxOutlines, Mode=TwoWay}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="#141B2D" CornerRadius="12" Padding="16">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Integrations" FontWeight="SemiBold" FontSize="16"/>
+                        <ToggleSwitch Content="OneDrive linked" IsChecked="{Binding OneDriveLinked, Mode=TwoWay}"/>
+                        <ToggleSwitch Content="Google Drive linked" IsChecked="{Binding GoogleDriveLinked, Mode=TwoWay}"/>
+                        <StackPanel Orientation="Vertical" Spacing="8">
+                            <Button Content="Save" Command="{Binding SaveCommand}" HorizontalAlignment="Stretch"/>
+                            <Button Content="Delete All Saved Data" Command="{Binding ResetDataCommand}" HorizontalAlignment="Stretch" Background="#FF5555" Foreground="White"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="#141B2D" CornerRadius="12" Padding="16">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Developer Settings" FontWeight="SemiBold" FontSize="16"/>
+                        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                            <TextBlock Text="Boxes Transparency" VerticalAlignment="Center" Width="160"/>
+                            <Slider Minimum="0" Maximum="100" Value="{Binding BoxesTransparencyPercent, Mode=TwoWay}" TickFrequency="10" IsSnapToTickEnabled="False" Width="200"/>
+                            <TextBlock Text="{Binding BoxesTransparencyPercent, StringFormat='{}{0}%'}" VerticalAlignment="Center" Width="50"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 
 </UserControl>
 

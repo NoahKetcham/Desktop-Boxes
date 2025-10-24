@@ -10,9 +10,11 @@
         CanMinimize="False"
         CanMaximize="False"
         WindowStartupLocation="Manual"
-        SystemDecorations="BorderOnly">
+        SystemDecorations="BorderOnly"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent">
 
-    <Grid Background="#1C2235" ClipToBounds="True"
+    <Grid x:Name="RootGrid" Background="#1C2235" ClipToBounds="True"
           DragDrop.AllowDrop="True"
           DragDrop.DragEnter="Content_OnDragEnter"
           DragDrop.DragOver="Content_OnDragOver"
@@ -22,7 +24,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="1" Background="#232B46" Padding="12" MinHeight="40" Cursor="Hand" UseLayoutRounding="True" RenderOptions.EdgeMode="Aliased"
+        <Border x:Name="HeaderBar" Grid.Row="1" Background="#232B46" Padding="12" MinHeight="40" Cursor="Hand" UseLayoutRounding="True" RenderOptions.EdgeMode="Aliased"
                 PointerPressed="Header_OnPointerPressed" PointerMoved="Header_OnPointerMoved" PointerReleased="Header_OnPointerReleased">
             <TextBlock Text="{Binding Name}"
                        FontSize="16"
@@ -33,7 +35,7 @@
                        TextTrimming="CharacterEllipsis"/>
         </Border>
 
-        <Border Grid.Row="0" Padding="12" IsVisible="{Binding IsExpanded}">
+        <Border x:Name="ContentArea" Grid.Row="0" Padding="12" IsVisible="{Binding IsExpanded}">
             <StackPanel Spacing="8">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <Button Content="Home" Command="{Binding NavigateHomeCommand}"/>

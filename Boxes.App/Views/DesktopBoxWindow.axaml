@@ -11,9 +11,11 @@
         CanMaximize="False"
         ShowActivated="True"
         WindowStartupLocation="Manual"
-        SystemDecorations="BorderOnly">
+        SystemDecorations="BorderOnly"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent">
 
-    <Grid Background="#1C2235" ClipToBounds="True"
+    <Grid x:Name="RootGrid" Background="#1C2235" ClipToBounds="True"
           DragDrop.AllowDrop="True"
           DragDrop.DragEnter="Content_OnDragEnter"
           DragDrop.DragOver="Content_OnDragOver"
@@ -31,7 +33,7 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" Padding="16" BorderBrush="#2D3654" BorderThickness="1" CornerRadius="0,0,8,8">
+        <Border x:Name="ContentArea" Grid.Row="1" Padding="16" BorderBrush="#2D3654" BorderThickness="1" CornerRadius="0,0,8,8">
             <StackPanel Spacing="12" IsVisible="{Binding IsExpanded}">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <Button Content="Home" Command="{Binding NavigateHomeCommand}"/>

@@ -28,6 +28,9 @@ public partial class SettingsPageViewModel : ViewModelBase
     [ObservableProperty]
     private bool googleDriveLinked;
 
+    [ObservableProperty]
+    private int boxesTransparencyPercent = 100;
+
     public IAsyncRelayCommand SaveCommand { get; }
     public IAsyncRelayCommand ResetDataCommand { get; }
 
@@ -52,7 +55,8 @@ public partial class SettingsPageViewModel : ViewModelBase
             AutoSnapEnabled = AutoSnapEnabled,
             ShowBoxOutlines = ShowBoxOutlines,
             OneDriveLinked = OneDriveLinked,
-            GoogleDriveLinked = GoogleDriveLinked
+            GoogleDriveLinked = GoogleDriveLinked,
+            BoxesTransparencyPercent = BoxesTransparencyPercent
         };
 
         await AppServices.SettingsService.SaveAsync(model);
@@ -65,6 +69,7 @@ public partial class SettingsPageViewModel : ViewModelBase
         ShowBoxOutlines = settings.ShowBoxOutlines;
         OneDriveLinked = settings.OneDriveLinked;
         GoogleDriveLinked = settings.GoogleDriveLinked;
+        BoxesTransparencyPercent = settings.BoxesTransparencyPercent;
     }
 
     private async Task ResetDataAsync()

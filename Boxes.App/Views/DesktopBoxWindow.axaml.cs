@@ -6,6 +6,10 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Interactivity;
 using Boxes.App.ViewModels;
+using Boxes.App.Services;
+using Boxes.App.Models;
+using Avalonia.Threading;
+using Avalonia.Media;
 
 namespace Boxes.App.Views;
 
@@ -17,6 +21,9 @@ public partial class DesktopBoxWindow : Window
         private PixelPoint _dragStartWindow;
         private Point _dragStartPointer;
         private bool _suppressPositionSync;
+        private Border? _contentArea;
+        private Grid? _rootGrid;
+        private Border? _headerBar;
 
     public DesktopBoxWindow()
     {
@@ -24,6 +31,11 @@ public partial class DesktopBoxWindow : Window
         Opened += DesktopBoxWindow_Opened;
         PositionChanged += DesktopBoxWindow_PositionChanged;
         _shortcutsItemsControl = this.FindControl<ItemsControl>("ShortcutsItemsControl");
+        _contentArea = this.FindControl<Border>("ContentArea");
+        _rootGrid = this.FindControl<Grid>("RootGrid");
+        _headerBar = this.FindControl<Border>("HeaderBar");
+        // Subscribe to settings changes to reflect transparency
+        AppServices.SettingsService.SettingsChanged += OnSettingsChanged;
         if (DataContext is DesktopBoxWindowViewModel vm)
         {
             vm.RegisterView(this);
@@ -64,10 +76,56 @@ public partial class DesktopBoxWindow : Window
     private async void DesktopBoxWindow_Opened(object? sender, EventArgs e)
     {
         _lastKnownPosition = Position;
+        ApplyTransparencyFromSettings();
         if (DataContext is DesktopBoxWindowViewModel vm)
         {
             await vm.RefreshIconsAsync().ConfigureAwait(false);
         }
+    }
+
+    private void OnSettingsChanged(object? sender, ApplicationSettings e)
+    {
+        ApplyTransparency(e);
+    }
+
+    private void ApplyTransparencyFromSettings()
+    {
+        var _ = AppServices.SettingsService.GetAsync().ContinueWith(t =>
+        {
+            if (t.Status == System.Threading.Tasks.TaskStatus.RanToCompletion && t.Result is { } s)
+            {
+                ApplyTransparency(s);
+            }
+        });
+    }
+
+    private void ApplyTransparency(ApplicationSettings settings)
+    {
+        var opacity = Math.Clamp(settings.BoxesTransparencyPercent, 0, 100) / 100.0;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_rootGrid != null)
+            {
+                if (_rootGrid.Background is ISolidColorBrush gridBg)
+                    _rootGrid.Background = new SolidColorBrush(gridBg.Color, opacity);
+                else
+                    _rootGrid.Background = new SolidColorBrush(Color.Parse("#1C2235"), opacity);
+            }
+
+            if (_headerBar != null)
+            {
+                if (_headerBar.Background is ISolidColorBrush headerBg)
+                    _headerBar.Background = new SolidColorBrush(headerBg.Color, opacity);
+                else
+                    _headerBar.Background = new SolidColorBrush(Color.Parse("#232B46"), opacity);
+            }
+        });
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        AppServices.SettingsService.SettingsChanged -= OnSettingsChanged;
     }
 
     private void Header_PointerPressed(object? sender, PointerPressedEventArgs e)
