@@ -19,6 +19,7 @@ public class BoxWindowManager
     private readonly Dictionary<Guid, DesktopBoxWindow> _windows = new();
     private readonly Dictionary<Guid, TaskbarBoxWindow> _taskbarWindows = new();
     private readonly Dictionary<Guid, WindowStateData> _windowStates = new();
+    private readonly Dictionary<Guid, double> _lastExpandedHeights = new();
     private bool _areWindowsVisible = true;
 
     public bool AreWindowsVisible => _areWindowsVisible;
@@ -232,7 +233,7 @@ public class BoxWindowManager
     {
         // capture UI-related values on UI thread
         DesktopBox? model = null;
-        int expandedHeight = 0;
+        int expandedHeight = 0; double expandedWidth = 0;
         int expandedX = 0;
         int expandedY = 0;
 
@@ -244,7 +245,11 @@ public class BoxWindowManager
             }
 
             model = window.ViewModel.Model;
-            expandedHeight = (int)window.Height;
+            expandedHeight = (int)window.Height; expandedWidth = window.Width;
+            if (model is not null)
+            {
+                _lastExpandedHeights[model.Id] = window.Height;
+            }
             expandedX = window.Position.X;
             expandedY = window.Position.Y;
 
@@ -265,6 +270,7 @@ public class BoxWindowManager
         state.Mode = WindowMode.Taskbar;
         state.IsCollapsed = true;
         state.ExpandedHeight = expandedHeight;
+        state.Width = expandedWidth;
         state.ExpandedPosX = expandedX;
         state.ExpandedPosY = expandedY;
         state.NormalWidth = model.Width;
@@ -308,6 +314,9 @@ public class BoxWindowManager
 
     public async Task SetSnappedExpandedAsync(Guid boxId, bool expanded)
     {
+        // Use saved state to determine target expanded height instead of defaulting to 50% each time
+        var currentState = await AppServices.WindowStateService.GetAsync(boxId).ConfigureAwait(false);
+
         int startPx = 0;
         int endPx = 0;
         int newX = 0;
@@ -328,8 +337,22 @@ public class BoxWindowManager
             var working = GetPrimaryWorkingArea(window);
             if (expanded)
             {
-                var halfClientPx = Math.Max((int)Math.Round(120 * scale), working.Height / 2);
-                endPx = halfClientPx + nonClientPx;
+                // Prefer the most recent expanded height captured during resizing (session memory),
+                // then persisted state, then initial 50% fallback.
+                double desiredLogical = 0;
+                if (_lastExpandedHeights.TryGetValue(boxId, out var last) && last > 0)
+                {
+                    desiredLogical = last;
+                }
+                else if (currentState.ExpandedHeight > 0)
+                {
+                    desiredLogical = currentState.ExpandedHeight;
+                }
+
+                var desiredClientPx = desiredLogical > 0
+                    ? (int)Math.Round(desiredLogical * scale)
+                    : Math.Max((int)Math.Round(120 * scale), working.Height / 2);
+                endPx = desiredClientPx + nonClientPx;
             }
             else
             {
@@ -344,6 +367,16 @@ public class BoxWindowManager
         }
         await AnimateTaskbarHeightAsync(w, startPx, endPx, TimeSpan.FromSeconds(1));
 
+        // Capture final height after animation to persist exact expanded height
+        double finalExpandedHeight = 0;
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (_taskbarWindows.TryGetValue(boxId, out var window))
+            {
+                finalExpandedHeight = window.Height;
+            }
+        });
+
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             if (_taskbarWindows.TryGetValue(boxId, out var window) && window.DataContext is TaskbarBoxWindowViewModel tvm)
@@ -355,10 +388,19 @@ public class BoxWindowManager
         var state = await AppServices.WindowStateService.GetAsync(boxId).ConfigureAwait(false);
         state.IsCollapsed = !expanded;
         state.X = newX;
-        if (expanded && state.ExpandedHeight <= 0)
+        if (expanded)
         {
-            var workingHeight = await Dispatcher.UIThread.InvokeAsync(() => GetPrimaryWorkingArea(_taskbarWindows[boxId]).Height);
-            state.ExpandedHeight = Math.Max(120, workingHeight / 2);
+            // Persist actual final expanded height; only fall back if somehow zero
+            if (finalExpandedHeight > 0)
+            {
+                state.ExpandedHeight = finalExpandedHeight;
+                _lastExpandedHeights[boxId] = finalExpandedHeight;
+            }
+            else if (state.ExpandedHeight <= 0)
+            {
+                var workingHeight = await Dispatcher.UIThread.InvokeAsync(() => GetPrimaryWorkingArea(_taskbarWindows[boxId]).Height);
+                state.ExpandedHeight = Math.Max(120, workingHeight / 2);
+            }
         }
         await AppServices.WindowStateService.SaveAsync(state).ConfigureAwait(false);
     }
@@ -385,6 +427,10 @@ public class BoxWindowManager
             y = working.Bottom - heightPx;
         }
         window.Height = height;
+        if (state.Width > 0)
+        {
+            window.Width = state.Width;
+        }
         var x = (int)(state.X == 0 ? window.Position.X : state.X);
         window.Position = new PixelPoint(x, y);
     }
@@ -407,6 +453,18 @@ public class BoxWindowManager
             {
                 var s = t.Result;
                 s.ExpandedHeight = height;
+                await AppServices.WindowStateService.SaveAsync(s).ConfigureAwait(false);
+                _lastExpandedHeights[boxId] = height;
+            }).Unwrap();
+    }
+
+    public Task SaveTaskbarWidthAsync(Guid boxId, double width)
+    {
+        return AppServices.WindowStateService.GetAsync(boxId)
+            .ContinueWith(async t =>
+            {
+                var s = t.Result;
+                s.Width = width;
                 await AppServices.WindowStateService.SaveAsync(s).ConfigureAwait(false);
             }).Unwrap();
     }
@@ -686,3 +744,5 @@ public class BoxWindowManager
         return ShortcutCatalog.GetBoxShortcuts(box, allFiles, storedShortcuts).ToList();
     }
 }
+
+

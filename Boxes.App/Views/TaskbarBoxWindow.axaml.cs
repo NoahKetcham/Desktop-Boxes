@@ -165,10 +165,12 @@ public partial class TaskbarBoxWindow : Window
         }
         Position = new PixelPoint(Position.X, y);
 
-        // Persist expanded height when in expanded state
+        // Persist size when in expanded state
         if (ViewModel.IsExpanded)
         {
             _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarExpandedHeightAsync(ViewModel.Model.Id, Height);
+            _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarWidthAsync(ViewModel.Model.Id, Width);
+            _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarWindowXAsync(ViewModel.Model.Id, Position.X);
         }
     }
 
