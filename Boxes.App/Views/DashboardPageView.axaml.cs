@@ -1,7 +1,8 @@
 using System;
 using System.ComponentModel;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
+using Avalonia.Input;
+using Boxes.App.Models;
 using Boxes.App.ViewModels;
 
 namespace Boxes.App.Views;
@@ -36,14 +37,25 @@ public partial class DashboardPageView : UserControl
         // No-op; reserved for future use
     }
 
-    private async void CreateShortcutsButton_OnClick(object? sender, RoutedEventArgs e)
+    private void ScanTile_OnDoubleTapped(object? sender, TappedEventArgs e)
     {
         if (_viewModel is null)
         {
             return;
         }
 
-        await _viewModel.CreateShortcutsAsync();
+        if (sender is Border border && border.DataContext is DesktopFileViewModel file)
+        {
+            if (file.ItemType == ScannedItemType.Folder)
+            {
+                _viewModel.EnterFolderCommand.Execute(file);
+            }
+            else
+            {
+                // For files we can toggle selection or future behavior
+            }
+        }
     }
+
 }
 

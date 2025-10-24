@@ -1,17 +1,24 @@
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
-using System.Linq;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
+using Boxes.App.Services;
 using Boxes.App.ViewModels;
 using Boxes.App.Views;
-using Boxes.App.Services;
 
 namespace Boxes.App;
 
 public partial class App : Application
 {
+    private CancellationTokenSource? _desktopIntegrationCts;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -23,8 +30,6 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Avoid duplicate validations from both Avalonia and the CommunityToolkit. 
-            // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
             desktop.MainWindow = new MainWindow
             {
@@ -32,18 +37,58 @@ public partial class App : Application
             };
             AppServices.MainWindowOwner = desktop.MainWindow;
             DialogService.Initialize(desktop.MainWindow);
+
+            DesktopIntegrationService.EnsureContextMenuRegistered(AppServices.BoxWindowManager.AreWindowsVisible);
+            _desktopIntegrationCts = new CancellationTokenSource();
+            DesktopIntegrationService.StartCommandListener(HandleDesktopCommandAsync, _desktopIntegrationCts.Token);
+            desktop.Exit += OnDesktopExit;
         }
 
         base.OnFrameworkInitializationCompleted();
     }
 
+    private Task HandleDesktopCommandAsync(string command)
+    {
+        if (string.Equals(command, "hide", StringComparison.OrdinalIgnoreCase))
+        {
+            Dispatcher.UIThread.Post(async () =>
+            {
+                await AppServices.BoxWindowManager.SetWindowsVisibility(false);
+                DesktopIntegrationService.EnsureContextMenuRegistered(AppServices.BoxWindowManager.AreWindowsVisible);
+            });
+        }
+        else if (string.Equals(command, "show", StringComparison.OrdinalIgnoreCase))
+        {
+            Dispatcher.UIThread.Post(async () =>
+            {
+                await AppServices.BoxWindowManager.SetWindowsVisibility(true);
+                DesktopIntegrationService.EnsureContextMenuRegistered(AppServices.BoxWindowManager.AreWindowsVisible);
+            });
+        }
+        else if (string.Equals(command, "toggle", StringComparison.OrdinalIgnoreCase))
+        {
+            Dispatcher.UIThread.Post(async () =>
+            {
+                await AppServices.BoxWindowManager.ToggleAllWindowsVisibility();
+                DesktopIntegrationService.EnsureContextMenuRegistered(AppServices.BoxWindowManager.AreWindowsVisible);
+            });
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
+    {
+        _desktopIntegrationCts?.Cancel();
+        _desktopIntegrationCts?.Dispose();
+        _desktopIntegrationCts = null;
+    }
+
     private void DisableAvaloniaDataAnnotationValidation()
     {
-        // Get an array of plugins to remove
         var dataValidationPluginsToRemove =
             BindingPlugins.DataValidators.OfType<DataAnnotationsValidationPlugin>().ToArray();
 
-        // remove each entry found
         foreach (var plugin in dataValidationPluginsToRemove)
         {
             BindingPlugins.DataValidators.Remove(plugin);
