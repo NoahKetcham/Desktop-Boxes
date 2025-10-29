@@ -46,7 +46,7 @@
                 <ItemsControl x:Name="ShortcutsItemsControl" ItemsSource="{Binding CurrentItems}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <WrapPanel ItemWidth="78" ItemHeight="97" />   # set width of icon spacing here
+                            <WrapPanel ItemWidth="78" ItemHeight="97" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
