@@ -21,9 +21,15 @@ public partial class DesktopBoxWindow : Window
         private PixelPoint _dragStartWindow;
         private Point _dragStartPointer;
         private bool _suppressPositionSync;
+        private bool _isDraggingWindow;
         private Border? _contentArea;
         private Grid? _rootGrid;
         private Border? _headerBar;
+        private RowDefinition? _contentRow;
+        private bool _isContentExpanded = true;
+        private double _savedContentHeight = 240;
+        private double _savedWindowHeight = 240;
+        private DispatcherTimer? _expandAnimationTimer;
 
     public DesktopBoxWindow()
     {
@@ -34,6 +40,33 @@ public partial class DesktopBoxWindow : Window
         _contentArea = this.FindControl<Border>("ContentArea");
         _rootGrid = this.FindControl<Grid>("RootGrid");
         _headerBar = this.FindControl<Border>("HeaderBar");
+        
+        if (_rootGrid?.RowDefinitions.Count > 1)
+        {
+            _contentRow = _rootGrid.RowDefinitions[1];
+            // Initialize content row to use fixed height if it's currently "*"
+            if (_contentRow.Height.IsStar)
+            {
+                // Measure content area after layout is complete
+                _rootGrid.LayoutUpdated += (s, e) =>
+                {
+                    if (_contentArea != null && _savedContentHeight <= 0)
+                    {
+                        _contentArea.Measure(new Size(_contentArea.Bounds.Width, double.PositiveInfinity));
+                        var desiredHeight = _contentArea.DesiredSize.Height;
+                        if (desiredHeight > 0)
+                        {
+                            _savedContentHeight = desiredHeight;
+                            _contentRow.Height = new GridLength(_savedContentHeight);
+                        }
+                    }
+                };
+            }
+            else
+            {
+                _savedContentHeight = _contentRow.Height.Value;
+            }
+        }
         // Subscribe to settings changes to reflect transparency
         AppServices.SettingsService.SettingsChanged += OnSettingsChanged;
         if (DataContext is DesktopBoxWindowViewModel vm)
@@ -122,15 +155,11 @@ public partial class DesktopBoxWindow : Window
         });
     }
 
-    protected override void OnClosed(EventArgs e)
-    {
-        base.OnClosed(e);
-        AppServices.SettingsService.SettingsChanged -= OnSettingsChanged;
-    }
-
     private void Header_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        var point = e.GetCurrentPoint(this);
+        
+        if (point.Properties.IsLeftButtonPressed)
         {
             if (ViewModel.IsSnappedToTaskbar)
             {
@@ -142,7 +171,13 @@ public partial class DesktopBoxWindow : Window
                 return;
             }
 
-            BeginMoveDrag(e);
+            // Handle left-click for expand/collapse animation (but allow dragging)
+            // We'll check in PointerReleased if it was a click vs drag
+            _headerDragging = true; // Mark as potential drag
+            _dragStartPointer = e.GetPosition(this);
+            _dragStartWindow = Position;
+            e.Pointer.Capture((IInputElement)sender!);
+            e.Handled = true;
         }
     }
 
@@ -153,44 +188,100 @@ public partial class DesktopBoxWindow : Window
             return;
         }
 
-        var current = e.GetPosition(this);
-        var deltaX = current.X - _dragStartPointer.X;
-
-        var newX = _dragStartWindow.X + (int)deltaX;
-
-        var working = Screens.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
-        var clampedX = Math.Clamp(newX, working.X, working.Right - (int)Bounds.Width);
-
-        int y;
-        if (Boxes.App.Extensions.TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTop, out _))
+        // For taskbar windows, handle horizontal dragging
+        if (ViewModel.IsSnappedToTaskbar)
         {
-            var heightPx = (int)Math.Round(Bounds.Height * RenderScaling);
-            y = taskbarTop - heightPx;
+            var current = e.GetPosition(this);
+            var deltaX = current.X - _dragStartPointer.X;
+
+            var newX = _dragStartWindow.X + (int)deltaX;
+
+            var working = Screens.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
+            var clampedX = Math.Clamp(newX, working.X, working.Right - (int)Bounds.Width);
+
+            int y;
+            if (Boxes.App.Extensions.TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTop, out _))
+            {
+                var heightPx = (int)Math.Round(Bounds.Height * RenderScaling);
+                y = taskbarTop - heightPx;
+            }
+            else
+            {
+                var heightPx = (int)Math.Round(Bounds.Height * RenderScaling);
+                y = working.Bottom - heightPx;
+            }
+            Position = new PixelPoint(clampedX, y);
+            e.Handled = true;
+            return;
         }
-        else
+
+        // For non-taskbar windows, check if movement exceeds threshold
+        var currentPos = e.GetPosition(this);
+        var dragDistance = Math.Abs(currentPos.X - _dragStartPointer.X) + Math.Abs(currentPos.Y - _dragStartPointer.Y);
+        
+        if (dragDistance >= 5 && !_isDraggingWindow)
         {
-            var heightPx = (int)Math.Round(Bounds.Height * RenderScaling);
-            y = working.Bottom - heightPx;
+            // Significant movement detected - start manual window dragging
+            _isDraggingWindow = true;
         }
-        Position = new PixelPoint(clampedX, y);
-        e.Handled = true;
+        
+        if (_isDraggingWindow)
+        {
+            // Manually handle window dragging
+            var deltaX = currentPos.X - _dragStartPointer.X;
+            var deltaY = currentPos.Y - _dragStartPointer.Y;
+            var newX = _dragStartWindow.X + (int)deltaX;
+            var newY = _dragStartWindow.Y + (int)deltaY;
+            Position = new PixelPoint(newX, newY);
+            e.Handled = true;
+        }
     }
 
     private void Header_PointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (!_headerDragging)
+        if (ViewModel.IsSnappedToTaskbar)
         {
-            // Toggle expand/collapse when snapped and not dragged
-            if (ViewModel.IsSnappedToTaskbar && e.InitialPressMouseButton == MouseButton.Left)
+            if (!_headerDragging)
             {
-                var expanded = ViewModel.IsCollapsed;
-                _ = Boxes.App.Services.AppServices.BoxWindowManager.SetSnappedExpandedAsync(ViewModel.Model.Id, expanded);
+                // Toggle expand/collapse when snapped and not dragged
+                if (e.InitialPressMouseButton == MouseButton.Left)
+                {
+                    var expanded = ViewModel.IsCollapsed;
+                    _ = Boxes.App.Services.AppServices.BoxWindowManager.SetSnappedExpandedAsync(ViewModel.Model.Id, expanded);
+                    e.Handled = true;
+                }
+            }
+            else
+            {
+                _headerDragging = false;
+                e.Pointer.Capture(null);
                 e.Handled = true;
             }
             return;
         }
 
-        _headerDragging = false;
+        // For non-taskbar windows: if we didn't drag, trigger expand/collapse animation
+        if (_headerDragging && e.InitialPressMouseButton == MouseButton.Left)
+        {
+            var currentPos = e.GetPosition(this);
+            var dragDistance = Math.Abs(currentPos.X - _dragStartPointer.X) + Math.Abs(currentPos.Y - _dragStartPointer.Y);
+            
+            // Only trigger animation if it was a click (little to no movement)
+            if (!_isDraggingWindow && dragDistance < 5)
+            {
+                ToggleContentExpansion();
+                e.Handled = true;
+                e.Pointer.Capture(null);
+                _headerDragging = false;
+                _isDraggingWindow = false;
+                return;
+            }
+            
+            // Reset dragging state
+            _headerDragging = false;
+            _isDraggingWindow = false;
+        }
+
         e.Pointer.Capture(null);
         e.Handled = true;
     }
@@ -279,5 +370,187 @@ public partial class DesktopBoxWindow : Window
     {
         await ViewModel.HandleDropAsync(e);
     }
-}
 
+    private void ToggleContentExpansion()
+    {
+        if (_contentRow == null || _rootGrid == null)
+        {
+            return;
+        }
+
+        // Cancel any ongoing animation
+        _expandAnimationTimer?.Stop();
+        _expandAnimationTimer = null;
+
+        var targetExpanded = !_isContentExpanded;
+        AnimateContentExpansion(targetExpanded);
+    }
+
+    private void AnimateContentExpansion(bool expand)
+    {
+        if (_contentRow == null || _rootGrid == null)
+        {
+            return;
+        }
+
+        // Stop any ongoing animation
+        _expandAnimationTimer?.Stop();
+
+        // Get header height
+        var headerHeight = _headerBar?.Bounds.Height ?? 40;
+        if (headerHeight <= 0)
+        {
+            headerHeight = 40; // Fallback to MinHeight
+        }
+
+        // Get current height (handle both pixel and star sizing)
+        double startHeight;
+        double startWindowHeight = Height;
+        
+        if (_contentRow.Height.IsStar)
+        {
+            // If using star sizing, measure actual content height
+            if (_contentArea != null)
+            {
+                _contentArea.Measure(new Size(_contentArea.Bounds.Width, double.PositiveInfinity));
+                startHeight = Math.Max(_contentArea.DesiredSize.Height, _contentArea.Bounds.Height);
+            }
+            else
+            {
+                startHeight = Height - headerHeight;
+            }
+            // Convert to fixed pixel height for animation
+            _contentRow.Height = new GridLength(startHeight);
+        }
+        else
+        {
+            startHeight = _contentRow.Height.Value;
+        }
+
+        // If we're collapsing, save the current height for later expansion
+        if (!expand && startHeight > 0)
+        {
+            _savedContentHeight = startHeight;
+            _savedWindowHeight = Height;
+        }
+
+        var endHeight = expand ? (_savedContentHeight > 0 ? _savedContentHeight : startHeight) : 0.0;
+        var endWindowHeight = expand ? (_savedWindowHeight > 0 ? _savedWindowHeight : headerHeight + endHeight) : headerHeight;
+
+        // If expanding and we don't have a saved height, measure the content
+        if (expand && _savedContentHeight <= 0 && _contentArea != null)
+        {
+            _contentArea.Measure(new Size(_contentArea.Bounds.Width, double.PositiveInfinity));
+            var measuredHeight = _contentArea.DesiredSize.Height;
+            if (measuredHeight > 0)
+            {
+                _savedContentHeight = measuredHeight;
+            }
+            else
+            {
+                _savedContentHeight = Math.Max(startHeight, 200); // Fallback
+            }
+            endHeight = _savedContentHeight;
+            // Recalculate window height if we didn't have a saved one
+            if (_savedWindowHeight <= headerHeight)
+            {
+                endWindowHeight = headerHeight + endHeight;
+            }
+        }
+        
+        // Ensure endWindowHeight is calculated correctly
+        if (expand && _savedWindowHeight <= headerHeight)
+        {
+            endWindowHeight = headerHeight + endHeight;
+        }
+
+        var duration = TimeSpan.FromSeconds(1.0);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        // Set initial visibility state
+        if (_contentArea != null)
+        {
+            _contentArea.IsVisible = expand || startHeight > 0.1;
+            if (!expand && startHeight <= 0.1)
+            {
+                _contentArea.Height = 0;
+            }
+        }
+
+        _expandAnimationTimer = new DispatcherTimer(DispatcherPriority.Render)
+        {
+            Interval = TimeSpan.FromMilliseconds(1000.0 / 60.0) // 60 FPS
+        };
+
+        EventHandler? tick = null;
+        tick = (_, __) =>
+        {
+            var progress = Math.Min(1.0, sw.Elapsed.TotalMilliseconds / duration.TotalMilliseconds);
+            // Use ease-out cubic for smooth animation
+            var eased = 1 - Math.Pow(1 - progress, 3);
+            
+            var currentHeight = startHeight + (endHeight - startHeight) * eased;
+            var clampedHeight = Math.Max(0, currentHeight);
+            _contentRow.Height = new GridLength(clampedHeight);
+            
+            // Animate window height along with content row height
+            var currentWindowHeight = startWindowHeight + (endWindowHeight - startWindowHeight) * eased;
+            Height = Math.Max(headerHeight, currentWindowHeight);
+            
+            // Hide content area when collapsed to ensure nothing shows (padding, borders, background, etc.)
+            if (_contentArea != null)
+            {
+                if (clampedHeight <= 0.1)
+                {
+                    _contentArea.IsVisible = false;
+                    _contentArea.Height = 0;
+                }
+                else
+                {
+                    _contentArea.IsVisible = true;
+                    _contentArea.Height = double.NaN; // Reset to auto sizing
+                }
+            }
+
+            if (progress >= 1.0)
+            {
+                _expandAnimationTimer.Tick -= tick!;
+                _expandAnimationTimer.Stop();
+                _expandAnimationTimer = null;
+                
+                // Ensure final state is exact
+                _contentRow.Height = new GridLength(endHeight);
+                Height = endWindowHeight;
+                
+                if (_contentArea != null)
+                {
+                    if (endHeight <= 0)
+                    {
+                        _contentArea.IsVisible = false;
+                        _contentArea.Height = 0;
+                    }
+                    else
+                    {
+                        _contentArea.IsVisible = true;
+                        _contentArea.Height = double.NaN; // Reset to auto sizing
+                    }
+                }
+                _isContentExpanded = expand;
+                
+                sw.Stop();
+            }
+        };
+
+        _expandAnimationTimer.Tick += tick;
+        _isContentExpanded = !expand; // Set immediately to prevent double-toggles
+        _expandAnimationTimer.Start();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _expandAnimationTimer?.Stop();
+        _expandAnimationTimer = null;
+        base.OnClosed(e);
+        AppServices.SettingsService.SettingsChanged -= OnSettingsChanged;
+    }
+}
