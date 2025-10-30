@@ -22,6 +22,9 @@ public partial class TaskbarBoxWindow : Window
     private Border? _contentArea;
     private Grid? _rootGrid;
     private Border? _headerBar;
+    private bool _inSnapZone;
+    private PixelPoint? _frozenPosition;
+    private int? _pendingSnapTargetX;
 
     public TaskbarBoxWindow()
     {
@@ -109,6 +112,9 @@ public partial class TaskbarBoxWindow : Window
         _dragging = false; // become true only after threshold movement
         _startWindow = Position;
         _startPointer = e.GetPosition(this);
+        _inSnapZone = false;
+        _frozenPosition = null;
+        _pendingSnapTargetX = null;
         e.Pointer.Capture((IInputElement)sender!);
         e.Handled = true;
     }
@@ -137,13 +143,37 @@ public partial class TaskbarBoxWindow : Window
         var windowWidthPx = (int)Math.Round(Bounds.Width * RenderScaling);
         var clampedX = Math.Clamp(newX, working.X, working.Right - windowWidthPx);
 
-        // Check for snap targets
+        // Check for snap targets based on proposed position to detect entering/exiting zone
         var snapTargetX = GetSnapTargetX(clampedX);
-        if (snapTargetX.HasValue)
+        var wasInSnapZone = _inSnapZone;
+        _inSnapZone = snapTargetX.HasValue;
+
+        if (_inSnapZone)
         {
-            clampedX = snapTargetX.Value;
-            // Ensure snap doesn't go outside working area
-            clampedX = Math.Clamp(clampedX, working.X, working.Right - windowWidthPx);
+            // We're entering or already in a snap zone
+            if (!wasInSnapZone)
+            {
+                // Just entered snap zone - freeze current position and store snap target
+                _frozenPosition = Position;
+                _pendingSnapTargetX = snapTargetX.Value;
+            }
+            // Keep window frozen at the position where we entered the snap zone
+            clampedX = _frozenPosition.HasValue ? _frozenPosition.Value.X : clampedX;
+        }
+        else
+        {
+            // We're not in a snap zone
+            if (wasInSnapZone)
+            {
+                // Just exited snap zone - apply the snap visually
+                if (_pendingSnapTargetX.HasValue)
+                {
+                    clampedX = _pendingSnapTargetX.Value;
+                    clampedX = Math.Clamp(clampedX, working.X, working.Right - windowWidthPx);
+                }
+                _frozenPosition = null;
+                _pendingSnapTargetX = null;
+            }
         }
 
         int y;
@@ -163,7 +193,7 @@ public partial class TaskbarBoxWindow : Window
 
     private int? GetSnapTargetX(int proposedX)
     {
-        const int snapThreshold = 20; // pixels
+        const int snapThreshold = 15; // pixels (matches snap gap)
         const int snapGap = 15; // pixels
 
         // Convert window width from logical to physical pixels
@@ -218,7 +248,31 @@ public partial class TaskbarBoxWindow : Window
             return;
         }
 
+        // If we're in a snap zone on release, apply the snap
+        if (_inSnapZone && _pendingSnapTargetX.HasValue)
+        {
+            var working = Screens.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
+            var windowWidthPx = (int)Math.Round(Bounds.Width * RenderScaling);
+            var snappedX = Math.Clamp(_pendingSnapTargetX.Value, working.X, working.Right - windowWidthPx);
+
+            int y;
+            if (Boxes.App.Extensions.TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTop, out _))
+            {
+                var heightPx = (int)Math.Round(Bounds.Height * RenderScaling);
+                y = taskbarTop - heightPx;
+            }
+            else
+            {
+                var heightPx = (int)Math.Round(Bounds.Height * RenderScaling);
+                y = working.Bottom - heightPx;
+            }
+            Position = new PixelPoint(snappedX, y);
+        }
+
         _dragging = false;
+        _inSnapZone = false;
+        _frozenPosition = null;
+        _pendingSnapTargetX = null;
         e.Pointer.Capture(null);
         e.Handled = true;
         // Persist X position after drag ends
