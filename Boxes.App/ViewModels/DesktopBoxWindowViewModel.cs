@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Specialized;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Boxes.App.Models;
@@ -32,6 +33,8 @@ public class DesktopBoxWindowViewModel : ViewModelBase
     public string CurrentPath => NavigationStack.Count == 0
         ? "Desktop"
         : string.Join(" / ", NavigationStack.Select(f => f.FileName));
+    
+    public bool CanNavigateUp => NavigationStack.Count > 0;
 
     private string SerializedPath => NavigationStack.Count == 0
         ? "Desktop"
@@ -89,6 +92,12 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         ToggleSnapCommand = new RelayCommand(ToggleSnap);
 
         ApplySnapState(model.IsSnappedToTaskbar, model.IsCollapsed, model.ExpandedHeight, model.ExpandedPositionX, model.ExpandedPositionY, suppressSync: true);
+        
+        // Subscribe to navigation stack changes to update CanNavigateUp property
+        NavigationStack.CollectionChanged += (s, e) =>
+        {
+            OnPropertyChanged(nameof(CanNavigateUp));
+        };
     }
 
     public void SnapToTaskbar() => RequestSnapToTaskbar?.Invoke(this, EventArgs.Empty);
@@ -538,6 +547,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
     private void RaiseNavigationCommands()
     {
         OnPropertyChanged(nameof(CurrentPath));
+        OnPropertyChanged(nameof(CanNavigateUp));
         NavigateUpCommand.NotifyCanExecuteChanged();
         NavigateHomeCommand.NotifyCanExecuteChanged();
     }
