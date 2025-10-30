@@ -33,7 +33,6 @@ public partial class DesktopBoxWindow : Window
         private double _savedContentHeight = 240;
         private double _savedWindowHeight = 240;
         private DispatcherTimer? _expandAnimationTimer;
-        private int? _currentSnapTargetY;
 
     public DesktopBoxWindow()
     {
@@ -234,68 +233,14 @@ public partial class DesktopBoxWindow : Window
         
         if (_isDraggingWindow)
         {
-            // Manually handle window dragging
+            // Manually handle window dragging - no visual snapping during drag
             var deltaX = currentPos.X - _dragStartPointer.X;
             var deltaY = currentPos.Y - _dragStartPointer.Y;
             var newX = _dragStartWindow.X + (int)deltaX;
             var newY = _dragStartWindow.Y + (int)deltaY;
             
-            // Check for snap target on top edge with hysteresis
-            const int releaseThreshold = 10; // Threshold to release snap
-            
-            if (_currentSnapTargetY.HasValue)
-            {
-                // Already snapped - maintain snap until mouse moves beyond release threshold
-                // Calculate distance from proposed position to snap target
-                var distanceFromSnap = Math.Abs(newY - _currentSnapTargetY.Value);
-                if (distanceFromSnap <= releaseThreshold)
-                {
-                    // Keep snapped - force position to snap target to prevent jitter
-                    // Only update if position actually changed to avoid double rendering
-                    if (Position.Y != _currentSnapTargetY.Value)
-                    {
-                        newY = _currentSnapTargetY.Value;
-                        Position = new PixelPoint(newX, newY);
-                    }
-                    else
-                    {
-                        // Already at snap position, only update X if needed
-                        if (Position.X != newX)
-                        {
-                            Position = new PixelPoint(newX, Position.Y);
-                        }
-                    }
-                }
-                else
-                {
-                    // Released from snap - check for new snap target
-                    _currentSnapTargetY = null;
-                    var (snapTargetY, _) = AppServices.BoxWindowManager.GetSnapTargetY(this, newY);
-                    if (snapTargetY.HasValue)
-                    {
-                        _currentSnapTargetY = snapTargetY.Value;
-                        newY = snapTargetY.Value;
-                    }
-                    Position = new PixelPoint(newX, newY);
-                }
-            }
-            else
-            {
-                // Not currently snapped - check for snap target
-                var (snapTargetY, _) = AppServices.BoxWindowManager.GetSnapTargetY(this, newY);
-                if (snapTargetY.HasValue)
-                {
-                    _currentSnapTargetY = snapTargetY.Value;
-                    newY = snapTargetY.Value;
-                    Position = new PixelPoint(newX, newY);
-                }
-                else
-                {
-                    // No snap - update position normally
-                    Position = new PixelPoint(newX, newY);
-                }
-            }
-            
+            // Update position normally - snap will happen on release if within range
+            Position = new PixelPoint(newX, newY);
             e.Handled = true;
         }
     }
@@ -340,10 +285,24 @@ public partial class DesktopBoxWindow : Window
                 return;
             }
             
-            // Reset dragging state
+            // Reset dragging state and check for snap on release
+            // Check if we actually dragged before resetting flags
+            var actuallyDragged = _isDraggingWindow || dragDistance >= 5;
+            
             _headerDragging = false;
             _isDraggingWindow = false;
-            _currentSnapTargetY = null; // Clear snap state on release
+            
+            // Check if we're within snap range on release - snap happens invisibly in background
+            if (actuallyDragged)
+            {
+                var currentY = Position.Y;
+                var (snapTargetY, _) = AppServices.BoxWindowManager.GetSnapTargetY(this, currentY);
+                if (snapTargetY.HasValue)
+                {
+                    // Snap to target position on release
+                    Position = new PixelPoint(Position.X, snapTargetY.Value);
+                }
+            }
         }
 
         e.Pointer.Capture(null);
