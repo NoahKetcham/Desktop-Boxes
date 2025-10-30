@@ -336,6 +336,12 @@ public partial class DesktopBoxWindow : Window
         e.Handled = true;
     }
 
+    private void Button_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        // Stop event propagation so button clicks don't trigger window dragging
+        e.Handled = true;
+    }
+
     private void AnchorToTaskbar(int? desiredX = null)
     {
         try
