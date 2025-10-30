@@ -18,13 +18,15 @@ namespace Boxes.App.Views;
 
 public partial class DesktopBoxWindow : Window
 {
-    private PixelPoint _lastKnownPosition;
+        private PixelPoint _lastKnownPosition;
     private ItemsControl? _shortcutsItemsControl;
         private bool _headerDragging;
         private PixelPoint _dragStartWindow;
-        private Point _dragStartPointer;
+        private PixelPoint _dragStartScreenPosition;
+        private PixelPoint _lastWindowPosition;
         private bool _suppressPositionSync;
         private bool _isDraggingWindow;
+        private int _snapCheckCounter;
         private Border? _contentArea;
         private Grid? _rootGrid;
         private Border? _headerBar;
@@ -169,11 +171,19 @@ public partial class DesktopBoxWindow : Window
         
         if (point.Properties.IsLeftButtonPressed)
         {
+            // Capture pointer and store initial positions
+            // Convert window-relative pointer position to screen coordinates
+            var pointerRelative = e.GetPosition(this);
+            var screenX = Position.X + (int)Math.Round(pointerRelative.X);
+            var screenY = Position.Y + (int)Math.Round(pointerRelative.Y);
+            
             if (ViewModel.IsSnappedToTaskbar)
             {
                 _headerDragging = true;
                 _dragStartWindow = Position;
-                _dragStartPointer = e.GetPosition(this);
+                _lastWindowPosition = Position;
+                _dragStartScreenPosition = new PixelPoint(screenX, screenY);
+                _snapCheckCounter = 0;
                 e.Pointer.Capture((IInputElement)sender!);
                 e.Handled = true;
                 return;
@@ -182,8 +192,10 @@ public partial class DesktopBoxWindow : Window
             // Handle left-click for expand/collapse animation (but allow dragging)
             // We'll check in PointerReleased if it was a click vs drag
             _headerDragging = true; // Mark as potential drag
-            _dragStartPointer = e.GetPosition(this);
             _dragStartWindow = Position;
+            _lastWindowPosition = Position;
+            _dragStartScreenPosition = new PixelPoint(screenX, screenY);
+            _snapCheckCounter = 0;
             e.Pointer.Capture((IInputElement)sender!);
             e.Handled = true;
         }
@@ -196,13 +208,21 @@ public partial class DesktopBoxWindow : Window
             return;
         }
 
-        // For taskbar windows, handle horizontal dragging
+        // Get current pointer position in screen coordinates
+        // Use _lastWindowPosition instead of Position to avoid stale values
+        var currentPointerRelative = e.GetPosition(this);
+        var currentScreenX = _lastWindowPosition.X + (int)Math.Round(currentPointerRelative.X);
+        var currentScreenY = _lastWindowPosition.Y + (int)Math.Round(currentPointerRelative.Y);
+        var currentScreenPos = new PixelPoint(currentScreenX, currentScreenY);
+        
+        // Calculate delta from initial screen position - this prevents drift
+        var deltaX = currentScreenPos.X - _dragStartScreenPosition.X;
+        var deltaY = currentScreenPos.Y - _dragStartScreenPosition.Y;
+
+        // For taskbar windows, handle horizontal dragging only
         if (ViewModel.IsSnappedToTaskbar)
         {
-            var current = e.GetPosition(this);
-            var deltaX = current.X - _dragStartPointer.X;
-
-            var newX = _dragStartWindow.X + (int)deltaX;
+            var newX = _dragStartWindow.X + deltaX;
 
             var working = Screens.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
             var clampedX = Math.Clamp(newX, working.X, working.Right - (int)Bounds.Width);
@@ -218,14 +238,15 @@ public partial class DesktopBoxWindow : Window
                 var heightPx = (int)Math.Round(Bounds.Height * RenderScaling);
                 y = working.Bottom - heightPx;
             }
-            Position = new PixelPoint(clampedX, y);
+            var newPos = new PixelPoint(clampedX, y);
+            _lastWindowPosition = newPos;
+            Position = newPos;
             e.Handled = true;
             return;
         }
 
         // For non-taskbar windows, check if movement exceeds threshold
-        var currentPos = e.GetPosition(this);
-        var dragDistance = Math.Abs(currentPos.X - _dragStartPointer.X) + Math.Abs(currentPos.Y - _dragStartPointer.Y);
+        var dragDistance = Math.Abs(deltaX) + Math.Abs(deltaY);
         
         if (dragDistance >= 5 && !_isDraggingWindow)
         {
@@ -235,33 +256,38 @@ public partial class DesktopBoxWindow : Window
         
         if (_isDraggingWindow)
         {
-            // Manually handle window dragging - no visual snapping during drag
-            var deltaX = currentPos.X - _dragStartPointer.X;
-            var deltaY = currentPos.Y - _dragStartPointer.Y;
-            var newX = _dragStartWindow.X + (int)deltaX;
-            var newY = _dragStartWindow.Y + (int)deltaY;
+            // Calculate new position based on initial window position + screen-space delta
+            var newX = _dragStartWindow.X + deltaX;
+            var newY = _dragStartWindow.Y + deltaY;
             
-            // Check for snap target in background to show indicator
-            var (snapTargetY, _) = AppServices.BoxWindowManager.GetSnapTargetY(this, newY);
-            if (snapTargetY.HasValue)
+            // Throttle snap checking - use a counter to check every few moves instead of modulo
+            // This is more reliable than modulo which might skip checks
+            if (_snapCheckCounter++ % 3 == 0)
             {
-                // Show snap indicator when within range
-                if (_snapIndicator != null)
+                // Check for snap target in background to show indicator
+                var (snapTargetY, _) = AppServices.BoxWindowManager.GetSnapTargetY(this, newY);
+                if (snapTargetY.HasValue)
                 {
-                    _snapIndicator.IsVisible = true;
+                    // Show snap indicator when within range
+                    if (_snapIndicator != null)
+                    {
+                        _snapIndicator.IsVisible = true;
+                    }
+                }
+                else
+                {
+                    // Hide snap indicator when not in range
+                    if (_snapIndicator != null)
+                    {
+                        _snapIndicator.IsVisible = false;
+                    }
                 }
             }
-            else
-            {
-                // Hide snap indicator when not in range
-                if (_snapIndicator != null)
-                {
-                    _snapIndicator.IsVisible = false;
-                }
-            }
             
-            // Update position normally - snap will happen on release if within range
-            Position = new PixelPoint(newX, newY);
+            // Update position immediately - snap will happen on release if within range
+            var newPos = new PixelPoint(newX, newY);
+            _lastWindowPosition = newPos;
+            Position = newPos;
             e.Handled = true;
         }
     }
@@ -292,8 +318,11 @@ public partial class DesktopBoxWindow : Window
         // For non-taskbar windows: if we didn't drag, trigger expand/collapse animation
         if (_headerDragging && e.InitialPressMouseButton == MouseButton.Left)
         {
-            var currentPos = e.GetPosition(this);
-            var dragDistance = Math.Abs(currentPos.X - _dragStartPointer.X) + Math.Abs(currentPos.Y - _dragStartPointer.Y);
+            var currentPointerRelative = e.GetPosition(this);
+            var currentScreenX = _lastWindowPosition.X + (int)Math.Round(currentPointerRelative.X);
+            var currentScreenY = _lastWindowPosition.Y + (int)Math.Round(currentPointerRelative.Y);
+            var currentScreenPos = new PixelPoint(currentScreenX, currentScreenY);
+            var dragDistance = Math.Abs(currentScreenPos.X - _dragStartScreenPosition.X) + Math.Abs(currentScreenPos.Y - _dragStartScreenPosition.Y);
             
             // Only trigger animation if it was a click (little to no movement)
             if (!_isDraggingWindow && dragDistance < 5)
@@ -318,6 +347,7 @@ public partial class DesktopBoxWindow : Window
             
             _headerDragging = false;
             _isDraggingWindow = false;
+            _snapCheckCounter = 0;
             
             // Check if we're within snap range on release - snap happens invisibly in background
             if (actuallyDragged)

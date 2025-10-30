@@ -134,7 +134,17 @@ public partial class TaskbarBoxWindow : Window
 
         var newX = _startWindow.X + (int)deltaX;
         var working = Screens.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
-        var clampedX = Math.Clamp(newX, working.X, working.Right - (int)Bounds.Width);
+        var windowWidthPx = (int)Math.Round(Bounds.Width * RenderScaling);
+        var clampedX = Math.Clamp(newX, working.X, working.Right - windowWidthPx);
+
+        // Check for snap targets
+        var snapTargetX = GetSnapTargetX(clampedX);
+        if (snapTargetX.HasValue)
+        {
+            clampedX = snapTargetX.Value;
+            // Ensure snap doesn't go outside working area
+            clampedX = Math.Clamp(clampedX, working.X, working.Right - windowWidthPx);
+        }
 
         int y;
         if (Boxes.App.Extensions.TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTop, out _))
@@ -149,6 +159,52 @@ public partial class TaskbarBoxWindow : Window
         }
         Position = new PixelPoint(clampedX, y);
         e.Handled = true;
+    }
+
+    private int? GetSnapTargetX(int proposedX)
+    {
+        const int snapThreshold = 20; // pixels
+        const int snapGap = 15; // pixels
+
+        // Convert window width from logical to physical pixels
+        var windowWidthPx = (int)Math.Round(Bounds.Width * RenderScaling);
+        var currentLeft = proposedX;
+        var currentRight = proposedX + windowWidthPx;
+
+        var otherWindows = AppServices.BoxWindowManager.GetOtherTaskbarWindows(this);
+        
+        int? bestSnapTarget = null;
+        int minDistance = int.MaxValue;
+
+        foreach (var otherWindow in otherWindows)
+        {
+            if (!otherWindow.IsVisible)
+                continue;
+
+            var otherLeft = otherWindow.Position.X;
+            var otherWidthPx = (int)Math.Round(otherWindow.Bounds.Width * otherWindow.RenderScaling);
+            var otherRight = otherLeft + otherWidthPx;
+
+            // Check if current window's left edge is near other window's right edge
+            // Snap current window to be 15px to the right of the other window
+            var distanceToRight = Math.Abs(currentLeft - otherRight);
+            if (distanceToRight <= snapThreshold && distanceToRight < minDistance)
+            {
+                minDistance = distanceToRight;
+                bestSnapTarget = otherRight + snapGap;
+            }
+
+            // Check if current window's right edge is near other window's left edge
+            // Snap current window so its right edge is 15px to the left of the other window
+            var distanceToLeft = Math.Abs(currentRight - otherLeft);
+            if (distanceToLeft <= snapThreshold && distanceToLeft < minDistance)
+            {
+                minDistance = distanceToLeft;
+                bestSnapTarget = otherLeft - windowWidthPx - snapGap;
+            }
+        }
+
+        return bestSnapTarget;
     }
 
     private void Header_OnPointerReleased(object? sender, PointerReleasedEventArgs e)

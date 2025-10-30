@@ -817,6 +817,19 @@ public class BoxWindowManager
 
         return (snapTarget, targetWindow);
     }
+
+    /// <summary>
+    /// Gets all other taskbar windows (excluding the current one) for snap detection.
+    /// </summary>
+    public IEnumerable<TaskbarBoxWindow> GetOtherTaskbarWindows(TaskbarBoxWindow currentWindow)
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            return Dispatcher.UIThread.InvokeAsync(() => GetOtherTaskbarWindows(currentWindow)).GetAwaiter().GetResult();
+        }
+
+        return _taskbarWindows.Values.Where(w => w != currentWindow && w.IsVisible);
+    }
 }
 
 
