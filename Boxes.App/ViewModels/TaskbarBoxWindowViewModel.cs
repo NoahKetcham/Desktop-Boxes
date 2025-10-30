@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Collections.Specialized;
 using Avalonia.Input;
 using Boxes.App.Models;
 using Boxes.App.Services;
@@ -29,6 +30,7 @@ public class TaskbarBoxWindowViewModel : ViewModelBase
     public string Name => Model.Name;
     public string CurrentPath => NavigationStack.Count == 0 ? "Desktop" : string.Join(" / ", NavigationStack.Select(f => f.FileName));
     public bool IsExpanded { get; private set; }
+    public bool CanNavigateUp => NavigationStack.Count > 0;
     public event EventHandler<bool>? ToggleExpandRequested;
 
     public TaskbarBoxWindowViewModel(DesktopBox model, BoxWindowState state, System.Collections.Generic.IEnumerable<ScannedFile> shortcuts)
@@ -47,6 +49,12 @@ public class TaskbarBoxWindowViewModel : ViewModelBase
         NavigateHomeCommand = new RelayCommand(NavigateHome, () => NavigationStack.Count > 0);
         ToggleExpandCommand = new RelayCommand(ToggleExpanded);
         CloseCommand = new RelayCommand(() => { });
+        
+        // Subscribe to navigation stack changes to update CanNavigateUp property
+        NavigationStack.CollectionChanged += (s, e) =>
+        {
+            OnPropertyChanged(nameof(CanNavigateUp));
+        };
     }
 
     public void ToggleExpanded()
@@ -216,6 +224,7 @@ public class TaskbarBoxWindowViewModel : ViewModelBase
     private void RaiseNavigation()
     {
         OnPropertyChanged(nameof(CurrentPath));
+        OnPropertyChanged(nameof(CanNavigateUp));
         NavigateUpCommand.NotifyCanExecuteChanged();
         NavigateHomeCommand.NotifyCanExecuteChanged();
     }

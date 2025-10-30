@@ -179,6 +179,12 @@ public partial class TaskbarBoxWindow : Window
         }
     }
 
+    private void Button_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        // Stop event propagation so button clicks don't trigger window dragging
+        e.Handled = true;
+    }
+
     private async void OnToggleExpandRequested(object? sender, bool expanded)
     {
         await Boxes.App.Services.AppServices.BoxWindowManager.SetSnappedExpandedAsync(ViewModel.Model.Id, expanded);
