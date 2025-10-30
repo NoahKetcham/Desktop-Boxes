@@ -4,6 +4,10 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Boxes.App.ViewModels;
 using Avalonia.Interactivity;
+using Boxes.App.Services;
+using Boxes.App.Models;
+using Avalonia.Threading;
+using Avalonia.Media;
 
 namespace Boxes.App.Views;
 
@@ -12,11 +16,19 @@ public partial class TaskbarBoxWindow : Window
     private bool _dragging;
     private PixelPoint _startWindow;
     private Point _startPointer;
+    private Border? _contentArea;
+    private Grid? _rootGrid;
+    private Border? _headerBar;
 
     public TaskbarBoxWindow()
     {
         InitializeComponent();
         HookDataContext();
+        _contentArea = this.FindControl<Border>("ContentArea");
+        _rootGrid = this.FindControl<Grid>("RootGrid");
+        _headerBar = this.FindControl<Border>("HeaderBar");
+        AppServices.SettingsService.SettingsChanged += OnSettingsChanged;
+        ApplyTransparencyFromSettings();
     }
 
     internal TaskbarBoxWindowViewModel ViewModel => (TaskbarBoxWindowViewModel)DataContext!;
@@ -34,6 +46,51 @@ public partial class TaskbarBoxWindow : Window
             vm.ToggleExpandRequested -= OnToggleExpandRequested;
             vm.ToggleExpandRequested += OnToggleExpandRequested;
         }
+    }
+
+    private void OnSettingsChanged(object? sender, ApplicationSettings e)
+    {
+        ApplyTransparency(e);
+    }
+
+    private void ApplyTransparencyFromSettings()
+    {
+        var _ = AppServices.SettingsService.GetAsync().ContinueWith(t =>
+        {
+            if (t.Status == System.Threading.Tasks.TaskStatus.RanToCompletion && t.Result is { } s)
+            {
+                ApplyTransparency(s);
+            }
+        });
+    }
+
+    private void ApplyTransparency(ApplicationSettings settings)
+    {
+        var opacity = Math.Clamp(settings.BoxesTransparencyPercent, 0, 100) / 100.0;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_rootGrid != null)
+            {
+                if (_rootGrid.Background is ISolidColorBrush gridBg)
+                    _rootGrid.Background = new SolidColorBrush(gridBg.Color, opacity);
+                else
+                    _rootGrid.Background = new SolidColorBrush(Color.Parse("#1C2235"), opacity);
+            }
+
+            if (_headerBar != null)
+            {
+                if (_headerBar.Background is ISolidColorBrush headerBg)
+                    _headerBar.Background = new SolidColorBrush(headerBg.Color, opacity);
+                else
+                    _headerBar.Background = new SolidColorBrush(Color.Parse("#232B46"), opacity);
+            }
+        });
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        AppServices.SettingsService.SettingsChanged -= OnSettingsChanged;
     }
 
     private void Header_OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -119,6 +176,59 @@ public partial class TaskbarBoxWindow : Window
     private async void OnToggleExpandRequested(object? sender, bool expanded)
     {
         await Boxes.App.Services.AppServices.BoxWindowManager.SetSnappedExpandedAsync(ViewModel.Model.Id, expanded);
+    }
+
+    private void ResizeHandle_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!ViewModel.IsExpanded)
+        {
+            return;
+        }
+
+        if (sender is Border border && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            WindowEdge? edge = border.Tag switch
+            {
+                "Left" => WindowEdge.West,
+                "Right" => WindowEdge.East,
+                "Top" => WindowEdge.North,
+                "TopLeft" => WindowEdge.NorthWest,
+                "TopRight" => WindowEdge.NorthEast,
+                _ => null
+            };
+
+            if (edge.HasValue)
+            {
+                BeginResizeDrag(edge.Value, e);
+                e.Handled = true;
+            }
+        }
+    }
+
+    protected override void OnSizeChanged(SizeChangedEventArgs e)
+    {
+        base.OnSizeChanged(e);
+        // Keep bottom edge anchored to taskbar while resizing
+        var working = Screens.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
+        int y;
+        var heightPx = (int)Math.Round(Bounds.Height * RenderScaling);
+        if (Boxes.App.Extensions.TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTop, out _))
+        {
+            y = taskbarTop - heightPx;
+        }
+        else
+        {
+            y = working.Bottom - heightPx;
+        }
+        Position = new PixelPoint(Position.X, y);
+
+        // Persist size when in expanded state
+        if (ViewModel.IsExpanded)
+        {
+            _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarExpandedHeightAsync(ViewModel.Model.Id, Height);
+            _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarWidthAsync(ViewModel.Model.Id, Width);
+            _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarWindowXAsync(ViewModel.Model.Id, Position.X);
+        }
     }
 
     // Drag & drop support (reuse DesktopBoxWindow handlers)

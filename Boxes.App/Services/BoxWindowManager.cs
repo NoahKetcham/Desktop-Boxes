@@ -19,6 +19,7 @@ public class BoxWindowManager
     private readonly Dictionary<Guid, DesktopBoxWindow> _windows = new();
     private readonly Dictionary<Guid, TaskbarBoxWindow> _taskbarWindows = new();
     private readonly Dictionary<Guid, WindowStateData> _windowStates = new();
+    private readonly Dictionary<Guid, double> _lastExpandedHeights = new();
     private bool _areWindowsVisible = true;
 
     public bool AreWindowsVisible => _areWindowsVisible;
@@ -232,7 +233,7 @@ public class BoxWindowManager
     {
         // capture UI-related values on UI thread
         DesktopBox? model = null;
-        int expandedHeight = 0;
+        int expandedHeight = 0; double expandedWidth = 0;
         int expandedX = 0;
         int expandedY = 0;
 
@@ -244,7 +245,11 @@ public class BoxWindowManager
             }
 
             model = window.ViewModel.Model;
-            expandedHeight = (int)window.Height;
+            expandedHeight = (int)window.Height; expandedWidth = window.Width;
+            if (model is not null)
+            {
+                _lastExpandedHeights[model.Id] = window.Height;
+            }
             expandedX = window.Position.X;
             expandedY = window.Position.Y;
 
@@ -265,6 +270,7 @@ public class BoxWindowManager
         state.Mode = WindowMode.Taskbar;
         state.IsCollapsed = true;
         state.ExpandedHeight = expandedHeight;
+        state.Width = expandedWidth;
         state.ExpandedPosX = expandedX;
         state.ExpandedPosY = expandedY;
         state.NormalWidth = model.Width;
@@ -308,6 +314,9 @@ public class BoxWindowManager
 
     public async Task SetSnappedExpandedAsync(Guid boxId, bool expanded)
     {
+        // Use saved state to determine target expanded height instead of defaulting to 50% each time
+        var currentState = await AppServices.WindowStateService.GetAsync(boxId).ConfigureAwait(false);
+
         int startPx = 0;
         int endPx = 0;
         int newX = 0;
@@ -320,16 +329,35 @@ public class BoxWindowManager
             }
 
             newX = window.Position.X;
-            startPx = (int)Math.Round(window.Bounds.Height * window.RenderScaling);
+            var scale = window.RenderScaling;
+            var clientPx = (int)Math.Round(window.ClientSize.Height * scale);
+            var outerPx = (int)Math.Round(window.Bounds.Height); // ensure integer pixels
+            var nonClientPx = Math.Max(0, outerPx - clientPx);
+            startPx = outerPx;
             var working = GetPrimaryWorkingArea(window);
             if (expanded)
             {
-                var half = Math.Max(120, working.Height / 2);
-                endPx = (int)Math.Round(half * window.RenderScaling);
+                // Prefer the most recent expanded height captured during resizing (session memory),
+                // then persisted state, then initial 50% fallback.
+                double desiredLogical = 0;
+                if (_lastExpandedHeights.TryGetValue(boxId, out var last) && last > 0)
+                {
+                    desiredLogical = last;
+                }
+                else if (currentState.ExpandedHeight > 0)
+                {
+                    desiredLogical = currentState.ExpandedHeight;
+                }
+
+                var desiredClientPx = desiredLogical > 0
+                    ? (int)Math.Round(desiredLogical * scale)
+                    : Math.Max((int)Math.Round(120 * scale), working.Height / 2);
+                endPx = desiredClientPx + nonClientPx;
             }
             else
             {
-                endPx = (int)Math.Round(DesktopBoxWindowViewModel.CollapsedWindowHeight * window.RenderScaling);
+                var collapsedClientPx = (int)Math.Round(DesktopBoxWindowViewModel.CollapsedWindowHeight * scale);
+                endPx = collapsedClientPx + nonClientPx;
             }
         });
 
@@ -338,6 +366,16 @@ public class BoxWindowManager
             return;
         }
         await AnimateTaskbarHeightAsync(w, startPx, endPx, TimeSpan.FromSeconds(1));
+
+        // Capture final height after animation to persist exact expanded height
+        double finalExpandedHeight = 0;
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (_taskbarWindows.TryGetValue(boxId, out var window))
+            {
+                finalExpandedHeight = window.Height;
+            }
+        });
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -350,10 +388,19 @@ public class BoxWindowManager
         var state = await AppServices.WindowStateService.GetAsync(boxId).ConfigureAwait(false);
         state.IsCollapsed = !expanded;
         state.X = newX;
-        if (expanded && state.ExpandedHeight <= 0)
+        if (expanded)
         {
-            var workingHeight = await Dispatcher.UIThread.InvokeAsync(() => GetPrimaryWorkingArea(_taskbarWindows[boxId]).Height);
-            state.ExpandedHeight = Math.Max(120, workingHeight / 2);
+            // Persist actual final expanded height; only fall back if somehow zero
+            if (finalExpandedHeight > 0)
+            {
+                state.ExpandedHeight = finalExpandedHeight;
+                _lastExpandedHeights[boxId] = finalExpandedHeight;
+            }
+            else if (state.ExpandedHeight <= 0)
+            {
+                var workingHeight = await Dispatcher.UIThread.InvokeAsync(() => GetPrimaryWorkingArea(_taskbarWindows[boxId]).Height);
+                state.ExpandedHeight = Math.Max(120, workingHeight / 2);
+            }
         }
         await AppServices.WindowStateService.SaveAsync(state).ConfigureAwait(false);
     }
@@ -380,6 +427,10 @@ public class BoxWindowManager
             y = working.Bottom - heightPx;
         }
         window.Height = height;
+        if (state.Width > 0)
+        {
+            window.Width = state.Width;
+        }
         var x = (int)(state.X == 0 ? window.Position.X : state.X);
         window.Position = new PixelPoint(x, y);
     }
@@ -395,50 +446,144 @@ public class BoxWindowManager
             }).Unwrap();
     }
 
+    public Task SaveTaskbarExpandedHeightAsync(Guid boxId, double height)
+    {
+        return AppServices.WindowStateService.GetAsync(boxId)
+            .ContinueWith(async t =>
+            {
+                var s = t.Result;
+                s.ExpandedHeight = height;
+                await AppServices.WindowStateService.SaveAsync(s).ConfigureAwait(false);
+                _lastExpandedHeights[boxId] = height;
+            }).Unwrap();
+    }
+
+    public Task SaveTaskbarWidthAsync(Guid boxId, double width)
+    {
+        return AppServices.WindowStateService.GetAsync(boxId)
+            .ContinueWith(async t =>
+            {
+                var s = t.Result;
+                s.Width = width;
+                await AppServices.WindowStateService.SaveAsync(s).ConfigureAwait(false);
+            }).Unwrap();
+    }
+
     private async Task AnimateTaskbarHeightAsync(TaskbarBoxWindow window, int startHeightPx, int endHeightPx, TimeSpan duration)
     {
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        var step = TimeSpan.FromMilliseconds(16);
-        var lastApplied = -1;
-        int baseBottomPx;
-        if (TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTopStable, out _))
+        if (duration <= TimeSpan.Zero || startHeightPx == endHeightPx)
         {
-            baseBottomPx = taskbarTopStable;
-        }
-        else
-        {
-            var workingStable = GetPrimaryWorkingArea(window);
-            baseBottomPx = workingStable.Bottom;
-        }
-        var fixedX = window.Position.X;
-        while (sw.Elapsed < duration)
-        {
-            var t = sw.Elapsed.TotalMilliseconds / duration.TotalMilliseconds;
-            var eased = 1 - Math.Pow(1 - t, 3); // ease-out cubic
-            var hPx = (int)Math.Round(startHeightPx + (endHeightPx - startHeightPx) * eased);
-            if (hPx == lastApplied)
-            {
-                await Task.Delay(step).ConfigureAwait(false);
-                continue;
-            }
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                var hLogical = hPx / window.RenderScaling;
-                window.Height = hLogical;
-                var y = baseBottomPx - hPx;
-                window.Position = new PixelPoint(fixedX, y);
+                int baseBottomImmediate;
+                if (TaskbarMetrics.TryGetPrimaryTaskbarTop(out var topImmediate, out _))
+                {
+                    baseBottomImmediate = topImmediate;
+                }
+                else
+                {
+                    baseBottomImmediate = GetPrimaryWorkingArea(window).Bottom;
+                }
+
+                var scale = window.RenderScaling;
+                // Estimate non-client once using current bounds
+                var currentClientPx = (int)Math.Round(window.ClientSize.Height * scale);
+                var currentOuterPx = (int)Math.Round(window.Bounds.Height);
+                var nonClientPx = Math.Max(0, currentOuterPx - currentClientPx);
+
+                var targetClientLogical = Math.Max(0, (endHeightPx - nonClientPx) / scale);
+                window.Height = targetClientLogical;
+                var appliedOuterPx = nonClientPx + (int)Math.Round(window.Height * scale);
+                var y = baseBottomImmediate - appliedOuterPx;
+                window.Position = new PixelPoint(window.Position.X, y);
             });
-            lastApplied = hPx;
-            await Task.Delay(step).ConfigureAwait(false);
+            return;
         }
+
+        var tcs = new TaskCompletionSource<bool>();
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        int baseBottomPx = 0;
+        int fixedX = 0;
+        var lastApplied = -1;
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            var hLogical = endHeightPx / window.RenderScaling;
-            window.Height = hLogical;
-            var y = baseBottomPx - endHeightPx;
-            window.Position = new PixelPoint(fixedX, y);
-        });
+            if (TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTopStable, out _))
+            {
+                baseBottomPx = taskbarTopStable;
+            }
+            else
+            {
+                baseBottomPx = GetPrimaryWorkingArea(window).Bottom;
+            }
+
+            fixedX = window.Position.X;
+
+            // Compute non-client thickness once (in pixels)
+            var scaleLocal = window.RenderScaling;
+            var clientPxNow = (int)Math.Round(window.ClientSize.Height * scaleLocal);
+            var outerPxNow = (int)Math.Round(window.Bounds.Height);
+            var nonClientPx = Math.Max(0, outerPxNow - clientPxNow);
+
+            var timer = new DispatcherTimer(DispatcherPriority.Render)
+            {
+                Interval = TimeSpan.FromMilliseconds(1000.0 / 60.0)
+            };
+
+            EventHandler? tick = null;
+            tick = (_, __) =>
+            {
+                var progress = Math.Min(1.0, sw.Elapsed.TotalMilliseconds / duration.TotalMilliseconds);
+                var eased = 1 - Math.Pow(1 - progress, 3); // ease-out cubic
+                var hPx = (int)Math.Round(startHeightPx + (endHeightPx - startHeightPx) * eased);
+
+                if (hPx != lastApplied)
+                {
+                    var scale = window.RenderScaling;
+                    // Convert desired OUTER pixels to client logical
+                    var hLogical = Math.Max(0, (hPx - nonClientPx) / scale);
+                    window.Height = hLogical;
+
+                    // Recalculate using applied client height and constant non-client to keep bottom pinned
+                    var appliedOuterPx = nonClientPx + (int)Math.Round(window.Height * scale);
+                    var y = baseBottomPx - appliedOuterPx;
+                    window.Position = new PixelPoint(fixedX, y);
+                    lastApplied = hPx;
+                }
+
+                if (progress >= 1.0)
+                {
+                    timer.Tick -= tick!;
+                    timer.Stop();
+
+                    // Snap to exact final state, using non-client adjusted conversion
+                    var scale = window.RenderScaling;
+                    var finalLogical = Math.Max(0, (endHeightPx - nonClientPx) / scale);
+                    window.Height = finalLogical;
+                    var appliedOuterPx = nonClientPx + (int)Math.Round(window.Height * scale);
+                    var y = baseBottomPx - appliedOuterPx;
+                    window.Position = new PixelPoint(fixedX, y);
+
+                    sw.Stop();
+                    tcs.TrySetResult(true);
+                }
+            };
+
+            timer.Tick += tick;
+
+            void onClosed(object? s, EventArgs e)
+            {
+                timer.Tick -= tick!;
+                timer.Stop();
+                window.Closed -= onClosed;
+                tcs.TrySetResult(true);
+            }
+            window.Closed += onClosed;
+
+            timer.Start();
+        }, DispatcherPriority.Render);
+
+        await tcs.Task.ConfigureAwait(false);
     }
 
     public async Task UpdateAsync(DesktopBox box)
@@ -526,6 +671,34 @@ public class BoxWindowManager
         });
     }
 
+    // Closes both free-form desktop windows and taskbar windows
+    public async Task CloseAllWindowsAsync()
+    {
+        await CloseAllAsync().ConfigureAwait(false);
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            foreach (var t in _taskbarWindows.Values.ToList())
+            {
+                t.Close();
+            }
+            _taskbarWindows.Clear();
+        });
+    }
+
+    // Reopens a window for every box based on saved state (normal or taskbar)
+    public async Task OpenAllWindowsAsync()
+    {
+        // Ensure visibility flag is on so newly created windows are shown
+        await SetWindowsVisibility(true).ConfigureAwait(false);
+
+        var boxes = await AppServices.BoxService.GetBoxesAsync().ConfigureAwait(false);
+        foreach (var box in boxes)
+        {
+            await ShowAsync(box).ConfigureAwait(false);
+        }
+    }
+
     private async Task TrySaveWindowStateAsync(DesktopBox model, DesktopBoxWindow window, string currentPath)
     {
         try
@@ -599,3 +772,5 @@ public class BoxWindowManager
         return ShortcutCatalog.GetBoxShortcuts(box, allFiles, storedShortcuts).ToList();
     }
 }
+
+

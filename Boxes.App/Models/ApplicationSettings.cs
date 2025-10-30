@@ -7,5 +7,6 @@ public class ApplicationSettings
     public bool ShowBoxOutlines { get; set; } = true;
     public bool OneDriveLinked { get; set; }
     public bool GoogleDriveLinked { get; set; }
+    public int BoxesTransparencyPercent { get; set; } = 100;
 }
 

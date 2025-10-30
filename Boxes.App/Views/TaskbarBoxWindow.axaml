@@ -6,13 +6,15 @@
         Width="320"
         Height="240"
         MinHeight="40"
-        CanResize="False"
+        CanResize="True"
         CanMinimize="False"
         CanMaximize="False"
         WindowStartupLocation="Manual"
-        SystemDecorations="BorderOnly">
+        SystemDecorations="BorderOnly"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent">
 
-    <Grid Background="#1C2235" ClipToBounds="True"
+    <Grid x:Name="RootGrid" Background="#1C2235" ClipToBounds="True"
           DragDrop.AllowDrop="True"
           DragDrop.DragEnter="Content_OnDragEnter"
           DragDrop.DragOver="Content_OnDragOver"
@@ -22,7 +24,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="1" Background="#232B46" Padding="12" MinHeight="40" Cursor="Hand" UseLayoutRounding="True" RenderOptions.EdgeMode="Aliased"
+        <Border x:Name="HeaderBar" Grid.Row="1" Background="#232B46" Padding="12" MinHeight="40" Cursor="Hand" UseLayoutRounding="True" RenderOptions.EdgeMode="Aliased"
                 PointerPressed="Header_OnPointerPressed" PointerMoved="Header_OnPointerMoved" PointerReleased="Header_OnPointerReleased">
             <TextBlock Text="{Binding Name}"
                        FontSize="16"
@@ -33,12 +35,10 @@
                        TextTrimming="CharacterEllipsis"/>
         </Border>
 
-        <Border Grid.Row="0" Padding="12" IsVisible="{Binding IsExpanded}">
+        <Border x:Name="ContentArea" Grid.Row="0" Padding="12" IsVisible="{Binding IsExpanded}">
             <StackPanel Spacing="8">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <Button Content="Home" Command="{Binding NavigateHomeCommand}"/>
-                    <Button Content="Up" Command="{Binding NavigateUpCommand}"/>
-                    <TextBlock Text="{Binding CurrentPath}" VerticalAlignment="Center"/>
+                    <Button Content="↑" Width="24" Height="24" Command="{Binding NavigateUpCommand}"/>
                 </StackPanel>
                 <ItemsControl ItemsSource="{Binding CurrentItems}">
                 <ItemsControl.ItemsPanel>
@@ -61,6 +61,23 @@
                 </ItemsControl>
             </StackPanel>
         </Border>
+
+        <!-- Resize handles active only when expanded -->
+        <Border Tag="Left" HorizontalAlignment="Left" VerticalAlignment="Stretch" Width="6" Background="Transparent"
+                IsHitTestVisible="{Binding IsExpanded}"
+                PointerPressed="ResizeHandle_OnPointerPressed"/>
+        <Border Tag="Right" HorizontalAlignment="Right" VerticalAlignment="Stretch" Width="6" Background="Transparent"
+                IsHitTestVisible="{Binding IsExpanded}"
+                PointerPressed="ResizeHandle_OnPointerPressed"/>
+        <Border Tag="Top" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="6" Background="Transparent"
+                IsHitTestVisible="{Binding IsExpanded}"
+                PointerPressed="ResizeHandle_OnPointerPressed"/>
+        <Border Tag="TopLeft" HorizontalAlignment="Left" VerticalAlignment="Top" Width="12" Height="12" Background="Transparent"
+                IsHitTestVisible="{Binding IsExpanded}"
+                PointerPressed="ResizeHandle_OnPointerPressed"/>
+        <Border Tag="TopRight" HorizontalAlignment="Right" VerticalAlignment="Top" Width="12" Height="12" Background="Transparent"
+                IsHitTestVisible="{Binding IsExpanded}"
+                PointerPressed="ResizeHandle_OnPointerPressed"/>
     </Grid>
 
 </Window>

@@ -386,12 +386,20 @@ public partial class DashboardPageViewModel : ViewModelBase
         }
 
         var scannedFiles = await AppServices.ScannedFileService.GetScannedFilesAsync();
-        var viewModel = new ShortcutSelectionViewModel(box.Id, box.Name, scannedFiles, box.ShortcutIds);
+        var windowState = await AppServices.WindowStateService.GetAsync(box.Id);
+        var isSnapped = windowState.Mode == WindowMode.Taskbar;
+        
+        var viewModel = new ShortcutSelectionViewModel(box.Id, box.Name, scannedFiles, box.ShortcutIds, isSnapped);
         var dialog = new ShortcutSelectionDialog(viewModel);
 
         dialog.SnapRequested += async (_, _) =>
         {
             await AppServices.BoxWindowManager.SnapToTaskbarAsync(box.Id).ConfigureAwait(false);
+        };
+
+        dialog.UnsnapRequested += async (_, _) =>
+        {
+            await AppServices.BoxWindowManager.UnsnapFromTaskbarAsync(box.Id).ConfigureAwait(false);
         };
 
         var owner = AppServices.MainWindowOwner;

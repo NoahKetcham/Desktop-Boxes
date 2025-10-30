@@ -19,6 +19,8 @@ public class SettingsService
     private readonly SemaphoreSlim _gate = new(1, 1);
     private ApplicationSettings _cache = new();
 
+    public event EventHandler<ApplicationSettings>? SettingsChanged;
+
     public SettingsService(string rootDirectory)
     {
         Directory.CreateDirectory(rootDirectory);
@@ -47,6 +49,9 @@ public class SettingsService
         {
             _gate.Release();
         }
+
+        // Notify listeners after initialization so UI can reflect initial values
+        RaiseChanged();
     }
 
     public async Task<ApplicationSettings> GetAsync()
@@ -74,6 +79,8 @@ public class SettingsService
         {
             _gate.Release();
         }
+
+        RaiseChanged();
     }
 
     private async Task PersistAsync()
@@ -99,6 +106,8 @@ public class SettingsService
         {
             _gate.Release();
         }
+
+        RaiseChanged();
     }
 
     private static ApplicationSettings Clone(ApplicationSettings settings) => new()
@@ -107,7 +116,21 @@ public class SettingsService
         AutoSnapEnabled = settings.AutoSnapEnabled,
         ShowBoxOutlines = settings.ShowBoxOutlines,
         OneDriveLinked = settings.OneDriveLinked,
-        GoogleDriveLinked = settings.GoogleDriveLinked
+        GoogleDriveLinked = settings.GoogleDriveLinked,
+        BoxesTransparencyPercent = settings.BoxesTransparencyPercent
     };
+
+    private void RaiseChanged()
+    {
+        try
+        {
+            var snapshot = Clone(_cache);
+            SettingsChanged?.Invoke(this, snapshot);
+        }
+        catch
+        {
+            // Swallow notification failures; consider logging if available
+        }
+    }
 }
 

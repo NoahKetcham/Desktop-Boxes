@@ -21,7 +21,6 @@ public partial class ShortcutSelectionViewModel : ViewModelBase
 
     public IRelayCommand SaveCommand { get; }
     public IRelayCommand CancelCommand { get; }
-    public IRelayCommand SnapToTaskbarCommand { get; }
     public IRelayCommand<ShortcutSelectionItemViewModel?> EnterFolderCommand { get; }
     public IRelayCommand NavigateUpCommand { get; }
     public IRelayCommand NavigateHomeCommand { get; }
@@ -31,11 +30,19 @@ public partial class ShortcutSelectionViewModel : ViewModelBase
         : string.Join(" / ", NavigationStack.Select(s => s.File.FileName));
 
     public event EventHandler? SnapRequested;
+    public event EventHandler? UnsnapRequested;
 
-    public ShortcutSelectionViewModel(Guid boxId, string boxName, IEnumerable<ScannedFile> files, IEnumerable<Guid> selected)
+    [ObservableProperty]
+    private bool isSnappedToTaskbar;
+
+    private bool _isInitializing = true;
+
+    public ShortcutSelectionViewModel(Guid boxId, string boxName, IEnumerable<ScannedFile> files, IEnumerable<Guid> selected, bool isSnappedToTaskbar = false)
     {
         BoxId = boxId;
         BoxName = boxName;
+        IsSnappedToTaskbar = isSnappedToTaskbar;
+        _isInitializing = false;
         var selectedSet = new HashSet<Guid>(selected);
         Shortcuts = new ObservableCollection<ShortcutSelectionItemViewModel>(
             files.Select(f => new ShortcutSelectionItemViewModel(f, selectedSet.Contains(f.Id))));
@@ -44,10 +51,27 @@ public partial class ShortcutSelectionViewModel : ViewModelBase
 
         SaveCommand = new RelayCommand(() => CloseRequested?.Invoke(this, true));
         CancelCommand = new RelayCommand(() => CloseRequested?.Invoke(this, false));
-        SnapToTaskbarCommand = new RelayCommand(() => SnapRequested?.Invoke(this, EventArgs.Empty));
         EnterFolderCommand = new RelayCommand<ShortcutSelectionItemViewModel?>(EnterFolder);
         NavigateUpCommand = new RelayCommand(NavigateUp, () => NavigationStack.Count > 0);
         NavigateHomeCommand = new RelayCommand(NavigateHome, () => NavigationStack.Count > 0);
+    }
+
+    partial void OnIsSnappedToTaskbarChanged(bool value)
+    {
+        // Skip during initialization or if no change (prevent recursive calls)
+        if (_isInitializing)
+        {
+            return;
+        }
+
+        if (value)
+        {
+            SnapRequested?.Invoke(this, EventArgs.Empty);
+        }
+        else
+        {
+            UnsnapRequested?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     public IEnumerable<ScannedFile> GetSelectedFiles()

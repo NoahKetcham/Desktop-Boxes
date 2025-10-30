@@ -28,13 +28,20 @@ public partial class SettingsPageViewModel : ViewModelBase
     [ObservableProperty]
     private bool googleDriveLinked;
 
+    [ObservableProperty]
+    private int boxesTransparencyPercent = 100;
+
     public IAsyncRelayCommand SaveCommand { get; }
     public IAsyncRelayCommand ResetDataCommand { get; }
+    public IAsyncRelayCommand OpenAllWindowsCommand { get; }
+    public IAsyncRelayCommand CloseAllWindowsCommand { get; }
 
     public SettingsPageViewModel()
     {
         SaveCommand = new AsyncRelayCommand(SaveAsync);
         ResetDataCommand = new AsyncRelayCommand(ResetDataAsync);
+        OpenAllWindowsCommand = new AsyncRelayCommand(OpenAllWindowsAsync);
+        CloseAllWindowsCommand = new AsyncRelayCommand(CloseAllWindowsAsync);
         _ = LoadAsync();
     }
 
@@ -52,7 +59,8 @@ public partial class SettingsPageViewModel : ViewModelBase
             AutoSnapEnabled = AutoSnapEnabled,
             ShowBoxOutlines = ShowBoxOutlines,
             OneDriveLinked = OneDriveLinked,
-            GoogleDriveLinked = GoogleDriveLinked
+            GoogleDriveLinked = GoogleDriveLinked,
+            BoxesTransparencyPercent = BoxesTransparencyPercent
         };
 
         await AppServices.SettingsService.SaveAsync(model);
@@ -65,6 +73,7 @@ public partial class SettingsPageViewModel : ViewModelBase
         ShowBoxOutlines = settings.ShowBoxOutlines;
         OneDriveLinked = settings.OneDriveLinked;
         GoogleDriveLinked = settings.GoogleDriveLinked;
+        BoxesTransparencyPercent = settings.BoxesTransparencyPercent;
     }
 
     private async Task ResetDataAsync()
@@ -82,6 +91,16 @@ public partial class SettingsPageViewModel : ViewModelBase
         {
             desktopLifetime.Shutdown();
         }
+    }
+
+    private async Task OpenAllWindowsAsync()
+    {
+        await AppServices.BoxWindowManager.OpenAllWindowsAsync().ConfigureAwait(false);
+    }
+
+    private async Task CloseAllWindowsAsync()
+    {
+        await AppServices.BoxWindowManager.CloseAllWindowsAsync().ConfigureAwait(false);
     }
 }
 
