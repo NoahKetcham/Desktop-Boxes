@@ -33,6 +33,7 @@ public partial class DesktopBoxWindow : Window
         private double _savedContentHeight = 240;
         private double _savedWindowHeight = 240;
         private DispatcherTimer? _expandAnimationTimer;
+        private int? _currentSnapTargetY;
 
     public DesktopBoxWindow()
     {
@@ -238,6 +239,43 @@ public partial class DesktopBoxWindow : Window
             var deltaY = currentPos.Y - _dragStartPointer.Y;
             var newX = _dragStartWindow.X + (int)deltaX;
             var newY = _dragStartWindow.Y + (int)deltaY;
+            
+            // Check for snap target on top edge with hysteresis
+            const int releaseThreshold = 20; // Larger threshold to release snap (prevents jitter)
+            
+            if (_currentSnapTargetY.HasValue)
+            {
+                // Already snapped - maintain snap until mouse moves beyond release threshold
+                // Calculate distance from proposed position to snap target
+                var distanceFromSnap = Math.Abs(newY - _currentSnapTargetY.Value);
+                if (distanceFromSnap <= releaseThreshold)
+                {
+                    // Keep snapped - force position to snap target to prevent jitter
+                    newY = _currentSnapTargetY.Value;
+                }
+                else
+                {
+                    // Released from snap - check for new snap target
+                    _currentSnapTargetY = null;
+                    var snapTargetY = AppServices.BoxWindowManager.GetSnapTargetY(this, newY);
+                    if (snapTargetY.HasValue)
+                    {
+                        _currentSnapTargetY = snapTargetY.Value;
+                        newY = snapTargetY.Value;
+                    }
+                }
+            }
+            else
+            {
+                // Not currently snapped - check for snap target
+                var snapTargetY = AppServices.BoxWindowManager.GetSnapTargetY(this, newY);
+                if (snapTargetY.HasValue)
+                {
+                    _currentSnapTargetY = snapTargetY.Value;
+                    newY = snapTargetY.Value;
+                }
+            }
+            
             Position = new PixelPoint(newX, newY);
             e.Handled = true;
         }
@@ -286,6 +324,7 @@ public partial class DesktopBoxWindow : Window
             // Reset dragging state
             _headerDragging = false;
             _isDraggingWindow = false;
+            _currentSnapTargetY = null; // Clear snap state on release
         }
 
         e.Pointer.Capture(null);

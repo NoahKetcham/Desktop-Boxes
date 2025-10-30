@@ -771,6 +771,49 @@ public class BoxWindowManager
     {
         return ShortcutCatalog.GetBoxShortcuts(box, allFiles, storedShortcuts).ToList();
     }
+
+    /// <summary>
+    /// Finds a snap target Y position for the current window's top edge when dragging.
+    /// Returns the Y position to snap to if another window's top edge is within 10px, otherwise null.
+    /// </summary>
+    public int? GetSnapTargetY(DesktopBoxWindow currentWindow, int proposedTopY)
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            return Dispatcher.UIThread.InvokeAsync(() => GetSnapTargetY(currentWindow, proposedTopY)).GetAwaiter().GetResult();
+        }
+
+        const int snapThreshold = 10; // pixels
+        var primaryWorkingArea = GetPrimaryWorkingArea(currentWindow);
+        
+        // Get all other windows on primary monitor
+        var candidates = _windows.Values
+            .Where(w => w != currentWindow && !w.ViewModel.IsSnappedToTaskbar)
+            .Select(w => new { Window = w, TopY = w.Position.Y })
+            .Where(c => 
+            {
+                // Check if window is on primary monitor
+                var windowTop = c.TopY;
+                return windowTop >= primaryWorkingArea.Y && windowTop <= primaryWorkingArea.Bottom;
+            })
+            .ToList();
+
+        // Find the closest window top edge within snap threshold
+        int? snapTarget = null;
+        int minDistance = int.MaxValue;
+
+        foreach (var candidate in candidates)
+        {
+            var distance = Math.Abs(candidate.TopY - proposedTopY);
+            if (distance <= snapThreshold && distance < minDistance)
+            {
+                minDistance = distance;
+                snapTarget = candidate.TopY;
+            }
+        }
+
+        return snapTarget;
+    }
 }
 
 
