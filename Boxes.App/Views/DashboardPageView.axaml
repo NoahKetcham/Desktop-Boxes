@@ -40,7 +40,7 @@
                                     <StackPanel Orientation="Horizontal" Spacing="12" Grid.Column="1" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding ItemCount}" FontSize="20" FontWeight="Bold"/>
                                         <Button Content="Open" Command="{Binding DataContext.OpenBoxCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
-                                        <Button Content="Shortcuts" Command="{Binding DataContext.ConfigureShortcutsCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
+                                        <Button Content="Settings" Command="{Binding DataContext.ConfigureBoxSettingsCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
                                         <Button Content="Delete" Foreground="#FF5555" Command="{Binding DataContext.DeleteBoxCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
                                     </StackPanel>
                                 </Grid>

@@ -1,61 +1,78 @@
-<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Boxes.App.ViewModels"
         x:Class="Boxes.App.Views.DesktopBoxWindow"
         x:DataType="vm:DesktopBoxWindowViewModel"
         Width="320"
         Height="240"
+        MinHeight="40"
         CanResize="True"
         CanMinimize="False"
         CanMaximize="False"
         ShowActivated="True"
         WindowStartupLocation="Manual"
-        SystemDecorations="BorderOnly">
+        SystemDecorations="BorderOnly"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent">
 
-    <Grid Background="#1C2235" ClipToBounds="True"
+    <Grid x:Name="RootGrid" Background="#1C2235" ClipToBounds="True"
           DragDrop.AllowDrop="True"
           DragDrop.DragEnter="Content_OnDragEnter"
           DragDrop.DragOver="Content_OnDragOver"
           DragDrop.Drop="Content_OnDrop">
+        
+        <!-- Snap indicator line - shown when within snap range -->
+        <Border x:Name="SnapIndicator" 
+                Height="2" 
+                Background="#FF4444" 
+                HorizontalAlignment="Stretch" 
+                VerticalAlignment="Top"
+                IsVisible="False"
+                ZIndex="999"/>
+        
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="#232B46" Padding="12" PointerPressed="Header_PointerPressed">
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold"/>
-                <Button Content="×" Grid.Column="1" Width="24" Height="24" Command="{Binding CloseCommand}"/>
+        <Border x:Name="HeaderBar" Grid.Row="0" Background="#232B46" Padding="12" MinHeight="40" PointerPressed="Header_PointerPressed" PointerMoved="Header_PointerMoved" PointerReleased="Header_PointerReleased">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
+                <Grid.Styles>
+                    <Style Selector="Button">
+                        <Setter Property="IsVisible" Value="False"/>
+                    </Style>
+                </Grid.Styles>
+                <Button Grid.Column="0" Content="↑" Width="24" Height="24" Command="{Binding NavigateUpCommand}" VerticalAlignment="Center"
+                        IsVisible="{Binding CanNavigateUp}"
+                        PointerPressed="Button_OnPointerPressed"/>
+                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                <Button Grid.Column="2" Width="32" Height="24" Content="â‡•" Command="{Binding ToggleSnapCommand}" Margin="8,0"/>
+                <Button Content="Ã—" Grid.Column="3" Width="24" Height="24" Command="{Binding CloseCommand}"/>
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" Padding="16" BorderBrush="#2D3654" BorderThickness="1" CornerRadius="0,0,8,8">
-            <StackPanel Spacing="12">
-                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <Button Content="Home" Command="{Binding NavigateHomeCommand}"/>
-                    <Button Content="Up" Command="{Binding NavigateUpCommand}"/>
-                    <TextBlock Text="{Binding CurrentPath}" VerticalAlignment="Center"/>
-                </StackPanel>
-                <ItemsControl ItemsSource="{Binding CurrentItems}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel ItemWidth="96" ItemHeight="96" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:DesktopFileViewModel">
-                            <Border Width="96" Height="96" Background="Transparent" Margin="8" Cursor="Hand" DoubleTapped="ShortcutTile_OnDoubleTapped">
-                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
-                                    <Border Width="48" Height="48" Background="#101627" CornerRadius="4" HorizontalAlignment="Center">
-                                        <Image Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform"/>
-                                    </Border>
-                                    <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="96" FontSize="12"/>
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
+        <Border x:Name="ContentArea" Grid.Row="1" Padding="16" BorderBrush="#2D3654" BorderThickness="1" CornerRadius="0,0,8,8">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl x:Name="ShortcutsItemsControl" ItemsSource="{Binding CurrentItems}" IsVisible="{Binding IsExpanded}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel x:Name="IconWrapPanel" ItemWidth="78" ItemHeight="97" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:DesktopFileViewModel">
+                                <Border x:Name="ItemBorder" Background="Transparent" Margin="0" Cursor="Hand" DoubleTapped="ShortcutTile_OnDoubleTapped">
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Spacing="4" Margin="0,4,0,0">
+                                        <Border x:Name="IconBorder" Width="48" Height="48" Background="Transparent" CornerRadius="4" HorizontalAlignment="Center">
+                                            <Image x:Name="IconImage" Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="70" FontSize="11"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+            </ScrollViewer>
         </Border>
 
         <Border Tag="Right" HorizontalAlignment="Right" VerticalAlignment="Stretch" Width="6" Background="Transparent"
@@ -67,4 +84,3 @@
     </Grid>
 
 </Window>
-

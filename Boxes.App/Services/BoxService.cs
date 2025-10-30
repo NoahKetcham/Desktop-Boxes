@@ -144,6 +144,12 @@ public class BoxService
                 existing.PositionX = box.PositionX;
                 existing.PositionY = box.PositionY;
                 existing.CurrentPath = box.CurrentPath;
+                existing.IsSnappedToTaskbar = box.IsSnappedToTaskbar;
+                existing.IsCollapsed = box.IsCollapsed;
+                existing.ExpandedHeight = box.ExpandedHeight;
+                existing.ExpandedPositionX = box.ExpandedPositionX;
+                existing.ExpandedPositionY = box.ExpandedPositionY;
+                existing.WasSnapExpanded = box.WasSnapExpanded;
             }
 
             await PersistAsync().ConfigureAwait(false);
@@ -173,6 +179,25 @@ public class BoxService
         }
     }
 
+    public async Task ResetAsync()
+    {
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            _boxes.Clear();
+            if (File.Exists(_storagePath))
+            {
+                File.Delete(_storagePath);
+            }
+
+            await PersistAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     private async Task PersistAsync()
     {
         await using var stream = File.Create(_storagePath);
@@ -191,7 +216,13 @@ public class BoxService
         Height = box.Height,
         PositionX = box.PositionX,
         PositionY = box.PositionY,
-        CurrentPath = box.CurrentPath
+        CurrentPath = box.CurrentPath,
+        IsSnappedToTaskbar = box.IsSnappedToTaskbar,
+        IsCollapsed = box.IsCollapsed,
+        ExpandedHeight = box.ExpandedHeight,
+        ExpandedPositionX = box.ExpandedPositionX,
+        ExpandedPositionY = box.ExpandedPositionY,
+        WasSnapExpanded = box.WasSnapExpanded
     };
 }
 

@@ -52,7 +52,13 @@ public partial class ShortcutSelectionItemViewModel : ViewModelBase
         try
         {
             var iconService = AppServices.ShellIconService;
-            string? pathToResolve = File.ShortcutPath ?? File.ArchivedContentPath ?? File.FilePath;
+            // For shortcuts, use ShortcutPath (.lnk file) if available so we can read custom icon location
+            // The icon service will resolve the shortcut and extract custom icons if present
+            string? pathToResolve = File.ItemType == ScannedItemType.Shortcut && !string.IsNullOrWhiteSpace(File.ShortcutPath) && System.IO.File.Exists(File.ShortcutPath)
+                ? File.ShortcutPath 
+                : (File.ItemType == ScannedItemType.Shortcut 
+                    ? File.FilePath 
+                    : (File.ShortcutPath ?? File.ArchivedContentPath ?? File.FilePath));
 
             var fileExists = !string.IsNullOrWhiteSpace(pathToResolve) && (System.IO.File.Exists(pathToResolve) || System.IO.Directory.Exists(pathToResolve));
             if (!fileExists)

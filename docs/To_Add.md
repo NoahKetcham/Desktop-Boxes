@@ -50,4 +50,4 @@
 - toolbar icons to be added to the app for quick settings and settings ui launch.
 - Auto start the app when the computer starts up, only boxes windows should start not settings ui.
 
-- 
+- birng boxes to top on click of show desktop button.
