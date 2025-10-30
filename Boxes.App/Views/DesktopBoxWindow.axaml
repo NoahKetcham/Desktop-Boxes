@@ -20,6 +20,16 @@
           DragDrop.DragEnter="Content_OnDragEnter"
           DragDrop.DragOver="Content_OnDragOver"
           DragDrop.Drop="Content_OnDrop">
+        
+        <!-- Snap indicator line - shown when within snap range -->
+        <Border x:Name="SnapIndicator" 
+                Height="2" 
+                Background="#FF4444" 
+                HorizontalAlignment="Stretch" 
+                VerticalAlignment="Top"
+                IsVisible="False"
+                ZIndex="999"/>
+        
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>

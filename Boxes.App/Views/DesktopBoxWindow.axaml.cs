@@ -33,6 +33,7 @@ public partial class DesktopBoxWindow : Window
         private double _savedContentHeight = 240;
         private double _savedWindowHeight = 240;
         private DispatcherTimer? _expandAnimationTimer;
+        private Border? _snapIndicator;
 
     public DesktopBoxWindow()
     {
@@ -43,6 +44,7 @@ public partial class DesktopBoxWindow : Window
         _contentArea = this.FindControl<Border>("ContentArea");
         _rootGrid = this.FindControl<Grid>("RootGrid");
         _headerBar = this.FindControl<Border>("HeaderBar");
+        _snapIndicator = this.FindControl<Border>("SnapIndicator");
         
         // Apply desktop icon metrics
         ApplyDesktopIconMetrics();
@@ -239,6 +241,25 @@ public partial class DesktopBoxWindow : Window
             var newX = _dragStartWindow.X + (int)deltaX;
             var newY = _dragStartWindow.Y + (int)deltaY;
             
+            // Check for snap target in background to show indicator
+            var (snapTargetY, _) = AppServices.BoxWindowManager.GetSnapTargetY(this, newY);
+            if (snapTargetY.HasValue)
+            {
+                // Show snap indicator when within range
+                if (_snapIndicator != null)
+                {
+                    _snapIndicator.IsVisible = true;
+                }
+            }
+            else
+            {
+                // Hide snap indicator when not in range
+                if (_snapIndicator != null)
+                {
+                    _snapIndicator.IsVisible = false;
+                }
+            }
+            
             // Update position normally - snap will happen on release if within range
             Position = new PixelPoint(newX, newY);
             e.Handled = true;
@@ -288,6 +309,12 @@ public partial class DesktopBoxWindow : Window
             // Reset dragging state and check for snap on release
             // Check if we actually dragged before resetting flags
             var actuallyDragged = _isDraggingWindow || dragDistance >= 5;
+            
+            // Hide snap indicator on release
+            if (_snapIndicator != null)
+            {
+                _snapIndicator.IsVisible = false;
+            }
             
             _headerDragging = false;
             _isDraggingWindow = false;
