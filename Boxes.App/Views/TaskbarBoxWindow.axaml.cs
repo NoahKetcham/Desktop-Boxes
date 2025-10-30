@@ -1,7 +1,10 @@
 using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 using Boxes.App.ViewModels;
 using Avalonia.Interactivity;
 using Boxes.App.Services;
@@ -29,6 +32,9 @@ public partial class TaskbarBoxWindow : Window
         _headerBar = this.FindControl<Border>("HeaderBar");
         AppServices.SettingsService.SettingsChanged += OnSettingsChanged;
         ApplyTransparencyFromSettings();
+        
+        // Apply desktop icon metrics
+        ApplyDesktopIconMetrics();
     }
 
     internal TaskbarBoxWindowViewModel ViewModel => (TaskbarBoxWindowViewModel)DataContext!;
@@ -268,6 +274,66 @@ public partial class TaskbarBoxWindow : Window
                 ViewModel.LaunchShortcutCommand.Execute(vm);
             }
         }
+    }
+    
+    private void ApplyDesktopIconMetrics()
+    {
+        var shortcutsControl = this.FindControl<ItemsControl>("ShortcutsItemsControl");
+        if (shortcutsControl == null)
+            return;
+
+        var metrics = DesktopIconMetricsService.GetDesktopIconMetrics();
+        
+        // Apply metrics immediately and also on Loaded event to ensure it takes effect
+        void ApplyMetrics()
+        {
+            // Find the WrapPanel in the visual tree
+            var wrapPanel = shortcutsControl.GetVisualDescendants()
+                .OfType<WrapPanel>()
+                .FirstOrDefault();
+            
+            if (wrapPanel != null)
+            {
+                wrapPanel.ItemWidth = metrics.HorizontalSpacing;
+                wrapPanel.ItemHeight = metrics.VerticalSpacing;
+            }
+        }
+        
+        // Try immediately if control is already loaded
+        if (shortcutsControl.IsLoaded)
+        {
+            ApplyMetrics();
+        }
+        
+        // Also subscribe to Loaded event for when control loads later
+        shortcutsControl.Loaded += (s, e) =>
+        {
+            ApplyMetrics();
+        };
+        
+        // Subscribe to LayoutUpdated as a fallback to catch any timing issues
+        shortcutsControl.LayoutUpdated += (s, e) =>
+        {
+            var wrapPanel = shortcutsControl.GetVisualDescendants()
+                .OfType<WrapPanel>()
+                .FirstOrDefault();
+            
+            if (wrapPanel != null && (wrapPanel.ItemWidth != metrics.HorizontalSpacing || wrapPanel.ItemHeight != metrics.VerticalSpacing))
+            {
+                wrapPanel.ItemWidth = metrics.HorizontalSpacing;
+                wrapPanel.ItemHeight = metrics.VerticalSpacing;
+            }
+        };
+        
+        // Store metrics in resources for potential future use
+        if (Resources == null)
+        {
+            Resources = new ResourceDictionary();
+        }
+        
+        Resources["IconSize"] = metrics.IconSize;
+        Resources["HorizontalSpacing"] = metrics.HorizontalSpacing;
+        Resources["VerticalSpacing"] = metrics.VerticalSpacing;
     }
 }
 

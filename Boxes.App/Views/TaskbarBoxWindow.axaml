@@ -40,20 +40,20 @@
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <Button Content="↑" Width="24" Height="24" Command="{Binding NavigateUpCommand}"/>
                 </StackPanel>
-                <ItemsControl ItemsSource="{Binding CurrentItems}">
+                <ItemsControl x:Name="ShortcutsItemsControl" ItemsSource="{Binding CurrentItems}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <WrapPanel ItemWidth="96" ItemHeight="96" />
+                        <WrapPanel x:Name="IconWrapPanel" ItemWidth="96" ItemHeight="96" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:DesktopFileViewModel">
-                        <Border Width="96" Height="96" Background="Transparent" Margin="8" Cursor="Hand" DoubleTapped="Shortcut_OnDoubleTapped">
-                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
-                                <Border Width="48" Height="48" Background="#101627" CornerRadius="4" HorizontalAlignment="Center">
-                                    <Image Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform"/>
+                        <Border x:Name="ItemBorder" Background="Transparent" Margin="0" Cursor="Hand" DoubleTapped="Shortcut_OnDoubleTapped">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Spacing="4" Margin="0,4,0,0">
+                                <Border x:Name="IconBorder" Width="48" Height="48" Background="Transparent" CornerRadius="4" HorizontalAlignment="Center">
+                                    <Image x:Name="IconImage" Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform"/>
                                 </Border>
-                                <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="96" FontSize="12"/>
+                                <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="70" FontSize="11"/>
                             </StackPanel>
                         </Border>
                     </DataTemplate>

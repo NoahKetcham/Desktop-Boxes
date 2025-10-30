@@ -1,15 +1,18 @@
 using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Interactivity;
+using Avalonia.Styling;
+using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using Boxes.App.ViewModels;
 using Boxes.App.Services;
 using Boxes.App.Models;
 using Avalonia.Threading;
-using Avalonia.Media;
 
 namespace Boxes.App.Views;
 
@@ -30,6 +33,7 @@ public partial class DesktopBoxWindow : Window
         private double _savedContentHeight = 240;
         private double _savedWindowHeight = 240;
         private DispatcherTimer? _expandAnimationTimer;
+        private Border? _snapIndicator;
 
     public DesktopBoxWindow()
     {
@@ -40,6 +44,10 @@ public partial class DesktopBoxWindow : Window
         _contentArea = this.FindControl<Border>("ContentArea");
         _rootGrid = this.FindControl<Grid>("RootGrid");
         _headerBar = this.FindControl<Border>("HeaderBar");
+        _snapIndicator = this.FindControl<Border>("SnapIndicator");
+        
+        // Apply desktop icon metrics
+        ApplyDesktopIconMetrics();
         
         if (_rootGrid?.RowDefinitions.Count > 1)
         {
@@ -227,11 +235,32 @@ public partial class DesktopBoxWindow : Window
         
         if (_isDraggingWindow)
         {
-            // Manually handle window dragging
+            // Manually handle window dragging - no visual snapping during drag
             var deltaX = currentPos.X - _dragStartPointer.X;
             var deltaY = currentPos.Y - _dragStartPointer.Y;
             var newX = _dragStartWindow.X + (int)deltaX;
             var newY = _dragStartWindow.Y + (int)deltaY;
+            
+            // Check for snap target in background to show indicator
+            var (snapTargetY, _) = AppServices.BoxWindowManager.GetSnapTargetY(this, newY);
+            if (snapTargetY.HasValue)
+            {
+                // Show snap indicator when within range
+                if (_snapIndicator != null)
+                {
+                    _snapIndicator.IsVisible = true;
+                }
+            }
+            else
+            {
+                // Hide snap indicator when not in range
+                if (_snapIndicator != null)
+                {
+                    _snapIndicator.IsVisible = false;
+                }
+            }
+            
+            // Update position normally - snap will happen on release if within range
             Position = new PixelPoint(newX, newY);
             e.Handled = true;
         }
@@ -277,9 +306,30 @@ public partial class DesktopBoxWindow : Window
                 return;
             }
             
-            // Reset dragging state
+            // Reset dragging state and check for snap on release
+            // Check if we actually dragged before resetting flags
+            var actuallyDragged = _isDraggingWindow || dragDistance >= 5;
+            
+            // Hide snap indicator on release
+            if (_snapIndicator != null)
+            {
+                _snapIndicator.IsVisible = false;
+            }
+            
             _headerDragging = false;
             _isDraggingWindow = false;
+            
+            // Check if we're within snap range on release - snap happens invisibly in background
+            if (actuallyDragged)
+            {
+                var currentY = Position.Y;
+                var (snapTargetY, _) = AppServices.BoxWindowManager.GetSnapTargetY(this, currentY);
+                if (snapTargetY.HasValue)
+                {
+                    // Snap to target position on release
+                    Position = new PixelPoint(Position.X, snapTargetY.Value);
+                }
+            }
         }
 
         e.Pointer.Capture(null);
@@ -544,6 +594,65 @@ public partial class DesktopBoxWindow : Window
         _expandAnimationTimer.Tick += tick;
         _isContentExpanded = !expand; // Set immediately to prevent double-toggles
         _expandAnimationTimer.Start();
+    }
+
+    private void ApplyDesktopIconMetrics()
+    {
+        if (_shortcutsItemsControl == null)
+            return;
+
+        var metrics = DesktopIconMetricsService.GetDesktopIconMetrics();
+        
+        // Apply metrics immediately and also on Loaded event to ensure it takes effect
+        void ApplyMetrics()
+        {
+            // Find the WrapPanel in the visual tree
+            var wrapPanel = _shortcutsItemsControl.GetVisualDescendants()
+                .OfType<WrapPanel>()
+                .FirstOrDefault();
+            
+            if (wrapPanel != null)
+            {
+                wrapPanel.ItemWidth = metrics.HorizontalSpacing;
+                wrapPanel.ItemHeight = metrics.VerticalSpacing;
+            }
+        }
+        
+        // Try immediately if control is already loaded
+        if (_shortcutsItemsControl.IsLoaded)
+        {
+            ApplyMetrics();
+        }
+        
+        // Also subscribe to Loaded event for when control loads later
+        _shortcutsItemsControl.Loaded += (s, e) =>
+        {
+            ApplyMetrics();
+        };
+        
+        // Subscribe to LayoutUpdated as a fallback to catch any timing issues
+        _shortcutsItemsControl.LayoutUpdated += (s, e) =>
+        {
+            var wrapPanel = _shortcutsItemsControl.GetVisualDescendants()
+                .OfType<WrapPanel>()
+                .FirstOrDefault();
+            
+            if (wrapPanel != null && (wrapPanel.ItemWidth != metrics.HorizontalSpacing || wrapPanel.ItemHeight != metrics.VerticalSpacing))
+            {
+                wrapPanel.ItemWidth = metrics.HorizontalSpacing;
+                wrapPanel.ItemHeight = metrics.VerticalSpacing;
+            }
+        };
+        
+        // Store metrics in resources for potential future use
+        if (Resources == null)
+        {
+            Resources = new ResourceDictionary();
+        }
+        
+        Resources["IconSize"] = metrics.IconSize;
+        Resources["HorizontalSpacing"] = metrics.HorizontalSpacing;
+        Resources["VerticalSpacing"] = metrics.VerticalSpacing;
     }
 
     protected override void OnClosed(EventArgs e)
