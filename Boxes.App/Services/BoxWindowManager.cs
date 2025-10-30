@@ -830,6 +830,19 @@ public class BoxWindowManager
 
         return _taskbarWindows.Values.Where(w => w != currentWindow && w.IsVisible);
     }
+
+    /// <summary>
+    /// Gets all taskbar windows including the current one.
+    /// </summary>
+    public IEnumerable<TaskbarBoxWindow> GetAllTaskbarWindows()
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            return Dispatcher.UIThread.InvokeAsync(() => GetAllTaskbarWindows()).GetAwaiter().GetResult();
+        }
+
+        return _taskbarWindows.Values.Where(w => w.IsVisible);
+    }
 }
 
 

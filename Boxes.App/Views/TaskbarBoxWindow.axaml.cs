@@ -25,6 +25,10 @@ public partial class TaskbarBoxWindow : Window
     private bool _inSnapZone;
     private PixelPoint? _frozenPosition;
     private int? _pendingSnapTargetX;
+    private int? _blockingWindowLeft;
+    private int? _blockingWindowRight;
+    private Border? _passThroughLeftIndicator;
+    private Border? _passThroughRightIndicator;
 
     public TaskbarBoxWindow()
     {
@@ -33,6 +37,8 @@ public partial class TaskbarBoxWindow : Window
         _contentArea = this.FindControl<Border>("ContentArea");
         _rootGrid = this.FindControl<Grid>("RootGrid");
         _headerBar = this.FindControl<Border>("HeaderBar");
+        _passThroughLeftIndicator = this.FindControl<Border>("PassThroughLeftIndicator");
+        _passThroughRightIndicator = this.FindControl<Border>("PassThroughRightIndicator");
         AppServices.SettingsService.SettingsChanged += OnSettingsChanged;
         ApplyTransparencyFromSettings();
         
@@ -115,6 +121,8 @@ public partial class TaskbarBoxWindow : Window
         _inSnapZone = false;
         _frozenPosition = null;
         _pendingSnapTargetX = null;
+        _blockingWindowLeft = null;
+        _blockingWindowRight = null;
         e.Pointer.Capture((IInputElement)sender!);
         e.Handled = true;
     }
@@ -143,22 +151,42 @@ public partial class TaskbarBoxWindow : Window
         var windowWidthPx = (int)Math.Round(Bounds.Width * RenderScaling);
         var clampedX = Math.Clamp(newX, working.X, working.Right - windowWidthPx);
 
-        // Check for snap targets based on proposed position to detect entering/exiting zone
-        var snapTargetX = GetSnapTargetX(clampedX);
+        // Check for pass-through intent and handle it instantly (no visual overlap)
+        clampedX = HandlePassThrough(clampedX, windowWidthPx, deltaX, working);
+
+        // Update pass-through indicators on other windows
+        UpdatePassThroughIndicators(clampedX, windowWidthPx, deltaX);
+
+        // Check for collisions and snap targets
+        var collisionResult = CheckCollisionAndSnap(clampedX, Position.X);
         var wasInSnapZone = _inSnapZone;
-        _inSnapZone = snapTargetX.HasValue;
+        _inSnapZone = collisionResult.InSnapZone || collisionResult.IsBlocked;
+
+        // Always prevent overlap with ALL windows
+        clampedX = PreventOverlapWithAllWindows(clampedX, windowWidthPx, deltaX);
 
         if (_inSnapZone)
         {
-            // We're entering or already in a snap zone
+            // We're entering or already in a snap zone or blocked
             if (!wasInSnapZone)
             {
-                // Just entered snap zone - freeze current position and store snap target
+                // Just entered zone - freeze current position
                 _frozenPosition = Position;
-                _pendingSnapTargetX = snapTargetX.Value;
+                _pendingSnapTargetX = collisionResult.SnapTargetX;
+                _blockingWindowLeft = collisionResult.BlockingLeft;
+                _blockingWindowRight = collisionResult.BlockingRight;
             }
-            // Keep window frozen at the position where we entered the snap zone
-            clampedX = _frozenPosition.HasValue ? _frozenPosition.Value.X : clampedX;
+            
+            // If we're blocked, keep frozen
+            if (collisionResult.IsBlocked && _frozenPosition.HasValue)
+            {
+                clampedX = _frozenPosition.Value.X;
+            }
+            else if (_frozenPosition.HasValue)
+            {
+                // Regular snap zone - keep frozen
+                clampedX = _frozenPosition.Value.X;
+            }
         }
         else
         {
@@ -166,13 +194,15 @@ public partial class TaskbarBoxWindow : Window
             if (wasInSnapZone)
             {
                 // Just exited snap zone - apply the snap visually
-                if (_pendingSnapTargetX.HasValue)
+                if (_pendingSnapTargetX.HasValue && !collisionResult.IsBlocked)
                 {
                     clampedX = _pendingSnapTargetX.Value;
                     clampedX = Math.Clamp(clampedX, working.X, working.Right - windowWidthPx);
                 }
                 _frozenPosition = null;
                 _pendingSnapTargetX = null;
+                _blockingWindowLeft = null;
+                _blockingWindowRight = null;
             }
         }
 
@@ -191,19 +221,231 @@ public partial class TaskbarBoxWindow : Window
         e.Handled = true;
     }
 
-    private int? GetSnapTargetX(int proposedX)
+    public void ShowPassThroughIndicator(bool showLeft, bool showRight)
+    {
+        if (_passThroughLeftIndicator != null)
+        {
+            _passThroughLeftIndicator.IsVisible = showLeft;
+        }
+        if (_passThroughRightIndicator != null)
+        {
+            _passThroughRightIndicator.IsVisible = showRight;
+        }
+    }
+
+    public void HidePassThroughIndicators()
+    {
+        if (_passThroughLeftIndicator != null)
+        {
+            _passThroughLeftIndicator.IsVisible = false;
+        }
+        if (_passThroughRightIndicator != null)
+        {
+            _passThroughRightIndicator.IsVisible = false;
+        }
+    }
+
+    private void UpdatePassThroughIndicators(int proposedX, int windowWidthPx, double deltaX)
+    {
+        const int snapThreshold = 15; // pixels (matches snap gap)
+        var currentX = Position.X;
+        var currentLeft = currentX;
+        var currentRight = currentX + windowWidthPx;
+        var proposedLeft = proposedX;
+        var proposedRight = proposedX + windowWidthPx;
+
+        var otherWindows = AppServices.BoxWindowManager.GetOtherTaskbarWindows(this);
+        
+        // Hide all indicators first
+        HideAllPassThroughIndicators();
+        
+        foreach (var otherWindow in otherWindows)
+        {
+            if (!otherWindow.IsVisible)
+                continue;
+
+            var otherLeft = otherWindow.Position.X;
+            var otherWidthPx = (int)Math.Round(otherWindow.Bounds.Width * otherWindow.RenderScaling);
+            var otherRight = otherLeft + otherWidthPx;
+
+            // Check if we're currently near or overlapping with this window
+            var currentNearOrOverlapping = !(currentRight <= otherLeft - snapThreshold || currentLeft >= otherRight + snapThreshold);
+            
+            if (currentNearOrOverlapping)
+            {
+                // Show indicator on the side we'll appear on
+                if (deltaX > 0 && currentLeft < otherRight)
+                {
+                    // Dragging right - will appear on right side
+                    otherWindow.ShowPassThroughIndicator(false, true);
+                }
+                else if (deltaX < 0 && currentRight > otherLeft)
+                {
+                    // Dragging left - will appear on left side
+                    otherWindow.ShowPassThroughIndicator(true, false);
+                }
+            }
+        }
+    }
+
+    private static void HideAllPassThroughIndicators()
+    {
+        // Get all taskbar windows including the current one
+        var allWindows = AppServices.BoxWindowManager.GetAllTaskbarWindows();
+        foreach (var window in allWindows)
+        {
+            window.HidePassThroughIndicators();
+        }
+    }
+
+    private int HandlePassThrough(int proposedX, int windowWidthPx, double deltaX, PixelRect working)
+    {
+        const int snapThreshold = 15; // pixels (matches snap gap)
+        var currentX = Position.X;
+        var currentLeft = currentX;
+        var currentRight = currentX + windowWidthPx;
+        var proposedLeft = proposedX;
+        var proposedRight = proposedX + windowWidthPx;
+
+        var otherWindows = AppServices.BoxWindowManager.GetOtherTaskbarWindows(this);
+        
+        foreach (var otherWindow in otherWindows)
+        {
+            if (!otherWindow.IsVisible)
+                continue;
+
+            var otherLeft = otherWindow.Position.X;
+            var otherWidthPx = (int)Math.Round(otherWindow.Bounds.Width * otherWindow.RenderScaling);
+            var otherRight = otherLeft + otherWidthPx;
+
+            // Check if we're currently near or overlapping with this window
+            var currentNearOrOverlapping = !(currentRight <= otherLeft - snapThreshold || currentLeft >= otherRight + snapThreshold);
+            
+            if (currentNearOrOverlapping)
+            {
+                // Check if user is trying to pass through (dragging in direction that would cross the window)
+                // Dragging right: if we're near/overlapping on the left side and trying to go past the right edge
+                if (deltaX > 0 && currentLeft < otherRight && proposedLeft >= otherRight + snapThreshold)
+                {
+                    // Trying to pass through from left to right
+                    // Instantly jump to the right side of the blocking window
+                    var jumpX = otherRight + snapThreshold;
+                    jumpX = Math.Clamp(jumpX, working.X, working.Right - windowWidthPx);
+                    
+                    // Clear snap zone state since we're jumping past
+                    _inSnapZone = false;
+                    _frozenPosition = null;
+                    _pendingSnapTargetX = null;
+                    _blockingWindowLeft = null;
+                    _blockingWindowRight = null;
+                    
+                    return jumpX;
+                }
+                // Dragging left: if we're near/overlapping on the right side and trying to go past the left edge
+                else if (deltaX < 0 && currentRight > otherLeft && proposedRight <= otherLeft - snapThreshold)
+                {
+                    // Trying to pass through from right to left
+                    // Instantly jump to the left side of the blocking window
+                    var jumpX = otherLeft - windowWidthPx - snapThreshold;
+                    jumpX = Math.Clamp(jumpX, working.X, working.Right - windowWidthPx);
+                    
+                    // Clear snap zone state since we're jumping past
+                    _inSnapZone = false;
+                    _frozenPosition = null;
+                    _pendingSnapTargetX = null;
+                    _blockingWindowLeft = null;
+                    _blockingWindowRight = null;
+                    
+                    return jumpX;
+                }
+            }
+        }
+
+        return proposedX;
+    }
+
+    private int PreventOverlapWithAllWindows(int proposedX, int windowWidthPx, double deltaX)
+    {
+        var finalX = proposedX;
+
+        var otherWindows = AppServices.BoxWindowManager.GetOtherTaskbarWindows(this);
+        
+        foreach (var otherWindow in otherWindows)
+        {
+            if (!otherWindow.IsVisible)
+                continue;
+
+            var otherLeft = otherWindow.Position.X;
+            var otherWidthPx = (int)Math.Round(otherWindow.Bounds.Width * otherWindow.RenderScaling);
+            var otherRight = otherLeft + otherWidthPx;
+
+            // Check if current finalX position would overlap
+            var finalLeft = finalX;
+            var finalRight = finalX + windowWidthPx;
+            var wouldOverlap = !(finalRight <= otherLeft || finalLeft >= otherRight);
+            
+            if (wouldOverlap)
+            {
+                // Clamp to prevent overlap
+                if (deltaX > 0)
+                {
+                    // Dragging right - clamp to just before the blocking window's left edge
+                    finalX = Math.Min(finalX, otherLeft - windowWidthPx);
+                }
+                else if (deltaX < 0)
+                {
+                    // Dragging left - clamp to just after the blocking window's right edge
+                    finalX = Math.Max(finalX, otherRight);
+                }
+                else
+                {
+                    // No movement - keep current position if already overlapping
+                    var currentLeft = Position.X;
+                    var currentRight = Position.X + windowWidthPx;
+                    var currentlyOverlapping = !(currentRight <= otherLeft || currentLeft >= otherRight);
+                    
+                    if (currentlyOverlapping)
+                    {
+                        // If we're already overlapping, don't change position
+                        finalX = Position.X;
+                    }
+                    else
+                    {
+                        // Clamp to prevent overlap
+                        if (finalLeft < otherLeft)
+                        {
+                            finalX = Math.Min(finalX, otherLeft - windowWidthPx);
+                        }
+                        else
+                        {
+                            finalX = Math.Max(finalX, otherRight);
+                        }
+                    }
+                }
+            }
+        }
+
+        return finalX;
+    }
+
+    private (bool InSnapZone, bool IsBlocked, int? SnapTargetX, int? BlockingLeft, int? BlockingRight) CheckCollisionAndSnap(int proposedX, int currentX)
     {
         const int snapThreshold = 15; // pixels (matches snap gap)
         const int snapGap = 15; // pixels
 
         // Convert window width from logical to physical pixels
         var windowWidthPx = (int)Math.Round(Bounds.Width * RenderScaling);
-        var currentLeft = proposedX;
-        var currentRight = proposedX + windowWidthPx;
+        var proposedLeft = proposedX;
+        var proposedRight = proposedX + windowWidthPx;
+        var currentLeft = currentX;
+        var currentRight = currentX + windowWidthPx;
 
         var otherWindows = AppServices.BoxWindowManager.GetOtherTaskbarWindows(this);
         
         int? bestSnapTarget = null;
+        int? blockingLeft = null;
+        int? blockingRight = null;
+        bool isBlocked = false;
         int minDistance = int.MaxValue;
 
         foreach (var otherWindow in otherWindows)
@@ -215,26 +457,72 @@ public partial class TaskbarBoxWindow : Window
             var otherWidthPx = (int)Math.Round(otherWindow.Bounds.Width * otherWindow.RenderScaling);
             var otherRight = otherLeft + otherWidthPx;
 
-            // Check if current window's left edge is near other window's right edge
-            // Snap current window to be 15px to the right of the other window
-            var distanceToRight = Math.Abs(currentLeft - otherRight);
-            if (distanceToRight <= snapThreshold && distanceToRight < minDistance)
+            // Check for overlap/collision
+            var wouldOverlap = !(proposedRight <= otherLeft || proposedLeft >= otherRight);
+            
+            // Check if we're approaching within threshold (even if not overlapping yet)
+            var approachingFromRight = currentRight > otherRight && proposedLeft < otherRight + snapThreshold;
+            var approachingFromLeft = currentLeft < otherLeft && proposedRight > otherLeft - snapThreshold;
+            
+            if (wouldOverlap || approachingFromRight || approachingFromLeft)
+            {
+                // Check if we're trying to pass through from the right side
+                if (currentRight > otherRight && proposedLeft < otherLeft)
+                {
+                    // Trying to pass through from right to left - block until we've cleared the right edge
+                    if (proposedRight > otherRight - snapThreshold)
+                    {
+                        isBlocked = true;
+                        blockingLeft = otherLeft;
+                        blockingRight = otherRight;
+                    }
+                }
+                // Check if we're trying to pass through from the left side
+                else if (currentLeft < otherLeft && proposedRight > otherRight)
+                {
+                    // Trying to pass through from left to right - block until we've cleared the left edge
+                    if (proposedLeft < otherLeft + snapThreshold)
+                    {
+                        isBlocked = true;
+                        blockingLeft = otherLeft;
+                        blockingRight = otherRight;
+                    }
+                }
+                else if (wouldOverlap)
+                {
+                    // Prevent overlap - block movement
+                    isBlocked = true;
+                    blockingLeft = otherLeft;
+                    blockingRight = otherRight;
+                }
+                else if (approachingFromRight || approachingFromLeft)
+                {
+                    // Approaching within threshold - freeze to prevent overlap
+                    isBlocked = true;
+                    blockingLeft = otherLeft;
+                    blockingRight = otherRight;
+                }
+            }
+
+            // Check if current window's left edge is near other window's right edge (snap zone)
+            var distanceToRight = Math.Abs(proposedLeft - otherRight);
+            if (distanceToRight <= snapThreshold && distanceToRight < minDistance && !wouldOverlap)
             {
                 minDistance = distanceToRight;
                 bestSnapTarget = otherRight + snapGap;
             }
 
-            // Check if current window's right edge is near other window's left edge
-            // Snap current window so its right edge is 15px to the left of the other window
-            var distanceToLeft = Math.Abs(currentRight - otherLeft);
-            if (distanceToLeft <= snapThreshold && distanceToLeft < minDistance)
+            // Check if current window's right edge is near other window's left edge (snap zone)
+            var distanceToLeft = Math.Abs(proposedRight - otherLeft);
+            if (distanceToLeft <= snapThreshold && distanceToLeft < minDistance && !wouldOverlap)
             {
                 minDistance = distanceToLeft;
                 bestSnapTarget = otherLeft - windowWidthPx - snapGap;
             }
         }
 
-        return bestSnapTarget;
+        var inSnapZone = bestSnapTarget.HasValue || isBlocked;
+        return (inSnapZone, isBlocked, bestSnapTarget, blockingLeft, blockingRight);
     }
 
     private void Header_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
@@ -273,6 +561,12 @@ public partial class TaskbarBoxWindow : Window
         _inSnapZone = false;
         _frozenPosition = null;
         _pendingSnapTargetX = null;
+        _blockingWindowLeft = null;
+        _blockingWindowRight = null;
+        
+        // Hide pass-through indicators on all windows
+        HideAllPassThroughIndicators();
+        
         e.Pointer.Capture(null);
         e.Handled = true;
         // Persist X position after drag ends
