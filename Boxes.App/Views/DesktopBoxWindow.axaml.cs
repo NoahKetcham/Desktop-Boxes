@@ -1,15 +1,18 @@
 using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Interactivity;
+using Avalonia.Styling;
+using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using Boxes.App.ViewModels;
 using Boxes.App.Services;
 using Boxes.App.Models;
 using Avalonia.Threading;
-using Avalonia.Media;
 
 namespace Boxes.App.Views;
 
@@ -40,6 +43,9 @@ public partial class DesktopBoxWindow : Window
         _contentArea = this.FindControl<Border>("ContentArea");
         _rootGrid = this.FindControl<Grid>("RootGrid");
         _headerBar = this.FindControl<Border>("HeaderBar");
+        
+        // Apply desktop icon metrics
+        ApplyDesktopIconMetrics();
         
         if (_rootGrid?.RowDefinitions.Count > 1)
         {
@@ -544,6 +550,39 @@ public partial class DesktopBoxWindow : Window
         _expandAnimationTimer.Tick += tick;
         _isContentExpanded = !expand; // Set immediately to prevent double-toggles
         _expandAnimationTimer.Start();
+    }
+
+    private void ApplyDesktopIconMetrics()
+    {
+        if (_shortcutsItemsControl == null)
+            return;
+
+        var metrics = DesktopIconMetricsService.GetDesktopIconMetrics();
+        
+        // We need to wait for the control to be loaded to access the WrapPanel
+        _shortcutsItemsControl.Loaded += (s, e) =>
+        {
+            // Find the WrapPanel in the visual tree
+            var wrapPanel = _shortcutsItemsControl.GetVisualDescendants()
+                .OfType<WrapPanel>()
+                .FirstOrDefault();
+            
+            if (wrapPanel != null)
+            {
+                wrapPanel.ItemWidth = metrics.HorizontalSpacing;
+                wrapPanel.ItemHeight = metrics.VerticalSpacing;
+            }
+        };
+        
+        // Store metrics in resources for potential future use
+        if (Resources == null)
+        {
+            Resources = new ResourceDictionary();
+        }
+        
+        Resources["IconSize"] = metrics.IconSize;
+        Resources["HorizontalSpacing"] = metrics.HorizontalSpacing;
+        Resources["VerticalSpacing"] = metrics.VerticalSpacing;
     }
 
     protected override void OnClosed(EventArgs e)
