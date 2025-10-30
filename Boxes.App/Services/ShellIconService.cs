@@ -23,6 +23,69 @@ public sealed class ShellIconService
         return Task.Run(() => GetIconInternal(path, isDirectory, size));
     }
 
+    /// <summary>
+    /// Resolves the target path of a shortcut (.lnk) file
+    /// </summary>
+    private static string? ResolveShortcutTarget(string shortcutPath)
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return null;
+        }
+
+        try
+        {
+            if (!File.Exists(shortcutPath))
+            {
+                return null;
+            }
+
+            var shellType = Type.GetTypeFromProgID("WScript.Shell");
+            if (shellType is null)
+            {
+                return null;
+            }
+
+            dynamic? shell = Activator.CreateInstance(shellType);
+            if (shell is null)
+            {
+                return null;
+            }
+
+            dynamic shortcut = shell.CreateShortcut(shortcutPath);
+            string targetPath = shortcut.TargetPath;
+            
+            // Also check for URL shortcuts
+            if (string.IsNullOrWhiteSpace(targetPath) && Path.GetExtension(shortcutPath).Equals(".url", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var lines = File.ReadAllLines(shortcutPath);
+                    foreach (var line in lines)
+                    {
+                        if (line.StartsWith("URL=", StringComparison.OrdinalIgnoreCase))
+                        {
+                            targetPath = line.Substring(4).Trim();
+                            break;
+                        }
+                    }
+                }
+                catch
+                {
+                    // Ignore errors reading URL file
+                }
+            }
+
+            return !string.IsNullOrWhiteSpace(targetPath) && (File.Exists(targetPath) || Directory.Exists(targetPath)) 
+                ? targetPath 
+                : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static AvaloniaBitmap? GetIconInternal(string? path, bool isDirectory, IconSize size)
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -30,7 +93,20 @@ public sealed class ShellIconService
             return null;
         }
 
-        var flags = SHGFI_ICON | SHGFI_ADDOVERLAYS;
+        // For shortcut files, resolve the target first to avoid overlay arrows
+        if (!string.IsNullOrWhiteSpace(path) && 
+            (Path.GetExtension(path).Equals(".lnk", StringComparison.OrdinalIgnoreCase) ||
+             Path.GetExtension(path).Equals(".url", StringComparison.OrdinalIgnoreCase)))
+        {
+            var resolvedTarget = ResolveShortcutTarget(path);
+            if (!string.IsNullOrWhiteSpace(resolvedTarget))
+            {
+                path = resolvedTarget;
+                isDirectory = Directory.Exists(resolvedTarget);
+            }
+        }
+
+        var flags = SHGFI_ICON;
         flags |= size == IconSize.Small ? SHGFI_SMALLICON : SHGFI_LARGEICON;
 
         var attributes = isDirectory ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
@@ -41,10 +117,7 @@ public sealed class ShellIconService
             flags |= SHGFI_USEFILEATTRIBUTES;
         }
 
-        if (!string.IsNullOrWhiteSpace(path) && Path.GetExtension(path).Equals(".lnk", StringComparison.OrdinalIgnoreCase))
-        {
-            flags |= SHGFI_LINKOVERLAY;
-        }
+        // Removed SHGFI_ADDOVERLAYS and SHGFI_LINKOVERLAY to show actual desktop icons without shortcut arrow overlay
 
         var info = new SHFILEINFO();
         var result = SHGetFileInfo(path ?? string.Empty, attributes, ref info, (uint)Marshal.SizeOf<SHFILEINFO>(), flags);

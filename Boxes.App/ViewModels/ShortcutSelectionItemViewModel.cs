@@ -52,7 +52,10 @@ public partial class ShortcutSelectionItemViewModel : ViewModelBase
         try
         {
             var iconService = AppServices.ShellIconService;
-            string? pathToResolve = File.ShortcutPath ?? File.ArchivedContentPath ?? File.FilePath;
+            // For shortcuts, use FilePath (target) instead of ShortcutPath (.lnk file) to get the actual icon without overlay
+            string? pathToResolve = File.ItemType == ScannedItemType.Shortcut 
+                ? File.FilePath 
+                : (File.ShortcutPath ?? File.ArchivedContentPath ?? File.FilePath);
 
             var fileExists = !string.IsNullOrWhiteSpace(pathToResolve) && (System.IO.File.Exists(pathToResolve) || System.IO.Directory.Exists(pathToResolve));
             if (!fileExists)

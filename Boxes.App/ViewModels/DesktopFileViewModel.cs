@@ -71,7 +71,10 @@ public class DesktopFileViewModel : ViewModelBase
         try
         {
             var iconService = AppServices.ShellIconService;
-            string? pathToResolve = ShortcutPath ?? ArchivedContentPath ?? FilePath;
+            // For shortcuts, use FilePath (target) instead of ShortcutPath (.lnk file) to get the actual icon without overlay
+            string? pathToResolve = ItemType == ScannedItemType.Shortcut 
+                ? FilePath 
+                : (ShortcutPath ?? ArchivedContentPath ?? FilePath);
 
             var fileExists = !string.IsNullOrWhiteSpace(pathToResolve) && (System.IO.File.Exists(pathToResolve) || System.IO.Directory.Exists(pathToResolve));
             if (!fileExists)
