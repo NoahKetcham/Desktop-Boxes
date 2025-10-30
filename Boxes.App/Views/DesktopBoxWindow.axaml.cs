@@ -241,7 +241,7 @@ public partial class DesktopBoxWindow : Window
             var newY = _dragStartWindow.Y + (int)deltaY;
             
             // Check for snap target on top edge with hysteresis
-            const int releaseThreshold = 20; // Larger threshold to release snap (prevents jitter)
+            const int releaseThreshold = 10; // Threshold to release snap
             
             if (_currentSnapTargetY.HasValue)
             {
@@ -251,32 +251,51 @@ public partial class DesktopBoxWindow : Window
                 if (distanceFromSnap <= releaseThreshold)
                 {
                     // Keep snapped - force position to snap target to prevent jitter
-                    newY = _currentSnapTargetY.Value;
+                    // Only update if position actually changed to avoid double rendering
+                    if (Position.Y != _currentSnapTargetY.Value)
+                    {
+                        newY = _currentSnapTargetY.Value;
+                        Position = new PixelPoint(newX, newY);
+                    }
+                    else
+                    {
+                        // Already at snap position, only update X if needed
+                        if (Position.X != newX)
+                        {
+                            Position = new PixelPoint(newX, Position.Y);
+                        }
+                    }
                 }
                 else
                 {
                     // Released from snap - check for new snap target
                     _currentSnapTargetY = null;
-                    var snapTargetY = AppServices.BoxWindowManager.GetSnapTargetY(this, newY);
+                    var (snapTargetY, _) = AppServices.BoxWindowManager.GetSnapTargetY(this, newY);
                     if (snapTargetY.HasValue)
                     {
                         _currentSnapTargetY = snapTargetY.Value;
                         newY = snapTargetY.Value;
                     }
+                    Position = new PixelPoint(newX, newY);
                 }
             }
             else
             {
                 // Not currently snapped - check for snap target
-                var snapTargetY = AppServices.BoxWindowManager.GetSnapTargetY(this, newY);
+                var (snapTargetY, _) = AppServices.BoxWindowManager.GetSnapTargetY(this, newY);
                 if (snapTargetY.HasValue)
                 {
                     _currentSnapTargetY = snapTargetY.Value;
                     newY = snapTargetY.Value;
+                    Position = new PixelPoint(newX, newY);
+                }
+                else
+                {
+                    // No snap - update position normally
+                    Position = new PixelPoint(newX, newY);
                 }
             }
             
-            Position = new PixelPoint(newX, newY);
             e.Handled = true;
         }
     }

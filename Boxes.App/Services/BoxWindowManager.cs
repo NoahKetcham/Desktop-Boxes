@@ -775,8 +775,9 @@ public class BoxWindowManager
     /// <summary>
     /// Finds a snap target Y position for the current window's top edge when dragging.
     /// Returns the Y position to snap to if another window's top edge is within 10px, otherwise null.
+    /// Also returns the target window that should be hidden during snapping.
     /// </summary>
-    public int? GetSnapTargetY(DesktopBoxWindow currentWindow, int proposedTopY)
+    public (int? SnapTargetY, DesktopBoxWindow? TargetWindow) GetSnapTargetY(DesktopBoxWindow currentWindow, int proposedTopY)
     {
         if (!Dispatcher.UIThread.CheckAccess())
         {
@@ -800,6 +801,7 @@ public class BoxWindowManager
 
         // Find the closest window top edge within snap threshold
         int? snapTarget = null;
+        DesktopBoxWindow? targetWindow = null;
         int minDistance = int.MaxValue;
 
         foreach (var candidate in candidates)
@@ -809,10 +811,11 @@ public class BoxWindowManager
             {
                 minDistance = distance;
                 snapTarget = candidate.TopY;
+                targetWindow = candidate.Window;
             }
         }
 
-        return snapTarget;
+        return (snapTarget, targetWindow);
     }
 }
 
