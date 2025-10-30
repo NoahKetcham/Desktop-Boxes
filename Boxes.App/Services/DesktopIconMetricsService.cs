@@ -11,13 +11,13 @@ public static class DesktopIconMetricsService
     /// <summary>
     /// Gets the current desktop icon spacing and size from Windows system metrics
     /// </summary>
-    /// <param name="itemMargin">The margin applied to each item in the XAML (defaults to 8px per side = 16 total)</param>
-    public static DesktopIconMetrics GetDesktopIconMetrics(int itemMargin = 16)
+    /// <param name="itemMargin">The margin applied to each item in the XAML (defaults to 0px since margins removed)</param>
+    public static DesktopIconMetrics GetDesktopIconMetrics(int itemMargin = 0)
     {
         if (!OperatingSystem.IsWindows())
         {
-            // Return default values for non-Windows platforms
-            return new DesktopIconMetrics(75 - itemMargin, 105 - itemMargin, 48);
+            // Return balanced default values for non-Windows platforms
+            return new DesktopIconMetrics(72, 80, 48);
         }
 
         try
@@ -47,21 +47,36 @@ public static class DesktopIconMetricsService
                     iconSize = 48;
             }
 
-            // Subtract the XAML margin from system metrics to avoid double-spacing
-            // The margin is applied on both sides, so we subtract the total (e.g., 8px left + 8px right = 16px)
-            var adjustedHorizontalSpacing = Math.Max(horizontalSpacing - itemMargin, 48);
-            var adjustedVerticalSpacing = Math.Max(verticalSpacing - itemMargin, 48);
+            // Windows system metrics report the TOTAL tile size (icon + spacing)
+            // Typical desktop: icon (48px) + text (~18px) + padding = ~75-80px horizontal, ~100-105px vertical
+            // We want spacing that matches desktop but isn't cramped - use 75-80% of system metrics
+            // or calculate based on icon size + reasonable padding for text
+            
+            var systemHorizontal = horizontalSpacing > 0 ? horizontalSpacing : 75;
+            var systemVertical = verticalSpacing > 0 ? verticalSpacing : 105;
+            
+            // Calculate based on icon size + padding for text (comfortable spacing)
+            var calculatedHorizontal = iconSize + 24; // ~72px for 48px icon (comfortable for text)
+            var calculatedVertical = iconSize + 32; // ~80px for 48px icon (icon + text + small gap)
+            
+            // Use 75% of system metrics or calculated value, whichever creates better spacing
+            var systemBasedHorizontal = (int)(systemHorizontal * 0.75);
+            var systemBasedVertical = (int)(systemVertical * 0.75);
+            
+            // Use the average of calculated and system-based for best balance
+            var finalHorizontal = (calculatedHorizontal + systemBasedHorizontal) / 2;
+            var finalVertical = (calculatedVertical + systemBasedVertical) / 2;
 
             return new DesktopIconMetrics(
-                horizontalSpacing > 0 ? adjustedHorizontalSpacing : 75 - itemMargin,
-                verticalSpacing > 0 ? adjustedVerticalSpacing : 105 - itemMargin,
+                finalHorizontal,
+                finalVertical,
                 iconSize
             );
         }
         catch
         {
-            // Return safe defaults if system call fails
-            return new DesktopIconMetrics(75 - itemMargin, 105 - itemMargin, 48);
+            // Return balanced defaults if system call fails
+            return new DesktopIconMetrics(72, 80, 48);
         }
     }
 

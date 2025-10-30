@@ -559,8 +559,8 @@ public partial class DesktopBoxWindow : Window
 
         var metrics = DesktopIconMetricsService.GetDesktopIconMetrics();
         
-        // We need to wait for the control to be loaded to access the WrapPanel
-        _shortcutsItemsControl.Loaded += (s, e) =>
+        // Apply metrics immediately and also on Loaded event to ensure it takes effect
+        void ApplyMetrics()
         {
             // Find the WrapPanel in the visual tree
             var wrapPanel = _shortcutsItemsControl.GetVisualDescendants()
@@ -568,6 +568,32 @@ public partial class DesktopBoxWindow : Window
                 .FirstOrDefault();
             
             if (wrapPanel != null)
+            {
+                wrapPanel.ItemWidth = metrics.HorizontalSpacing;
+                wrapPanel.ItemHeight = metrics.VerticalSpacing;
+            }
+        }
+        
+        // Try immediately if control is already loaded
+        if (_shortcutsItemsControl.IsLoaded)
+        {
+            ApplyMetrics();
+        }
+        
+        // Also subscribe to Loaded event for when control loads later
+        _shortcutsItemsControl.Loaded += (s, e) =>
+        {
+            ApplyMetrics();
+        };
+        
+        // Subscribe to LayoutUpdated as a fallback to catch any timing issues
+        _shortcutsItemsControl.LayoutUpdated += (s, e) =>
+        {
+            var wrapPanel = _shortcutsItemsControl.GetVisualDescendants()
+                .OfType<WrapPanel>()
+                .FirstOrDefault();
+            
+            if (wrapPanel != null && (wrapPanel.ItemWidth != metrics.HorizontalSpacing || wrapPanel.ItemHeight != metrics.VerticalSpacing))
             {
                 wrapPanel.ItemWidth = metrics.HorizontalSpacing;
                 wrapPanel.ItemHeight = metrics.VerticalSpacing;
