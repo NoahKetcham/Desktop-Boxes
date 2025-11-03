@@ -32,6 +32,7 @@ public partial class TaskbarBoxWindow : Window
     private Border? _passThroughLeftIndicator;
     private Border? _passThroughRightIndicator;
     private DragLayoutContext? _dragLayoutContext;
+    private const double LayoutGap = 15d;
 
     public TaskbarBoxWindow()
     {
@@ -737,7 +738,7 @@ public partial class TaskbarBoxWindow : Window
 
         var monitorBounds = GetMonitorBoundsForWindow(this);
         var draggedBox = CreateLayout(this);
-        draggedBox.X = Position.X;
+        draggedBox.X = Math.Clamp(Position.X, monitorBounds.X, monitorBounds.Right - draggedBox.Width);
 
         var others = new List<BoxLayout>(allWindows.Count - 1);
         foreach (var window in allWindows)
@@ -761,30 +762,38 @@ public partial class TaskbarBoxWindow : Window
         var insertionIndex = ComputeInsertionIndex(others, draggedBox);
         insertionIndex = Math.Clamp(insertionIndex, 0, others.Count);
 
-        var originalIndex = Math.Clamp(context.OriginalIndex, 0, others.Count);
-
-        var direction = 0;
-        if (insertionIndex > originalIndex)
-        {
-            direction = 1;
-        }
-        else if (insertionIndex < originalIndex)
-        {
-            direction = -1;
-        }
-
-        if (direction == 0)
-        {
-            _dragLayoutContext = null;
-            return;
-        }
-
         var ordered = new List<BoxLayout>(others.Count + 1);
         ordered.AddRange(others);
         ordered.Insert(insertionIndex, draggedBox);
 
-        ShiftForInsertion(ordered, insertionIndex, direction, draggedBox.Width);
-        ResolveLayout(ordered, draggedBox, monitorBounds);
+        var originalIndex = Math.Clamp(context.OriginalIndex, 0, ordered.Count - 1);
+        var direction = Math.Sign(insertionIndex - originalIndex);
+
+        var leftNeighbor = insertionIndex > 0 ? ordered[insertionIndex - 1] : null;
+        var rightNeighbor = insertionIndex + 1 < ordered.Count ? ordered[insertionIndex + 1] : null;
+
+        AlignDraggedWithinNeighbors(draggedBox, leftNeighbor, rightNeighbor, monitorBounds, direction);
+
+        if (direction > 0)
+        {
+            EnsureRightSegment(ordered, insertionIndex, monitorBounds);
+        }
+        else if (direction < 0)
+        {
+            EnsureLeftSegment(ordered, insertionIndex, monitorBounds);
+        }
+        else
+        {
+            EnsureLeftSegment(ordered, insertionIndex, monitorBounds);
+            EnsureRightSegment(ordered, insertionIndex, monitorBounds);
+        }
+
+        ordered.Sort(static (a, b) => a.Left.CompareTo(b.Left));
+        if (!IsWithinBounds(ordered, monitorBounds))
+        {
+            PackWithinBounds(ordered, draggedBox, monitorBounds);
+        }
+
         ApplyLayout(ordered);
 
         _dragLayoutContext = null;
@@ -864,147 +873,141 @@ public partial class TaskbarBoxWindow : Window
         return boxes.Count;
     }
 
-    private static void ShiftForInsertion(IList<BoxLayout> ordered, int draggedIndex, int direction, double delta)
+    private static void AlignDraggedWithinNeighbors(BoxLayout dragged, BoxLayout? leftNeighbor, BoxLayout? rightNeighbor, PixelRect monitorBounds, int direction)
     {
-        if (delta <= 0)
+        double minLeft = monitorBounds.X;
+        if (leftNeighbor != null)
         {
+            minLeft = Math.Max(minLeft, leftNeighbor.Right + LayoutGap);
+        }
+
+        double maxLeft = monitorBounds.Right - dragged.Width;
+        if (rightNeighbor != null)
+        {
+            maxLeft = Math.Min(maxLeft, rightNeighbor.Left - LayoutGap - dragged.Width);
+        }
+
+        if (minLeft <= maxLeft)
+        {
+            dragged.X = Math.Clamp(dragged.X, minLeft, maxLeft);
             return;
         }
 
         if (direction > 0)
         {
-            for (var i = draggedIndex + 1; i < ordered.Count; i++)
-            {
-                ordered[i].X += delta;
-            }
+            dragged.X = minLeft;
         }
         else if (direction < 0)
         {
-            for (var i = draggedIndex - 1; i >= 0; i--)
-            {
-                ordered[i].X -= delta;
-            }
+            dragged.X = maxLeft;
+        }
+        else
+        {
+            dragged.X = Math.Clamp(dragged.X, monitorBounds.X, monitorBounds.Right - dragged.Width);
         }
     }
 
-    private static void ResolveLayout(List<BoxLayout> boxes, BoxLayout dragged, PixelRect monitorBounds)
+    private static void EnsureRightSegment(IList<BoxLayout> boxes, int pivotIndex, PixelRect monitorBounds)
     {
-        if (boxes.Count == 0)
-        {
-            return;
-        }
-
-        boxes.Sort(static (a, b) => a.Left.CompareTo(b.Left));
-        var draggedIndex = boxes.IndexOf(dragged);
-        if (draggedIndex < 0)
-        {
-            return;
-        }
-
-        // Pull left side outward from the dragged box.
-        for (var i = draggedIndex - 1; i >= 0; i--)
-        {
-            var rightNeighbor = boxes[i + 1];
-            if (boxes[i].Right > rightNeighbor.Left)
-            {
-                boxes[i].X = rightNeighbor.Left - boxes[i].Width;
-            }
-        }
-
-        // Push right side outward from the dragged box.
-        for (var i = draggedIndex + 1; i < boxes.Count; i++)
-        {
-            var leftNeighbor = boxes[i - 1];
-            if (boxes[i].Left < leftNeighbor.Right)
-            {
-                boxes[i].X = leftNeighbor.Right;
-            }
-        }
-
-        ClampSidesToBounds(boxes, draggedIndex, monitorBounds);
-
-        if (boxes.Sum(static b => b.Width) > monitorBounds.Width)
-        {
-            PackWithinBounds(boxes, dragged, monitorBounds);
-        }
-
-        // Final pass to ensure no residual overlap.
-        for (var i = 1; i < boxes.Count; i++)
+        for (var i = pivotIndex + 1; i < boxes.Count; i++)
         {
             var prev = boxes[i - 1];
-            var current = boxes[i];
-            if (current.Left < prev.Right)
+            var requiredLeft = prev.Right + LayoutGap;
+            if (boxes[i].Left < requiredLeft)
             {
-                current.X = prev.Right;
+                var delta = requiredLeft - boxes[i].Left;
+                ShiftRange(boxes, i, boxes.Count - 1, delta);
             }
         }
-    }
-
-    private static void ClampSidesToBounds(List<BoxLayout> boxes, int draggedIndex, PixelRect monitorBounds)
-    {
-        var boundsLeft = monitorBounds.X;
-        var boundsRight = monitorBounds.Right;
 
         if (boxes.Count == 0)
         {
             return;
         }
 
-        // Left overflow: shift only the left segment when possible.
-        var leftOverflow = boundsLeft - boxes[0].Left;
-        if (leftOverflow > 0)
+        var overflow = boxes[^1].Right - monitorBounds.Right;
+        if (overflow > 0)
         {
-            var lastLeftIndex = Math.Min(draggedIndex - 1, boxes.Count - 1);
-            if (lastLeftIndex >= 0)
-            {
-                for (var i = 0; i <= lastLeftIndex; i++)
-                {
-                    boxes[i].X += leftOverflow;
-                }
+            ShiftRange(boxes, pivotIndex + 1, boxes.Count - 1, -overflow);
 
-                for (var i = lastLeftIndex; i >= 0; i--)
+            for (var i = pivotIndex + 1; i < boxes.Count; i++)
+            {
+                var prev = boxes[i - 1];
+                var requiredLeft = prev.Right + LayoutGap;
+                if (boxes[i].Left < requiredLeft)
                 {
-                    var rightNeighbor = boxes[i + 1];
-                    if (boxes[i].Right > rightNeighbor.Left)
-                    {
-                        boxes[i].X = rightNeighbor.Left - boxes[i].Width;
-                    }
+                    boxes[i].X = requiredLeft;
                 }
             }
-            else
+        }
+    }
+
+    private static void EnsureLeftSegment(IList<BoxLayout> boxes, int pivotIndex, PixelRect monitorBounds)
+    {
+        for (var i = pivotIndex - 1; i >= 0; i--)
+        {
+            var next = boxes[i + 1];
+            var requiredRight = next.Left - LayoutGap;
+            if (boxes[i].Right > requiredRight)
             {
-                // Dragged is the leftmost box; move it into bounds.
-                boxes[0].X += leftOverflow;
+                var delta = boxes[i].Right - requiredRight;
+                ShiftRange(boxes, 0, i, -delta);
             }
         }
 
-        // Right overflow: shift only the right segment when possible.
-        var rightOverflow = boxes[^1].Right - boundsRight;
-        if (rightOverflow > 0)
+        if (boxes.Count == 0)
         {
-            var firstRightIndex = Math.Max(draggedIndex + 1, 0);
-            if (firstRightIndex < boxes.Count)
+            return;
+        }
+
+        var overflow = monitorBounds.X - boxes[0].Left;
+        if (overflow > 0)
+        {
+            ShiftRange(boxes, 0, pivotIndex - 1, overflow);
+
+            for (var i = pivotIndex - 1; i >= 0; i--)
             {
-                for (var i = firstRightIndex; i < boxes.Count; i++)
+                if (i < 0)
                 {
-                    boxes[i].X -= rightOverflow;
+                    break;
                 }
 
-                for (var i = firstRightIndex; i < boxes.Count; i++)
+                var next = boxes[i + 1];
+                var requiredRight = next.Left - LayoutGap;
+                if (boxes[i].Right > requiredRight)
                 {
-                    var leftNeighbor = boxes[i - 1];
-                    if (boxes[i].Left < leftNeighbor.Right)
-                    {
-                        boxes[i].X = leftNeighbor.Right;
-                    }
+                    boxes[i].X = requiredRight - boxes[i].Width;
                 }
             }
-            else
-            {
-                // Dragged is the rightmost box; move it into bounds.
-                boxes[^1].X -= rightOverflow;
-            }
         }
+    }
+
+    private static void ShiftRange(IList<BoxLayout> boxes, int startIndex, int endIndex, double delta)
+    {
+        if (delta == 0 || startIndex > endIndex)
+        {
+            return;
+        }
+
+        startIndex = Math.Max(startIndex, 0);
+        endIndex = Math.Min(endIndex, boxes.Count - 1);
+
+        for (var i = startIndex; i <= endIndex; i++)
+        {
+            boxes[i].X += delta;
+        }
+    }
+
+    private static bool IsWithinBounds(IReadOnlyList<BoxLayout> boxes, PixelRect monitorBounds)
+    {
+        if (boxes.Count == 0)
+        {
+            return true;
+        }
+
+        var first = boxes[0];
+        var last = boxes[^1];
+        return first.Left >= monitorBounds.X - 0.5 && last.Right <= monitorBounds.Right + 0.5;
     }
 
     private static void PackWithinBounds(List<BoxLayout> boxes, BoxLayout dragged, PixelRect monitorBounds)
@@ -1022,18 +1025,44 @@ public partial class TaskbarBoxWindow : Window
         {
             maxLeft = minLeft;
         }
+
         dragged.X = Math.Clamp(dragged.X, minLeft, maxLeft);
 
         for (var i = draggedIndex - 1; i >= 0; i--)
         {
-            var rightNeighbor = boxes[i + 1];
-            boxes[i].X = Math.Max(minLeft, rightNeighbor.Left - boxes[i].Width);
+            var next = boxes[i + 1];
+            var targetRight = next.Left - LayoutGap;
+            boxes[i].X = targetRight - boxes[i].Width;
         }
 
         for (var i = draggedIndex + 1; i < boxes.Count; i++)
         {
-            var leftNeighbor = boxes[i - 1];
-            boxes[i].X = Math.Min(monitorBounds.Right - boxes[i].Width, leftNeighbor.Right);
+            var prev = boxes[i - 1];
+            var targetLeft = prev.Right + LayoutGap;
+            boxes[i].X = targetLeft;
+        }
+
+        if (boxes.Count == 0)
+        {
+            return;
+        }
+
+        var overflowLeft = monitorBounds.X - boxes[0].Left;
+        if (overflowLeft > 0)
+        {
+            foreach (var box in boxes)
+            {
+                box.X += overflowLeft;
+            }
+        }
+
+        var overflowRight = boxes[^1].Right - monitorBounds.Right;
+        if (overflowRight > 0)
+        {
+            foreach (var box in boxes)
+            {
+                box.X -= overflowRight;
+            }
         }
     }
 
