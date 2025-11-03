@@ -18,7 +18,8 @@ public partial class TaskbarBoxWindow : Window
 {
     private bool _dragging;
     private PixelPoint _startWindow;
-    private Point _startPointer;
+    private PixelPoint _startScreenPosition;
+    private PixelPoint _lastWindowPosition;
     private Border? _contentArea;
     private Grid? _rootGrid;
     private Border? _headerBar;
@@ -115,9 +116,15 @@ public partial class TaskbarBoxWindow : Window
             return;
         }
 
+        // Convert window-relative pointer position to screen coordinates
+        var pointerRelative = e.GetPosition(this);
+        var screenX = Position.X + (int)Math.Round(pointerRelative.X);
+        var screenY = Position.Y + (int)Math.Round(pointerRelative.Y);
+
         _dragging = false; // become true only after threshold movement
         _startWindow = Position;
-        _startPointer = e.GetPosition(this);
+        _lastWindowPosition = Position;
+        _startScreenPosition = new PixelPoint(screenX, screenY);
         _inSnapZone = false;
         _frozenPosition = null;
         _pendingSnapTargetX = null;
@@ -135,8 +142,16 @@ public partial class TaskbarBoxWindow : Window
             return;
         }
 
-        var current = e.GetPosition(this);
-        var deltaX = current.X - _startPointer.X;
+        // Get current pointer position in screen coordinates
+        // Use _lastWindowPosition instead of Position to avoid stale values
+        var currentPointerRelative = e.GetPosition(this);
+        var currentScreenX = _lastWindowPosition.X + (int)Math.Round(currentPointerRelative.X);
+        var currentScreenY = _lastWindowPosition.Y + (int)Math.Round(currentPointerRelative.Y);
+        var currentScreenPos = new PixelPoint(currentScreenX, currentScreenY);
+        
+        // Calculate delta from initial screen position - this prevents drift
+        var deltaX = currentScreenPos.X - _startScreenPosition.X;
+        
         if (!_dragging)
         {
             if (Math.Abs(deltaX) < 6)
@@ -146,16 +161,17 @@ public partial class TaskbarBoxWindow : Window
             _dragging = true; // crossed threshold: start dragging
         }
 
-        var newX = _startWindow.X + (int)deltaX;
+        var newX = _startWindow.X + deltaX;
         var working = Screens.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
         var windowWidthPx = (int)Math.Round(Bounds.Width * RenderScaling);
-        var clampedX = Math.Clamp(newX, working.X, working.Right - windowWidthPx);
+        
+        // Check for pass-through intent using unclamped position - handle it instantly (no visual overlap)
+        var clampedX = HandlePassThrough(newX, windowWidthPx, deltaX, working);
+        // Then clamp to screen bounds
+        clampedX = Math.Clamp(clampedX, working.X, working.Right - windowWidthPx);
 
-        // Check for pass-through intent and handle it instantly (no visual overlap)
-        clampedX = HandlePassThrough(clampedX, windowWidthPx, deltaX, working);
-
-        // Update pass-through indicators on other windows
-        UpdatePassThroughIndicators(clampedX, windowWidthPx, deltaX);
+        // Update pass-through indicators on other windows (use unclamped position for accurate detection)
+        UpdatePassThroughIndicators(newX, windowWidthPx, deltaX);
 
         // Check for collisions and snap targets
         var collisionResult = CheckCollisionAndSnap(clampedX, Position.X);
@@ -217,7 +233,9 @@ public partial class TaskbarBoxWindow : Window
             var heightPx = (int)Math.Round(Bounds.Height * RenderScaling);
             y = working.Bottom - heightPx;
         }
-        Position = new PixelPoint(clampedX, y);
+        var newPos = new PixelPoint(clampedX, y);
+        _lastWindowPosition = newPos;
+        Position = newPos;
         e.Handled = true;
     }
 
@@ -267,19 +285,22 @@ public partial class TaskbarBoxWindow : Window
             var otherLeft = otherWindow.Position.X;
             var otherWidthPx = (int)Math.Round(otherWindow.Bounds.Width * otherWindow.RenderScaling);
             var otherRight = otherLeft + otherWidthPx;
+            var otherMidpoint = otherLeft + otherWidthPx / 2; // 50% point of the other box
 
             // Check if we're currently near or overlapping with this window
             var currentNearOrOverlapping = !(currentRight <= otherLeft - snapThreshold || currentLeft >= otherRight + snapThreshold);
             
             if (currentNearOrOverlapping)
             {
-                // Show indicator on the side we'll appear on
-                if (deltaX > 0 && currentLeft < otherRight)
+                // Show indicator when dragged box crosses 50% of the other box (same as pass-through trigger)
+                // Dragging right: show indicator when dragged box's left edge crosses the midpoint
+                if (deltaX > 0 && currentLeft < otherRight && proposedLeft >= otherMidpoint)
                 {
                     // Dragging right - will appear on right side
                     otherWindow.ShowPassThroughIndicator(false, true);
                 }
-                else if (deltaX < 0 && currentRight > otherLeft)
+                // Dragging left: show indicator when dragged box's right edge crosses the midpoint
+                else if (deltaX < 0 && currentRight > otherLeft && proposedRight <= otherMidpoint)
                 {
                     // Dragging left - will appear on left side
                     otherWindow.ShowPassThroughIndicator(true, false);
@@ -317,15 +338,16 @@ public partial class TaskbarBoxWindow : Window
             var otherLeft = otherWindow.Position.X;
             var otherWidthPx = (int)Math.Round(otherWindow.Bounds.Width * otherWindow.RenderScaling);
             var otherRight = otherLeft + otherWidthPx;
+            var otherMidpoint = otherLeft + otherWidthPx / 2; // 50% point of the other box
 
-            // Check if we're currently near or overlapping with this window
+            // Check if we're currently near or overlapping with this window (same logic as highlight indicators)
             var currentNearOrOverlapping = !(currentRight <= otherLeft - snapThreshold || currentLeft >= otherRight + snapThreshold);
             
             if (currentNearOrOverlapping)
             {
-                // Check if user is trying to pass through (dragging in direction that would cross the window)
-                // Dragging right: if we're near/overlapping on the left side and trying to go past the right edge
-                if (deltaX > 0 && currentLeft < otherRight && proposedLeft >= otherRight + snapThreshold)
+                // Trigger when dragged box crosses 50% of the other box
+                // Dragging right: when dragged box's left edge crosses the midpoint of the other box
+                if (deltaX > 0 && currentLeft < otherRight && proposedLeft >= otherMidpoint)
                 {
                     // Trying to pass through from left to right
                     // Instantly jump to the right side of the blocking window
@@ -341,8 +363,8 @@ public partial class TaskbarBoxWindow : Window
                     
                     return jumpX;
                 }
-                // Dragging left: if we're near/overlapping on the right side and trying to go past the left edge
-                else if (deltaX < 0 && currentRight > otherLeft && proposedRight <= otherLeft - snapThreshold)
+                // Dragging left: when dragged box's right edge crosses the midpoint of the other box
+                else if (deltaX < 0 && currentRight > otherLeft && proposedRight <= otherMidpoint)
                 {
                     // Trying to pass through from right to left
                     // Instantly jump to the left side of the blocking window
@@ -530,7 +552,11 @@ public partial class TaskbarBoxWindow : Window
         if (!_dragging)
         {
             // Treat as click only if very small movement since press
-            var delta = Math.Abs(e.GetPosition(this).X - _startPointer.X);
+            var currentPointerRelative = e.GetPosition(this);
+            var currentScreenX = _lastWindowPosition.X + (int)Math.Round(currentPointerRelative.X);
+            var currentScreenY = _lastWindowPosition.Y + (int)Math.Round(currentPointerRelative.Y);
+            var currentScreenPos = new PixelPoint(currentScreenX, currentScreenY);
+            var delta = Math.Abs(currentScreenPos.X - _startScreenPosition.X);
             if (e.InitialPressMouseButton == MouseButton.Left && delta < 6)
                 ViewModel.ToggleExpanded();
             return;
