@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -30,6 +31,7 @@ public partial class TaskbarBoxWindow : Window
     private int? _blockingWindowRight;
     private Border? _passThroughLeftIndicator;
     private Border? _passThroughRightIndicator;
+    private DragLayoutContext? _dragLayoutContext;
 
     public TaskbarBoxWindow()
     {
@@ -130,6 +132,7 @@ public partial class TaskbarBoxWindow : Window
         _pendingSnapTargetX = null;
         _blockingWindowLeft = null;
         _blockingWindowRight = null;
+        CaptureDragLayoutContext();
         e.Pointer.Capture((IInputElement)sender!);
         e.Handled = true;
     }
@@ -583,6 +586,8 @@ public partial class TaskbarBoxWindow : Window
             Position = new PixelPoint(snappedX, y);
         }
 
+        HandleAutoShiftOnDrop();
+
         _dragging = false;
         _inSnapZone = false;
         _frozenPosition = null;
@@ -712,6 +717,405 @@ public partial class TaskbarBoxWindow : Window
         }
     }
     
+    private void HandleAutoShiftOnDrop()
+    {
+        if (_dragLayoutContext is not { } context || ViewModel?.Model is null)
+        {
+            _dragLayoutContext = null;
+            return;
+        }
+
+        var allWindows = AppServices.BoxWindowManager.GetAllTaskbarWindows()
+            .Where(w => w.IsVisible)
+            .ToList();
+
+        if (allWindows.Count <= 1)
+        {
+            _dragLayoutContext = null;
+            return;
+        }
+
+        var monitorBounds = GetMonitorBoundsForWindow(this);
+        var draggedBox = CreateLayout(this);
+        draggedBox.X = Position.X;
+
+        var others = new List<BoxLayout>(allWindows.Count - 1);
+        foreach (var window in allWindows)
+        {
+            if (ReferenceEquals(window, this))
+            {
+                continue;
+            }
+
+            others.Add(CreateLayout(window));
+        }
+
+        if (others.Count == 0)
+        {
+            _dragLayoutContext = null;
+            return;
+        }
+
+        others.Sort(static (a, b) => a.Left.CompareTo(b.Left));
+
+        var insertionIndex = ComputeInsertionIndex(others, draggedBox);
+        insertionIndex = Math.Clamp(insertionIndex, 0, others.Count);
+
+        var originalIndex = Math.Clamp(context.OriginalIndex, 0, others.Count);
+
+        var direction = 0;
+        if (insertionIndex > originalIndex)
+        {
+            direction = 1;
+        }
+        else if (insertionIndex < originalIndex)
+        {
+            direction = -1;
+        }
+
+        if (direction == 0)
+        {
+            _dragLayoutContext = null;
+            return;
+        }
+
+        var ordered = new List<BoxLayout>(others.Count + 1);
+        ordered.AddRange(others);
+        ordered.Insert(insertionIndex, draggedBox);
+
+        ShiftForInsertion(ordered, insertionIndex, direction, draggedBox.Width);
+        ResolveLayout(ordered, draggedBox, monitorBounds);
+        ApplyLayout(ordered);
+
+        _dragLayoutContext = null;
+    }
+
+    private void CaptureDragLayoutContext()
+    {
+        if (ViewModel?.Model is null)
+        {
+            _dragLayoutContext = null;
+            return;
+        }
+
+        var allWindows = AppServices.BoxWindowManager.GetAllTaskbarWindows()
+            .Where(w => w.IsVisible)
+            .ToList();
+
+        if (allWindows.Count <= 1)
+        {
+            _dragLayoutContext = null;
+            return;
+        }
+
+        var boxes = new List<BoxLayout>(allWindows.Count);
+        foreach (var window in allWindows)
+        {
+            boxes.Add(CreateLayout(window));
+        }
+
+        boxes.Sort(static (a, b) => a.Left.CompareTo(b.Left));
+
+        var originalIndex = boxes.FindIndex(b => b.Id == ViewModel.Model.Id);
+        if (originalIndex < 0)
+        {
+            _dragLayoutContext = null;
+            return;
+        }
+
+        _dragLayoutContext = new DragLayoutContext(originalIndex);
+    }
+
+    private static PixelRect GetMonitorBoundsForWindow(TaskbarBoxWindow window)
+    {
+        var screens = window.Screens;
+        if (screens?.All is { } allScreens)
+        {
+            var position = window.Position;
+            foreach (var screen in allScreens)
+            {
+                if (screen.Bounds.Contains(position))
+                {
+                    return screen.WorkingArea;
+                }
+            }
+        }
+
+        return screens?.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
+    }
+
+    private static int ComputeInsertionIndex(IReadOnlyList<BoxLayout> boxes, BoxLayout dragged)
+    {
+        if (boxes.Count == 0)
+        {
+            return 0;
+        }
+
+        const double epsilon = 0.1;
+        for (var i = 0; i < boxes.Count; i++)
+        {
+            var box = boxes[i];
+            if (dragged.Center < box.Center - epsilon)
+            {
+                return i;
+            }
+        }
+
+        return boxes.Count;
+    }
+
+    private static void ShiftForInsertion(IList<BoxLayout> ordered, int draggedIndex, int direction, double delta)
+    {
+        if (delta <= 0)
+        {
+            return;
+        }
+
+        if (direction > 0)
+        {
+            for (var i = draggedIndex + 1; i < ordered.Count; i++)
+            {
+                ordered[i].X += delta;
+            }
+        }
+        else if (direction < 0)
+        {
+            for (var i = draggedIndex - 1; i >= 0; i--)
+            {
+                ordered[i].X -= delta;
+            }
+        }
+    }
+
+    private static void ResolveLayout(List<BoxLayout> boxes, BoxLayout dragged, PixelRect monitorBounds)
+    {
+        if (boxes.Count == 0)
+        {
+            return;
+        }
+
+        boxes.Sort(static (a, b) => a.Left.CompareTo(b.Left));
+        var draggedIndex = boxes.IndexOf(dragged);
+        if (draggedIndex < 0)
+        {
+            return;
+        }
+
+        // Pull left side outward from the dragged box.
+        for (var i = draggedIndex - 1; i >= 0; i--)
+        {
+            var rightNeighbor = boxes[i + 1];
+            if (boxes[i].Right > rightNeighbor.Left)
+            {
+                boxes[i].X = rightNeighbor.Left - boxes[i].Width;
+            }
+        }
+
+        // Push right side outward from the dragged box.
+        for (var i = draggedIndex + 1; i < boxes.Count; i++)
+        {
+            var leftNeighbor = boxes[i - 1];
+            if (boxes[i].Left < leftNeighbor.Right)
+            {
+                boxes[i].X = leftNeighbor.Right;
+            }
+        }
+
+        ClampSidesToBounds(boxes, draggedIndex, monitorBounds);
+
+        if (boxes.Sum(static b => b.Width) > monitorBounds.Width)
+        {
+            PackWithinBounds(boxes, dragged, monitorBounds);
+        }
+
+        // Final pass to ensure no residual overlap.
+        for (var i = 1; i < boxes.Count; i++)
+        {
+            var prev = boxes[i - 1];
+            var current = boxes[i];
+            if (current.Left < prev.Right)
+            {
+                current.X = prev.Right;
+            }
+        }
+    }
+
+    private static void ClampSidesToBounds(List<BoxLayout> boxes, int draggedIndex, PixelRect monitorBounds)
+    {
+        var boundsLeft = monitorBounds.X;
+        var boundsRight = monitorBounds.Right;
+
+        if (boxes.Count == 0)
+        {
+            return;
+        }
+
+        // Left overflow: shift only the left segment when possible.
+        var leftOverflow = boundsLeft - boxes[0].Left;
+        if (leftOverflow > 0)
+        {
+            var lastLeftIndex = Math.Min(draggedIndex - 1, boxes.Count - 1);
+            if (lastLeftIndex >= 0)
+            {
+                for (var i = 0; i <= lastLeftIndex; i++)
+                {
+                    boxes[i].X += leftOverflow;
+                }
+
+                for (var i = lastLeftIndex; i >= 0; i--)
+                {
+                    var rightNeighbor = boxes[i + 1];
+                    if (boxes[i].Right > rightNeighbor.Left)
+                    {
+                        boxes[i].X = rightNeighbor.Left - boxes[i].Width;
+                    }
+                }
+            }
+            else
+            {
+                // Dragged is the leftmost box; move it into bounds.
+                boxes[0].X += leftOverflow;
+            }
+        }
+
+        // Right overflow: shift only the right segment when possible.
+        var rightOverflow = boxes[^1].Right - boundsRight;
+        if (rightOverflow > 0)
+        {
+            var firstRightIndex = Math.Max(draggedIndex + 1, 0);
+            if (firstRightIndex < boxes.Count)
+            {
+                for (var i = firstRightIndex; i < boxes.Count; i++)
+                {
+                    boxes[i].X -= rightOverflow;
+                }
+
+                for (var i = firstRightIndex; i < boxes.Count; i++)
+                {
+                    var leftNeighbor = boxes[i - 1];
+                    if (boxes[i].Left < leftNeighbor.Right)
+                    {
+                        boxes[i].X = leftNeighbor.Right;
+                    }
+                }
+            }
+            else
+            {
+                // Dragged is the rightmost box; move it into bounds.
+                boxes[^1].X -= rightOverflow;
+            }
+        }
+    }
+
+    private static void PackWithinBounds(List<BoxLayout> boxes, BoxLayout dragged, PixelRect monitorBounds)
+    {
+        boxes.Sort(static (a, b) => a.Left.CompareTo(b.Left));
+        var draggedIndex = boxes.IndexOf(dragged);
+        if (draggedIndex < 0)
+        {
+            draggedIndex = 0;
+        }
+
+        var minLeft = monitorBounds.X;
+        var maxLeft = monitorBounds.Right - dragged.Width;
+        if (maxLeft < minLeft)
+        {
+            maxLeft = minLeft;
+        }
+        dragged.X = Math.Clamp(dragged.X, minLeft, maxLeft);
+
+        for (var i = draggedIndex - 1; i >= 0; i--)
+        {
+            var rightNeighbor = boxes[i + 1];
+            boxes[i].X = Math.Max(minLeft, rightNeighbor.Left - boxes[i].Width);
+        }
+
+        for (var i = draggedIndex + 1; i < boxes.Count; i++)
+        {
+            var leftNeighbor = boxes[i - 1];
+            boxes[i].X = Math.Min(monitorBounds.Right - boxes[i].Width, leftNeighbor.Right);
+        }
+    }
+
+    private void ApplyLayout(List<BoxLayout> boxes)
+    {
+        boxes.Sort(static (a, b) => a.Left.CompareTo(b.Left));
+
+        foreach (var box in boxes)
+        {
+            var window = box.Window;
+            var targetX = (int)Math.Round(box.X);
+            var current = window.Position;
+            if (current.X == targetX)
+            {
+                continue;
+            }
+
+            var newPos = new PixelPoint(targetX, current.Y);
+            window.Position = newPos;
+
+            if (ReferenceEquals(window, this))
+            {
+                _lastWindowPosition = newPos;
+            }
+
+            if (window.DataContext is TaskbarBoxWindowViewModel vm)
+            {
+                _ = AppServices.BoxWindowManager.SaveTaskbarWindowXAsync(vm.Model.Id, targetX);
+            }
+        }
+    }
+
+    private static BoxLayout CreateLayout(TaskbarBoxWindow window)
+    {
+        if (window.DataContext is not TaskbarBoxWindowViewModel vm)
+        {
+            throw new InvalidOperationException("Taskbar window is missing its view model.");
+        }
+
+        var scale = window.RenderScaling;
+        var widthPx = Math.Round(window.Bounds.Width * scale);
+
+        if (widthPx <= 0)
+        {
+            widthPx = Math.Round(window.Width * scale);
+        }
+
+        if (widthPx <= 0)
+        {
+            widthPx = 1;
+        }
+
+        return new BoxLayout(vm.Model.Id, window, window.Position.X, widthPx);
+    }
+
+    private sealed class BoxLayout
+    {
+        public BoxLayout(Guid id, TaskbarBoxWindow window, double x, double width)
+        {
+            Id = id;
+            Window = window;
+            X = x;
+            Width = width;
+        }
+
+        public Guid Id { get; }
+
+        public TaskbarBoxWindow Window { get; }
+
+        public double X { get; set; }
+
+        public double Width { get; }
+
+        public double Left => X;
+
+        public double Right => X + Width;
+
+        public double Center => X + Width / 2d;
+    }
+
+    private readonly record struct DragLayoutContext(int OriginalIndex);
+
     private void ApplyDesktopIconMetrics()
     {
         var shortcutsControl = this.FindControl<ItemsControl>("ShortcutsItemsControl");
