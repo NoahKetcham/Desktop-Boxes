@@ -298,13 +298,13 @@ public partial class TaskbarBoxWindow : Window
             {
                 // Show indicator when dragged box crosses 50% of the other box (same as pass-through trigger)
                 // Dragging right: show indicator when dragged box's left edge crosses the midpoint
-                if (deltaX > 0 && currentLeft < otherRight && proposedLeft >= otherMidpoint)
+                if (deltaX > 0 && currentLeft < otherRight && proposedLeft >= otherRight + LayoutGap)
                 {
                     // Dragging right - will appear on right side
                     otherWindow.ShowPassThroughIndicator(false, true);
                 }
                 // Dragging left: show indicator when dragged box's right edge crosses the midpoint
-                else if (deltaX < 0 && currentRight > otherLeft && proposedRight <= otherMidpoint)
+                else if (deltaX < 0 && currentRight > otherLeft && proposedRight <= otherLeft - LayoutGap)
                 {
                     // Dragging left - will appear on left side
                     otherWindow.ShowPassThroughIndicator(true, false);
@@ -351,11 +351,11 @@ public partial class TaskbarBoxWindow : Window
             {
                 // Trigger when dragged box crosses 50% of the other box
                 // Dragging right: when dragged box's left edge crosses the midpoint of the other box
-                if (deltaX > 0 && currentLeft < otherRight && proposedLeft >= otherMidpoint)
+                if (deltaX > 0 && currentLeft < otherRight && proposedLeft >= otherRight + LayoutGap)
                 {
                     // Trying to pass through from left to right
                     // Instantly jump to the right side of the blocking window
-                    var jumpX = otherRight + snapThreshold;
+                    var jumpX = otherRight + LayoutGap;
                     jumpX = Math.Clamp(jumpX, working.X, working.Right - windowWidthPx);
                     
                     // Clear snap zone state since we're jumping past
@@ -365,14 +365,14 @@ public partial class TaskbarBoxWindow : Window
                     _blockingWindowLeft = null;
                     _blockingWindowRight = null;
                     
-                    return jumpX;
+                    return (int)Math.Round(jumpX);
                 }
                 // Dragging left: when dragged box's right edge crosses the midpoint of the other box
-                else if (deltaX < 0 && currentRight > otherLeft && proposedRight <= otherMidpoint)
+                else if (deltaX < 0 && currentRight > otherLeft && proposedRight <= otherLeft - LayoutGap)
                 {
                     // Trying to pass through from right to left
                     // Instantly jump to the left side of the blocking window
-                    var jumpX = otherLeft - windowWidthPx - snapThreshold;
+                    var jumpX = otherLeft - windowWidthPx - LayoutGap;
                     jumpX = Math.Clamp(jumpX, working.X, working.Right - windowWidthPx);
                     
                     // Clear snap zone state since we're jumping past
@@ -382,7 +382,7 @@ public partial class TaskbarBoxWindow : Window
                     _blockingWindowLeft = null;
                     _blockingWindowRight = null;
                     
-                    return jumpX;
+                    return (int)Math.Round(jumpX);
                 }
             }
         }
