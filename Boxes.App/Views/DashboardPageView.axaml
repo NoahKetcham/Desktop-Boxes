@@ -12,7 +12,7 @@
         <vm:DashboardPageViewModel/>
     </Design.DataContext>
 
-    <ScrollViewer Name="ScrollViewer" VerticalScrollBarVisibility="Auto">
+    <ScrollViewer Name="ScrollViewer" VerticalScrollBarVisibility="Hidden">
         <Border HorizontalAlignment="Center" MaxWidth="1000" Padding="16">
         <StackPanel Spacing="32">
             <StackPanel Spacing="4">
