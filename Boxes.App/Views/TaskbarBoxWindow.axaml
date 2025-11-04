@@ -84,6 +84,12 @@
         <Border Tag="TopRight" HorizontalAlignment="Right" VerticalAlignment="Top" Width="12" Height="12" Background="Transparent"
                 IsHitTestVisible="{Binding IsExpanded}"
                 PointerPressed="ResizeHandle_OnPointerPressed"/>
+        
+        <!-- Pass-through indicators -->
+        <Border x:Name="PassThroughLeftIndicator" HorizontalAlignment="Left" VerticalAlignment="Stretch" Width="3" 
+                Background="#80FFFFFF" Opacity="0.5" IsVisible="False"/>
+        <Border x:Name="PassThroughRightIndicator" HorizontalAlignment="Right" VerticalAlignment="Stretch" Width="3" 
+                Background="#80FFFFFF" Opacity="0.5" IsVisible="False"/>
     </Grid>
 
 </Window>

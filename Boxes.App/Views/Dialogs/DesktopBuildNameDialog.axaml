@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:vm="using:Boxes.App.ViewModels"
+        x:Class="Boxes.App.Views.Dialogs.DesktopBuildNameDialog"
+        x:DataType="vm:DesktopBuildNameDialogViewModel"
+        Width="400"
+        Height="200"
+        Title="Save Desktop Build"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.DataContext>
+        <vm:DesktopBuildNameDialogViewModel/>
+    </Window.DataContext>
+
+    <Border Padding="24">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12">
+            <StackPanel>
+                <TextBlock Text="Save Desktop Build" FontSize="18" FontWeight="SemiBold"/>
+                <TextBlock Text="Enter a name for this desktop configuration." Opacity="0.7"/>
+            </StackPanel>
+
+            <StackPanel Grid.Row="1" Spacing="12" VerticalAlignment="Center">
+                <TextBox Watermark="Build name" Text="{Binding Name, Mode=TwoWay}"/>
+            </StackPanel>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Content="Cancel" Command="{Binding CancelCommand}"/>
+                <Button Content="Save" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+
+</Window>
+
