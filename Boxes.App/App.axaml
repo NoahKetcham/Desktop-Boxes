@@ -12,6 +12,7 @@
   
    <Application.Styles>
        <FluentTheme />
+       <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml"/>
        <StyleInclude Source="avares://Boxes.App/Styles/Tokens.axaml"/>
        <StyleInclude Source="avares://Boxes.App/Styles/Typography.axaml"/>
        <StyleInclude Source="avares://Boxes.App/Styles/Buttons.axaml"/>

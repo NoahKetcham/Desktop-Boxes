@@ -11,7 +11,7 @@
         CanMaximize="False"
         ShowInTaskbar="False"
         WindowStartupLocation="Manual"
-        SystemDecorations="BorderOnly"
+        SystemDecorations="None"
         TransparencyLevelHint="Transparent"
         Background="Transparent">
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
@@ -118,7 +119,10 @@ public class SettingsService
         OneDriveLinked = settings.OneDriveLinked,
         GoogleDriveLinked = settings.GoogleDriveLinked,
         BoxesTransparencyPercent = settings.BoxesTransparencyPercent,
-        AccentHex = settings.AccentHex
+        AccentHex = settings.AccentHex,
+        BoxBackgroundColor = settings.BoxBackgroundColor,
+        RecentAccentColors = settings.RecentAccentColors != null ? new List<string>(settings.RecentAccentColors) : new List<string>(),
+        RecentBoxBackgroundColors = settings.RecentBoxBackgroundColors != null ? new List<string>(settings.RecentBoxBackgroundColors) : new List<string>()
     };
 
     private void RaiseChanged()

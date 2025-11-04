@@ -42,8 +42,8 @@
 #
 #
 # BUILD:
-- save positioon and sizing of box windows on close to preserve functionality.
-- Change tiles to display as the proper Icons instead, show file names under the icons. (change the icons to the proper ones, and add the file names under the icons.)
+|||||||||- save positioon and sizing of box windows on close to preserve functionality.
+|||||||||- Change tiles to display as the proper Icons instead, show file names under the icons. (change the icons to the proper ones, and add the file names under the icons.)
 - Add feature to click and drag desktop (highlighted area) to create a new box the shape of highlighted area.
 - start building themes, well organized each theme in its own file probably.
 - Integrate the settings page into the app.

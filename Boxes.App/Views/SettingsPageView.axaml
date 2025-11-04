@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Boxes.App.ViewModels"
+             xmlns:controls="using:Avalonia.Controls"
              x:Class="Boxes.App.Views.SettingsPageView"
              x:DataType="vm:SettingsPageViewModel">
 
@@ -33,11 +34,80 @@
                     <StackPanel Spacing="10">
                         <TextBlock Text="Accent color" FontWeight="SemiBold" FontSize="16"/>
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                            <Border Grid.Column="0" Width="28" Height="28" CornerRadius="6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="{StaticResource BorderThin}" Background="{StaticResource AccentBrush}"/>
-                            <TextBox Grid.Column="1" Text="{Binding AccentHex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Watermark="#3A8DFF"/>
+                            <Border Grid.Column="0" Width="28" Height="28" CornerRadius="6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="{StaticResource BorderThin}">
+                                <Border.Background>
+                                    <SolidColorBrush Color="{Binding SelectedAccentColor}"/>
+                                </Border.Background>
+                            </Border>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <ItemsControl ItemsSource="{Binding RecentAccentColors}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="6"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Width="24" Height="24" CornerRadius="4" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Cursor="Hand">
+                                                <Border.Background>
+                                                    <SolidColorBrush Color="{Binding}"/>
+                                                </Border.Background>
+                                                <Border.Styles>
+                                                    <Style Selector="Border:pointerover">
+                                                        <Setter Property="Opacity" Value="0.8"/>
+                                                    </Style>
+                                                </Border.Styles>
+                                                <Button Command="{Binding $parent[UserControl].DataContext.SelectRecentAccentColorCommand}" CommandParameter="{Binding}" Background="Transparent" BorderThickness="0" Padding="0" Width="24" Height="24"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
                             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                                <Button Content="Apply" Classes="btn-primary" Command="{Binding ApplyAccentCommand}"/>
+                                <Button x:Name="AccentColorPickerButton" Content="Pick Color" Classes="btn-subtle" Command="{Binding OpenAccentColorPickerPopupCommand}"/>
                                 <Button Content="Reset" Classes="btn-subtle" Command="{Binding ResetAccentCommand}"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Box background color selector -->
+                <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Box background color" FontWeight="SemiBold" FontSize="16"/>
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <Border Grid.Column="0" Width="28" Height="28" CornerRadius="6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="{StaticResource BorderThin}">
+                                <Border.Background>
+                                    <SolidColorBrush Color="{Binding SelectedBoxBackgroundColor}"/>
+                                </Border.Background>
+                            </Border>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <ItemsControl ItemsSource="{Binding RecentBoxBackgroundColors}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="6"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Width="24" Height="24" CornerRadius="4" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Cursor="Hand">
+                                                <Border.Background>
+                                                    <SolidColorBrush Color="{Binding}"/>
+                                                </Border.Background>
+                                                <Border.Styles>
+                                                    <Style Selector="Border:pointerover">
+                                                        <Setter Property="Opacity" Value="0.8"/>
+                                                    </Style>
+                                                </Border.Styles>
+                                                <Button Command="{Binding $parent[UserControl].DataContext.SelectRecentBoxBackgroundColorCommand}" CommandParameter="{Binding}" Background="Transparent" BorderThickness="0" Padding="0" Width="24" Height="24"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                                <Button x:Name="ColorPickerButton" Content="Pick Color" Classes="btn-subtle" Command="{Binding OpenColorPickerPopupCommand}"/>
+                                <Button Content="Reset" Classes="btn-subtle" Command="{Binding ResetBoxBackgroundColorCommand}"/>
                             </StackPanel>
                         </Grid>
                     </StackPanel>
@@ -81,6 +151,34 @@
             </StackPanel>
             </Border>
         </ScrollViewer>
+
+        <!-- Color picker popup -->
+        <Popup x:Name="ColorPickerPopup" IsOpen="{Binding IsColorPickerPopupOpen}" Placement="Bottom" HorizontalOffset="0" VerticalOffset="4">
+            <Border Background="{StaticResource SurfaceElevatedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16" MinWidth="300">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Select Box Background Color" FontWeight="SemiBold" FontSize="14"/>
+                    <controls:ColorPicker Color="{Binding SelectedBoxBackgroundColor, Mode=TwoWay}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                        <Button Content="Cancel" Classes="btn-subtle" Command="{Binding CloseColorPickerPopupCommand}"/>
+                        <Button Content="Apply" Classes="btn-primary" Command="{Binding ApplyBoxBackgroundColorCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <!-- Accent color picker popup -->
+        <Popup x:Name="AccentColorPickerPopup" IsOpen="{Binding IsAccentColorPickerPopupOpen}" Placement="Bottom" HorizontalOffset="0" VerticalOffset="4">
+            <Border Background="{StaticResource SurfaceElevatedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16" MinWidth="300">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Select Accent Color" FontWeight="SemiBold" FontSize="14"/>
+                    <controls:ColorPicker Color="{Binding SelectedAccentColor, Mode=TwoWay}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                        <Button Content="Cancel" Classes="btn-subtle" Command="{Binding CloseAccentColorPickerPopupCommand}"/>
+                        <Button Content="Apply" Classes="btn-primary" Command="{Binding ApplyAccentColorCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Popup>
     </Grid>
 
 </UserControl>
