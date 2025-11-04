@@ -25,14 +25,16 @@
   <!-- Selected and focus states driven by ListBoxItem ancestor -->
   <Style Selector="ListBoxItem:selected Border.card-row">
     <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
-    <Setter Property="BorderThickness" Value="{StaticResource BorderThick}"/>
+    <Setter Property="BorderThickness" Value="{StaticResource BorderThin}"/>
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusL}"/>
     <Setter Property="Background" Value="#122033"/>
     <Setter Property="BoxShadow" Value="{StaticResource ShadowRaised}"/>
   </Style>
 
   <Style Selector="ListBoxItem:focus Border.card-row">
     <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
-    <Setter Property="BorderThickness" Value="{StaticResource BorderThick}"/>
+    <Setter Property="BorderThickness" Value="{StaticResource BorderThin}"/>
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusL}"/>
   </Style>
 
   <!-- ColumnDefinitions can't be set via Style; set directly on Grid where used -->

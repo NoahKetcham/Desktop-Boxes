@@ -17,9 +17,9 @@
 
       <!-- Corner radii -->
       <CornerRadius x:Key="RadiusXS">2</CornerRadius>
-      <CornerRadius x:Key="RadiusS">4</CornerRadius>
-      <CornerRadius x:Key="RadiusM">8</CornerRadius>
-      <CornerRadius x:Key="RadiusL">10</CornerRadius>
+      <CornerRadius x:Key="RadiusS">8</CornerRadius>
+      <CornerRadius x:Key="RadiusM">10</CornerRadius>
+      <CornerRadius x:Key="RadiusL">18</CornerRadius>
 
       <!-- Borders -->
       <Thickness x:Key="BorderThin">1</Thickness>

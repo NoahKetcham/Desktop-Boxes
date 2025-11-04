@@ -20,7 +20,7 @@
                 <TextBlock Text="Manage your desktop boxes" Classes="subtitle"/>
             </StackPanel>
 
-            <StackPanel Spacing="24">
+            <StackPanel Spacing="24" Margin="0,32,0,0">
                 <TextBlock Text="Boxes" FontSize="18" FontWeight="SemiBold"/>
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <Button Content="New Box" Classes="btn-primary" Command="{Binding NewBoxCommand}"/>
@@ -47,7 +47,7 @@
                     </ListBox.ItemsPanel>
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:BoxSummaryViewModel">
-                            <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16" Margin="0,0,0,12">
+                            <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16" Margin="0,0,0,6">
                                 <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                                     <!-- Left: name/ID -->
                                     <StackPanel Grid.Column="0" MinWidth="200">
