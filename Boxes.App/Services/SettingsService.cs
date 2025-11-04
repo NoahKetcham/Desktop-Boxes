@@ -117,7 +117,8 @@ public class SettingsService
         ShowBoxOutlines = settings.ShowBoxOutlines,
         OneDriveLinked = settings.OneDriveLinked,
         GoogleDriveLinked = settings.GoogleDriveLinked,
-        BoxesTransparencyPercent = settings.BoxesTransparencyPercent
+        BoxesTransparencyPercent = settings.BoxesTransparencyPercent,
+        AccentHex = settings.AccentHex
     };
 
     private void RaiseChanged()

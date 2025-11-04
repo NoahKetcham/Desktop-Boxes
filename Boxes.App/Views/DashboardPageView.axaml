@@ -13,35 +13,63 @@
     </Design.DataContext>
 
     <ScrollViewer Name="ScrollViewer" VerticalScrollBarVisibility="Auto">
+        <Border HorizontalAlignment="Center" MaxWidth="1000" Padding="16">
         <StackPanel Spacing="32">
             <StackPanel Spacing="4">
-                <TextBlock Text="Dashboard" FontSize="24" FontWeight="Bold"/>
-                <TextBlock Text="Manage your desktop boxes" Opacity="0.7"/>
+                <TextBlock Text="Dashboard" Classes="title"/>
+                <TextBlock Text="Manage your desktop boxes" Classes="subtitle"/>
             </StackPanel>
 
             <StackPanel Spacing="24">
                 <TextBlock Text="Boxes" FontSize="18" FontWeight="SemiBold"/>
                 <StackPanel Orientation="Horizontal" Spacing="12">
-                    <Button Content="New Box" Command="{Binding NewBoxCommand}"/>
-                    <Button Content="Edit" Command="{Binding EditBoxCommand}"/>
-                    <Button Content="Delete" Command="{Binding DeleteBoxCommand}" Foreground="#FF5555"/>
-                    <Button Content="{Binding DesktopCleanupButtonText}" Command="{Binding ToggleDesktopCleanupCommand}" IsEnabled="{Binding CanToggleDesktopCleanup}"/>
+                    <Button Content="New Box" Classes="btn-primary" Command="{Binding NewBoxCommand}"/>
+                    <Button Content="Edit" Classes="btn-subtle" Command="{Binding EditBoxCommand}"/>
+                    <Button Content="Delete" Classes="btn-danger" Command="{Binding DeleteBoxCommand}"/>
+                    <Button Content="{Binding DesktopCleanupButtonText}" Classes="btn-subtle" Command="{Binding ToggleDesktopCleanupCommand}" IsEnabled="{Binding CanToggleDesktopCleanup}"/>
                 </StackPanel>
 
+                <!-- Empty state -->
+                <Border x:Name="EmptyState" Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="20"
+                        IsVisible="{Binding Boxes.Count, Converter={StaticResource IntIsZeroToBoolConverter}}">
+                    <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="No boxes yet" FontSize="18" FontWeight="SemiBold"/>
+                        <TextBlock Text="Create your first box to start organizing your desktop." Classes="subtitle"/>
+                        <Button Content="Create a Box" Classes="btn-primary" Command="{Binding NewBoxCommand}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
                 <ListBox ItemsSource="{Binding Boxes}" SelectedItem="{Binding SelectedBox, Mode=TwoWay}" BorderThickness="0" Background="Transparent">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:BoxSummaryViewModel">
-                            <Border Background="#141B2D" CornerRadius="12" Padding="16" Margin="0,0,0,12">
-                                <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-                                    <StackPanel>
+                            <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16" Margin="0,0,0,12">
+                                <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                                    <!-- Left: name/ID -->
+                                    <StackPanel Grid.Column="0" MinWidth="200">
                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="16"/>
                                         <TextBlock Text="{Binding Description}" Opacity="0.75" FontSize="12"/>
                                     </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Spacing="12" Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding ItemCount}" FontSize="20" FontWeight="Bold"/>
-                                        <Button Content="Open" Command="{Binding DataContext.OpenBoxCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
-                                        <Button Content="Settings" Command="{Binding DataContext.ConfigureBoxSettingsCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
-                                        <Button Content="Delete" Foreground="#FF5555" Command="{Binding DataContext.DeleteBoxCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
+
+                                    <!-- Middle: badges/metadata -->
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <Border Classes="badge">
+                                            <TextBlock Classes="badge-text" Text="{Binding ItemCount, StringFormat='Items {0}'}"/>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <!-- Right: actions -->
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <Button Content="Open" Classes="btn-primary" Command="{Binding DataContext.OpenBoxCommand, ElementName=DashboardView}" CommandParameter="{Binding}"
+                                                ToolTip.Tip="Open box" AutomationProperties.Name="Open box"/>
+                                        <Button Content="Settings" Classes="btn-subtle" Command="{Binding DataContext.ConfigureBoxSettingsCommand, ElementName=DashboardView}" CommandParameter="{Binding}"
+                                                ToolTip.Tip="Box settings" AutomationProperties.Name="Box settings"/>
+                                        <Button Content="Delete" Classes="btn-danger" Command="{Binding DataContext.DeleteBoxCommand, ElementName=DashboardView}" CommandParameter="{Binding}"
+                                                ToolTip.Tip="Delete box" AutomationProperties.Name="Delete box"/>
                                     </StackPanel>
                                 </Grid>
                             </Border>
@@ -50,16 +78,18 @@
                 </ListBox>
             </StackPanel>
 
-            <Border Background="#141B2D" CornerRadius="12" Padding="16">
+            <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16">
                 <StackPanel Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Spacing="4">
                             <TextBlock Text="Scan Desktop" FontSize="18" FontWeight="SemiBold"/>
-                            <TextBlock Text="Find all files on your desktop to organize them." Opacity="0.7"/>
+                            <TextBlock Text="Find all files on your desktop to organize them." Classes="subtitle"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <Button Content="Scan Now" Command="{Binding ScanDesktopCommand}"/>
-                            <Button Content="Create Shortcuts" Command="{Binding CreateShortcutsCommand}"/>
+                            <Button Content="Scan Now" Classes="btn-primary" Command="{Binding ScanDesktopCommand}"
+                                    ToolTip.Tip="Scan your desktop for files" AutomationProperties.Name="Scan desktop"/>
+                            <Button Content="Create Shortcuts" Classes="btn-subtle" Command="{Binding CreateShortcutsCommand}"
+                                    ToolTip.Tip="Create shortcuts for scanned files" AutomationProperties.Name="Create shortcuts"/>
                         </StackPanel>
                     </Grid>
 
@@ -67,16 +97,16 @@
                 </StackPanel>
             </Border>
 
-            <Border Background="#141B2D" CornerRadius="12" Padding="16">
+            <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16">
                 <StackPanel Spacing="10">
                     <TextBlock Text="Desktop Builds" FontWeight="SemiBold" FontSize="16"/>
-                    <TextBlock Text="Manage your desktop builds" Opacity="0.7" FontSize="12"/>
-                    <Button Content="Save Current Desktop Configuration" Command="{Binding SaveDesktopBuildCommand}" HorizontalAlignment="Stretch" Margin="0,8,0,0"/>
+                    <TextBlock Text="Manage your desktop builds" Classes="subtitle" FontSize="12"/>
+                    <Button Content="Save Current Desktop Configuration" Classes="btn-subtle" Command="{Binding SaveDesktopBuildCommand}" HorizontalAlignment="Stretch" Margin="0,8,0,0"/>
                     
                     <ListBox ItemsSource="{Binding DesktopBuilds}" BorderThickness="0" Background="Transparent" Margin="0,8,0,0">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:DesktopBuildViewModel">
-                                <Border Background="#232B46" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                                <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="12" Margin="0,0,0,8">
                                     <Grid ColumnDefinitions="*,Auto">
                                         <StackPanel>
                                             <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14"/>
@@ -86,8 +116,10 @@
                                             </StackPanel>
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal" Spacing="8" Grid.Column="1" VerticalAlignment="Center">
-                                            <Button Content="Restore" Command="{Binding DataContext.RestoreDesktopBuildCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
-                                            <Button Content="Delete" Foreground="#FF5555" Command="{Binding DataContext.DeleteDesktopBuildCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
+                                            <Button Content="Restore" Classes="btn-subtle" Command="{Binding DataContext.RestoreDesktopBuildCommand, ElementName=DashboardView}" CommandParameter="{Binding}"
+                                                    ToolTip.Tip="Restore this build" AutomationProperties.Name="Restore desktop build"/>
+                                            <Button Content="Delete" Classes="btn-danger" Command="{Binding DataContext.DeleteDesktopBuildCommand, ElementName=DashboardView}" CommandParameter="{Binding}"
+                                                    ToolTip.Tip="Delete this build" AutomationProperties.Name="Delete desktop build"/>
                                         </StackPanel>
                                     </Grid>
                                 </Border>
@@ -97,6 +129,7 @@
                 </StackPanel>
             </Border>
         </StackPanel>
+        </Border>
     </ScrollViewer>
 </UserControl>
 

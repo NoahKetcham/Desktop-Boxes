@@ -1,0 +1,75 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Primary button: solid accent -->
+  <Style Selector="Button.btn-primary">
+    <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusS}"/>
+    <Setter Property="Padding" Value="8,6"/>
+    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+    <Setter Property="BorderThickness" Value="{StaticResource BorderThin}"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.16"/>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.16"/>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.btn-primary:pointerover">
+    <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+    <Setter Property="Opacity" Value="0.95"/>
+  </Style>
+  <Style Selector="Button.btn-primary:pressed">
+    <Setter Property="Opacity" Value="0.9"/>
+  </Style>
+
+  <!-- Subtle/Ghost button -->
+  <Style Selector="Button.btn-subtle">
+    <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+    <Setter Property="Foreground" Value="#EDEFF3"/>
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusS}"/>
+    <Setter Property="Padding" Value="8,6"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="{StaticResource BorderThin}"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.16"/>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.16"/>
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.btn-subtle:pointerover">
+    <Setter Property="Background" Value="#16181C"/>
+    <Setter Property="BorderBrush" Value="#3A3F47"/>
+  </Style>
+
+  <!-- Danger button: outline by default, solid on hover/press -->
+  <Style Selector="Button.btn-danger">
+    <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+    <Setter Property="Foreground" Value="#E06666"/>
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusS}"/>
+    <Setter Property="Padding" Value="8,6"/>
+    <Setter Property="BorderBrush" Value="#5A1F1F"/>
+    <Setter Property="BorderThickness" Value="{StaticResource BorderThin}"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.16"/>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.16"/>
+        <BrushTransition Property="Foreground" Duration="0:0:0.16"/>
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.btn-danger:pointerover">
+    <Setter Property="Background" Value="#3A0F0F"/>
+    <Setter Property="BorderBrush" Value="#A23333"/>
+    <Setter Property="Foreground" Value="#FF6B6B"/>
+  </Style>
+  <Style Selector="Button.btn-danger:pressed">
+    <Setter Property="Background" Value="#A23333"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="BorderBrush" Value="#A23333"/>
+  </Style>
+</Styles>
+
+

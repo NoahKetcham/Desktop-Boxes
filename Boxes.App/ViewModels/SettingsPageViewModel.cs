@@ -35,6 +35,11 @@ public partial class SettingsPageViewModel : ViewModelBase
     public IAsyncRelayCommand ResetDataCommand { get; }
     public IAsyncRelayCommand OpenAllWindowsCommand { get; }
     public IAsyncRelayCommand CloseAllWindowsCommand { get; }
+        public IAsyncRelayCommand ApplyAccentCommand { get; }
+        public IAsyncRelayCommand ResetAccentCommand { get; }
+
+        [ObservableProperty]
+        private string? accentHex;
 
     public SettingsPageViewModel()
     {
@@ -42,6 +47,8 @@ public partial class SettingsPageViewModel : ViewModelBase
         ResetDataCommand = new AsyncRelayCommand(ResetDataAsync);
         OpenAllWindowsCommand = new AsyncRelayCommand(OpenAllWindowsAsync);
         CloseAllWindowsCommand = new AsyncRelayCommand(CloseAllWindowsAsync);
+            ApplyAccentCommand = new AsyncRelayCommand(ApplyAccentAsync);
+            ResetAccentCommand = new AsyncRelayCommand(ResetAccentAsync);
         _ = LoadAsync();
     }
 
@@ -60,7 +67,8 @@ public partial class SettingsPageViewModel : ViewModelBase
             ShowBoxOutlines = ShowBoxOutlines,
             OneDriveLinked = OneDriveLinked,
             GoogleDriveLinked = GoogleDriveLinked,
-            BoxesTransparencyPercent = BoxesTransparencyPercent
+                BoxesTransparencyPercent = BoxesTransparencyPercent,
+                AccentHex = AccentHex
         };
 
         await AppServices.SettingsService.SaveAsync(model);
@@ -74,6 +82,7 @@ public partial class SettingsPageViewModel : ViewModelBase
         OneDriveLinked = settings.OneDriveLinked;
         GoogleDriveLinked = settings.GoogleDriveLinked;
         BoxesTransparencyPercent = settings.BoxesTransparencyPercent;
+            AccentHex = settings.AccentHex;
     }
 
     private async Task ResetDataAsync()
@@ -101,6 +110,29 @@ public partial class SettingsPageViewModel : ViewModelBase
     private async Task CloseAllWindowsAsync()
     {
         await AppServices.BoxWindowManager.CloseAllWindowsAsync().ConfigureAwait(false);
+    }
+
+    private async Task ApplyAccentAsync()
+    {
+        // Try apply at runtime; if valid, persist
+        var applied = AccentService.TryApplyAccentHex(AccentHex);
+        if (!applied)
+        {
+            return;
+        }
+
+        var current = await AppServices.SettingsService.GetAsync();
+        current.AccentHex = AccentHex;
+        await AppServices.SettingsService.SaveAsync(current);
+    }
+
+    private async Task ResetAccentAsync()
+    {
+        AccentService.ResetToDefault();
+        var current = await AppServices.SettingsService.GetAsync();
+        current.AccentHex = null;
+        await AppServices.SettingsService.SaveAsync(current);
+        AccentHex = null;
     }
 }
 

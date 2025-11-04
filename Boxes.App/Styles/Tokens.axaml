@@ -1,0 +1,35 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style>
+    <Style.Resources>
+      <!-- Central color tokens -->
+      <SolidColorBrush x:Key="AccentBrush" Color="#FF3A8DFF"/>
+      <SolidColorBrush x:Key="AccentMutedBrush" Color="#803A8DFF"/>
+      <SolidColorBrush x:Key="SurfaceBrush" Color="#121316"/>
+      <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#1A1C20"/>
+      <SolidColorBrush x:Key="BorderBrush" Color="#2A2D33"/>
+
+      <!-- Spacing scale -->
+      <x:Int32 x:Key="Space4">4</x:Int32>
+      <x:Int32 x:Key="Space8">8</x:Int32>
+      <x:Int32 x:Key="Space12">12</x:Int32>
+      <x:Int32 x:Key="Space16">16</x:Int32>
+
+      <!-- Corner radii -->
+      <CornerRadius x:Key="RadiusXS">2</CornerRadius>
+      <CornerRadius x:Key="RadiusS">4</CornerRadius>
+      <CornerRadius x:Key="RadiusM">8</CornerRadius>
+      <CornerRadius x:Key="RadiusL">10</CornerRadius>
+
+      <!-- Borders -->
+      <Thickness x:Key="BorderThin">1</Thickness>
+      <Thickness x:Key="BorderThick">2</Thickness>
+
+      <!-- Shadows (offsetX offsetY blur spread color) -->
+      <BoxShadows x:Key="ShadowBase">0 2 8 0 #80000000</BoxShadows>
+      <BoxShadows x:Key="ShadowRaised">0 3 12 0 #99000000</BoxShadows>
+    </Style.Resources>
+  </Style>
+</Styles>
+
+
