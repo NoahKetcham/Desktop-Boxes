@@ -12,6 +12,7 @@ using Boxes.App.Views;
 using System.IO;
 using Avalonia.Controls;
 using Avalonia.Platform;
+using Boxes.App.Extensions;
 
 namespace Boxes.App.Services;
 
@@ -44,11 +45,13 @@ public class BoxWindowManager
 
     public async Task ShowBurstAsync(TimeSpan baseDuration)
     {
+        // Create a new CTS and cancel the previous one safely without disposing it immediately
+        CancellationTokenSource myCts = new();
+        var previous = Interlocked.Exchange(ref _burstCts, myCts);
+        previous?.Cancel();
+
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            _burstCts?.Cancel();
-            _burstCts?.Dispose();
-            _burstCts = new CancellationTokenSource();
             _lastHoverUtc = DateTime.UtcNow;
             foreach (var w in _windows.Values)
             {
@@ -58,9 +61,11 @@ public class BoxWindowManager
             {
                 w.SetTopMost(true);
             }
+            // Install global mouse hook to end burst on outside click
+            GlobalMouseHookService.Start(OnGlobalMouseDown);
         });
 
-        var token = _burstCts.Token;
+        var token = myCts.Token;
         try
         {
             while (!token.IsCancellationRequested)
@@ -77,6 +82,39 @@ public class BoxWindowManager
         {
         }
 
+        // Only revert if this instance still owns the burst (was not superseded)
+        if (ReferenceEquals(_burstCts, myCts))
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                foreach (var w in _windows.Values)
+                {
+                    w.SetTopMost(false);
+                    w.SetAlwaysBelowApps();
+                }
+                foreach (var w in _taskbarWindows.Values)
+                {
+                    w.SetTopMost(false);
+                    w.SetAlwaysBelowApps();
+                }
+                _burstCts = null;
+                GlobalMouseHookService.Stop();
+            });
+        }
+
+        myCts.Dispose();
+    }
+
+    public async Task EndBurstAsync()
+    {
+        var prior = Interlocked.Exchange(ref _burstCts, null);
+        if (prior is null)
+        {
+            return;
+        }
+        prior.Cancel();
+        prior.Dispose();
+
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             foreach (var w in _windows.Values)
@@ -89,9 +127,49 @@ public class BoxWindowManager
                 w.SetTopMost(false);
                 w.SetAlwaysBelowApps();
             }
-            _burstCts?.Dispose();
-            _burstCts = null;
+            GlobalMouseHookService.Stop();
         });
+    }
+
+    public Task ToggleBurstAsync(TimeSpan baseDuration)
+    {
+        return IsBurstActive ? EndBurstAsync() : ShowBurstAsync(baseDuration);
+    }
+
+    private void OnGlobalMouseDown(IntPtr clickedHwnd)
+    {
+        if (!IsBurstActive)
+        {
+            return;
+        }
+
+        // Determine if the clicked window belongs to our app windows
+        bool isOurWindow = false;
+        foreach (var w in _windows.Values)
+        {
+            if (w.GetWindowHandle() == clickedHwnd)
+            {
+                isOurWindow = true;
+                break;
+            }
+        }
+        if (!isOurWindow)
+        {
+            foreach (var tw in _taskbarWindows.Values)
+            {
+                if (tw.GetWindowHandle() == clickedHwnd)
+                {
+                    isOurWindow = true;
+                    break;
+                }
+            }
+        }
+
+        if (!isOurWindow)
+        {
+            // End burst on next UI tick
+            _ = Dispatcher.UIThread.InvokeAsync(async () => await EndBurstAsync());
+        }
     }
 
     public async Task SetWindowsVisibility(bool visible)

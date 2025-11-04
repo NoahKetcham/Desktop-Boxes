@@ -48,6 +48,12 @@ public static class WindowExtensions
             NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
     }
 
+    public static IntPtr GetWindowHandle(this Window window)
+    {
+        var platformHandle = window.TryGetPlatformHandle();
+        return platformHandle is null ? IntPtr.Zero : platformHandle.Handle;
+    }
+
     public static void SendToDesktopBackground(this Window window)
     {
         if (!OperatingSystem.IsWindows())

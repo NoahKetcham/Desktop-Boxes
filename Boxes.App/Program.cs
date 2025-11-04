@@ -60,7 +60,7 @@ sealed class Program
             }
             else if (string.Equals(command, "showburst", StringComparison.OrdinalIgnoreCase))
             {
-                await AppServices.BoxWindowManager.ShowBurstAsync(TimeSpan.FromSeconds(5));
+                await AppServices.BoxWindowManager.ToggleBurstAsync(TimeSpan.FromSeconds(5));
             }
             else
             {

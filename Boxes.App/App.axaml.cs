@@ -77,7 +77,7 @@ public partial class App : Application
         {
             Dispatcher.UIThread.Post(async () =>
             {
-                await AppServices.BoxWindowManager.ShowBurstAsync(TimeSpan.FromSeconds(5));
+                await AppServices.BoxWindowManager.ToggleBurstAsync(TimeSpan.FromSeconds(5));
             });
         }
 
