@@ -22,6 +22,7 @@ public partial class DashboardPageViewModel : ViewModelBase
     public ObservableCollection<DesktopFileViewModel> ScannedFiles { get; } = new();
     public ObservableCollection<DesktopFileViewModel> CurrentScannedItems { get; } = new();
     public ObservableCollection<DesktopFileViewModel> ScanNavigationStack { get; } = new();
+    public ObservableCollection<DesktopBuildViewModel> DesktopBuilds { get; } = new();
 
     public string CurrentScanPath => ScanNavigationStack.Count == 0
         ? "Desktop"
@@ -54,6 +55,9 @@ public partial class DashboardPageViewModel : ViewModelBase
     public IAsyncRelayCommand<BoxSummaryViewModel?> ConfigureBoxSettingsCommand { get; }
     public IAsyncRelayCommand ToggleDesktopCleanupCommand { get; }
     public IAsyncRelayCommand CreateShortcutsCommand { get; }
+    public IAsyncRelayCommand SaveDesktopBuildCommand { get; }
+    public IAsyncRelayCommand<DesktopBuildViewModel?> RestoreDesktopBuildCommand { get; }
+    public IAsyncRelayCommand<DesktopBuildViewModel?> DeleteDesktopBuildCommand { get; }
 
     public DashboardPageViewModel()
     {
@@ -69,6 +73,9 @@ public partial class DashboardPageViewModel : ViewModelBase
         NavigateUpCommand = new RelayCommand(NavigateUp, () => ScanNavigationStack.Count > 0);
         NavigateHomeCommand = new RelayCommand(NavigateHome, () => ScanNavigationStack.Count > 0);
         CreateShortcutsCommand = new AsyncRelayCommand(CreateShortcutsAsync, () => CurrentScannedItems.Count > 0);
+        SaveDesktopBuildCommand = new AsyncRelayCommand(SaveDesktopBuildAsync);
+        RestoreDesktopBuildCommand = new AsyncRelayCommand<DesktopBuildViewModel?>(RestoreDesktopBuildAsync);
+        DeleteDesktopBuildCommand = new AsyncRelayCommand<DesktopBuildViewModel?>(DeleteDesktopBuildAsync);
 
         ScannedFiles.CollectionChanged += OnScannedFilesCollectionChanged;
 
@@ -112,6 +119,7 @@ public partial class DashboardPageViewModel : ViewModelBase
     private async Task InitializeAsync()
     {
         await LoadAsync();
+        await LoadDesktopBuildsAsync();
         IsDesktopClean = await AppServices.DesktopCleanupService.IsDesktopCleanAsync().ConfigureAwait(false);
         OnPropertyChanged(nameof(DesktopCleanupButtonText));
         OnPropertyChanged(nameof(CanToggleDesktopCleanup));
@@ -445,6 +453,98 @@ public partial class DashboardPageViewModel : ViewModelBase
 
         await AppServices.ScannedFileService.CreateShortcutsAsync(files);
         await ScanDesktopAsync();
+    }
+
+    private async Task LoadDesktopBuildsAsync()
+    {
+        var builds = await AppServices.DesktopBuildService.GetAllAsync();
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            DesktopBuilds.Clear();
+            foreach (var build in builds)
+            {
+                DesktopBuilds.Add(DesktopBuildViewModel.FromModel(build));
+            }
+        });
+    }
+
+    private async Task SaveDesktopBuildAsync()
+    {
+        var name = await DialogService.ShowDesktopBuildNameDialogAsync().ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        var boxes = await AppServices.BoxService.GetBoxesAsync();
+        await AppServices.DesktopBuildService.SaveAsync(name, boxes);
+        await LoadDesktopBuildsAsync();
+    }
+
+    private async Task RestoreDesktopBuildAsync(DesktopBuildViewModel? buildViewModel)
+    {
+        if (buildViewModel == null)
+        {
+            return;
+        }
+
+        var confirmed = await DialogService.ShowConfirmationAsync($"Restore desktop build '{buildViewModel.Name}'? This will replace your current desktop configuration.");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        var build = await AppServices.DesktopBuildService.GetAsync(buildViewModel.Id);
+        if (build == null)
+        {
+            return;
+        }
+
+        // Close all existing windows
+        await AppServices.BoxWindowManager.CloseAllWindowsAsync();
+
+        // Clear existing boxes
+        var existingBoxes = await AppServices.BoxService.GetBoxesAsync();
+        foreach (var box in existingBoxes)
+        {
+            await AppServices.BoxService.DeleteAsync(box.Id);
+        }
+
+        // Restore boxes from build
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            Boxes.Clear();
+        });
+
+        foreach (var box in build.Boxes)
+        {
+            var restoredBox = await AppServices.BoxService.AddOrUpdateAsync(box);
+            await AppServices.BoxWindowManager.ShowAsync(restoredBox);
+            var viewModel = BoxSummaryViewModel.FromModel(restoredBox);
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                Boxes.Add(viewModel);
+            });
+        }
+
+        SelectedBox = Boxes.FirstOrDefault();
+    }
+
+    private async Task DeleteDesktopBuildAsync(DesktopBuildViewModel? buildViewModel)
+    {
+        if (buildViewModel == null)
+        {
+            return;
+        }
+
+        var confirmed = await DialogService.ShowDeleteConfirmationAsync(buildViewModel.Name);
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await AppServices.DesktopBuildService.DeleteAsync(buildViewModel.Id);
+        await LoadDesktopBuildsAsync();
     }
 }
 

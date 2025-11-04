@@ -49,6 +49,16 @@ public static class DialogService
         });
     }
 
+    public static Task<string?> ShowDesktopBuildNameDialogAsync()
+    {
+        EnsureInitialized();
+        return DispatchAsync(async () =>
+        {
+            var dialog = new DesktopBuildNameDialog();
+            return await dialog.ShowDialog<string?>(_mainWindow!);
+        });
+    }
+
     private static void EnsureInitialized()
     {
         if (_mainWindow == null)

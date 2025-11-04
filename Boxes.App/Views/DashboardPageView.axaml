@@ -97,6 +97,36 @@
                     </ItemsControl>
                 </StackPanel>
             </Border>
+
+            <Border Background="#141B2D" CornerRadius="12" Padding="16">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Desktop Builds" FontWeight="SemiBold" FontSize="16"/>
+                    <TextBlock Text="Manage your desktop builds" Opacity="0.7" FontSize="12"/>
+                    <Button Content="Save Current Desktop Configuration" Command="{Binding SaveDesktopBuildCommand}" HorizontalAlignment="Stretch" Margin="0,8,0,0"/>
+                    
+                    <ListBox ItemsSource="{Binding DesktopBuilds}" BorderThickness="0" Background="Transparent" Margin="0,8,0,0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:DesktopBuildViewModel">
+                                <Border Background="#232B46" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                                                <TextBlock Text="{Binding BoxCount, StringFormat='{}{0} boxes'}" FontSize="12" Opacity="0.7"/>
+                                                <TextBlock Text="{Binding CreatedAtDisplay}" FontSize="12" Opacity="0.7"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="8" Grid.Column="1" VerticalAlignment="Center">
+                                            <Button Content="Restore" Command="{Binding DataContext.RestoreDesktopBuildCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
+                                            <Button Content="Delete" Foreground="#FF5555" Command="{Binding DataContext.DeleteDesktopBuildCommand, ElementName=DashboardView}" CommandParameter="{Binding}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
