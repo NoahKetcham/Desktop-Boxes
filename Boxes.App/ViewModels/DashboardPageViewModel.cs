@@ -40,6 +40,8 @@ public partial class DashboardPageViewModel : ViewModelBase
     [ObservableProperty]
     private bool isCleaningDesktop;
 
+    public int ScannedFilesCount => ScannedFiles.Count;
+
     public string DesktopCleanupButtonText => IsDesktopClean ? "Restore Desktop" : "Clean Desktop";
     public bool CanToggleDesktopCleanup => !IsCleaningDesktop;
 
@@ -113,6 +115,7 @@ public partial class DashboardPageViewModel : ViewModelBase
     private void OnScannedFilesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         HasScannedFiles = ScannedFiles.Count > 0;
+        OnPropertyChanged(nameof(ScannedFilesCount));
         CreateShortcutsCommand.NotifyCanExecuteChanged();
     }
 
