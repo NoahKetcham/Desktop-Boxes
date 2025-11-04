@@ -10,6 +10,7 @@
         CanMinimize="False"
         CanMaximize="False"
         ShowActivated="True"
+        ShowInTaskbar="False"
         WindowStartupLocation="Manual"
         SystemDecorations="BorderOnly"
         TransparencyLevelHint="Transparent"

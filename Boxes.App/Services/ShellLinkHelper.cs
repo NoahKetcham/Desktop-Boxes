@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Boxes.App.Services;
 
@@ -50,7 +51,59 @@ internal static class ShellLinkHelper
         void GetCurFile([MarshalAs(UnmanagedType.LPWStr)] out string ppszFileName);
     }
 
-    public static bool CreateShortcut(string linkPath, string targetPath, string? arguments = null, string? workingDir = null, string? description = null, string? iconPath = null, int iconIndex = 0)
+    [ComImport]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    [Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99")]
+    private interface IPropertyStore
+    {
+        void GetCount(out uint cProps);
+        void GetAt(uint iProp, out PROPERTYKEY pkey);
+        void GetValue(ref PROPERTYKEY key, out PROPVARIANT pv);
+        void SetValue(ref PROPERTYKEY key, ref PROPVARIANT pv);
+        void Commit();
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
+    private struct PROPERTYKEY
+    {
+        public Guid fmtid;
+        public uint pid;
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    private struct PROPVARIANT
+    {
+        [FieldOffset(0)] public ushort vt;
+        [FieldOffset(8)] public IntPtr pointerValue;
+    }
+
+    private const ushort VT_LPWSTR = 31;
+
+    private static readonly PROPERTYKEY PKEY_AppUserModel_ID = new()
+    {
+        fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"),
+        pid = 5
+    };
+
+    private static readonly PROPERTYKEY PKEY_AppUserModel_RelaunchCommand = new()
+    {
+        fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"),
+        pid = 2
+    };
+
+    private static readonly PROPERTYKEY PKEY_AppUserModel_RelaunchDisplayNameResource = new()
+    {
+        fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"),
+        pid = 4
+    };
+
+    private static readonly PROPERTYKEY PKEY_AppUserModel_RelaunchIconResource = new()
+    {
+        fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"),
+        pid = 3
+    };
+
+    public static bool CreateShortcut(string linkPath, string targetPath, string? arguments = null, string? workingDir = null, string? description = null, string? iconPath = null, int iconIndex = 0, string? appUserModelId = null, string? relaunchDisplayName = null)
     {
         try
         {
@@ -72,12 +125,72 @@ internal static class ShellLinkHelper
 
             var persist = (IPersistFile)shellLink;
             persist.Save(linkPath, true);
+
+            // Set AppUserModelID and relaunch metadata to ensure a distinct taskbar identity
+            if (!string.IsNullOrWhiteSpace(appUserModelId))
+            {
+                try
+                {
+                    var propStore = (IPropertyStore)shellLink;
+
+                    SetStringPropertyReadonly(propStore, PKEY_AppUserModel_ID, appUserModelId);
+
+                    var relaunchCmd = $"\"{targetPath}\" {arguments}".Trim();
+                    SetStringPropertyReadonly(propStore, PKEY_AppUserModel_RelaunchCommand, relaunchCmd);
+
+                    if (!string.IsNullOrWhiteSpace(relaunchDisplayName))
+                    {
+                        SetStringPropertyReadonly(propStore, PKEY_AppUserModel_RelaunchDisplayNameResource, relaunchDisplayName);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(iconPath))
+                    {
+                        // Icon resource string as `path,iconIndex`
+                        var iconRes = iconIndex != 0 ? $"{iconPath},{iconIndex}" : iconPath;
+                        SetStringPropertyReadonly(propStore, PKEY_AppUserModel_RelaunchIconResource, iconRes);
+                    }
+
+                    propStore.Commit();
+                    // Save again to persist property store changes
+                    persist.Save(linkPath, true);
+                }
+                catch
+                {
+                    // Ignore property store failures on older OSes
+                }
+            }
             return true;
         }
         catch
         {
             return false;
         }
+    }
+
+    private static void SetStringProperty(IPropertyStore store, ref PROPERTYKEY key, string value)
+    {
+        var pv = new PROPVARIANT
+        {
+            vt = VT_LPWSTR,
+            pointerValue = Marshal.StringToCoTaskMemUni(value ?? string.Empty)
+        };
+        try
+        {
+            store.SetValue(ref key, ref pv);
+        }
+        finally
+        {
+            if (pv.pointerValue != IntPtr.Zero)
+            {
+                Marshal.FreeCoTaskMem(pv.pointerValue);
+            }
+        }
+    }
+
+    private static void SetStringPropertyReadonly(IPropertyStore store, PROPERTYKEY key, string value)
+    {
+        var k = key; // local copy allows passing by ref
+        SetStringProperty(store, ref k, value);
     }
 }
 
