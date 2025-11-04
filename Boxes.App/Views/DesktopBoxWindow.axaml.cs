@@ -11,6 +11,7 @@ using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Boxes.App.ViewModels;
 using Boxes.App.Services;
+using Boxes.App.Extensions;
 using Boxes.App.Models;
 using Avalonia.Threading;
 
@@ -42,6 +43,12 @@ public partial class DesktopBoxWindow : Window
         InitializeComponent();
         Opened += DesktopBoxWindow_Opened;
         PositionChanged += DesktopBoxWindow_PositionChanged;
+        Activated += (_, __) => { if (!AppServices.BoxWindowManager.IsBurstActive) this.SetAlwaysBelowApps(); };
+        PointerEntered += (_, __) => AppServices.BoxWindowManager.NotifyHover();
+        AddHandler(InputElement.PointerMovedEvent, OnPointerHoverActivity, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+        AddHandler(InputElement.PointerEnteredEvent, OnPointerHoverActivity, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+        AddHandler(InputElement.PointerWheelChangedEvent, OnPointerWheelActivity, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+        AddHandler(InputElement.PointerMovedEvent, (_, __) => AppServices.BoxWindowManager.NotifyHover(), RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
         _shortcutsItemsControl = this.FindControl<ItemsControl>("ShortcutsItemsControl");
         _contentArea = this.FindControl<Border>("ContentArea");
         _rootGrid = this.FindControl<Grid>("RootGrid");
@@ -119,6 +126,7 @@ public partial class DesktopBoxWindow : Window
     private async void DesktopBoxWindow_Opened(object? sender, EventArgs e)
     {
         _lastKnownPosition = Position;
+        this.SetAlwaysBelowApps();
         ApplyTransparencyFromSettings();
         if (DataContext is DesktopBoxWindowViewModel vm)
         {
@@ -370,6 +378,22 @@ public partial class DesktopBoxWindow : Window
     {
         // Stop event propagation so button clicks don't trigger window dragging
         e.Handled = true;
+    }
+
+    private void OnPointerHoverActivity(object? sender, PointerEventArgs e)
+    {
+        if (AppServices.BoxWindowManager.IsBurstActive)
+        {
+            AppServices.BoxWindowManager.NotifyHover();
+        }
+    }
+
+    private void OnPointerWheelActivity(object? sender, PointerWheelEventArgs e)
+    {
+        if (AppServices.BoxWindowManager.IsBurstActive)
+        {
+            AppServices.BoxWindowManager.NotifyHover();
+        }
     }
 
     private void AnchorToTaskbar(int? desiredX = null)

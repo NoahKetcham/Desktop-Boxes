@@ -6,6 +6,48 @@ namespace Boxes.App.Extensions;
 
 public static class WindowExtensions
 {
+    private static readonly IntPtr HWND_BOTTOM = new IntPtr(1);
+    private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+    private static readonly IntPtr HWND_NOTOPMOST = new IntPtr(-2);
+
+    public static void SetAlwaysBelowApps(this Window window)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var platformHandle = window.TryGetPlatformHandle();
+        if (platformHandle is null || platformHandle.Handle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var hwnd = platformHandle.Handle;
+        // Push to bottom without changing size/position/activation
+        NativeMethods.SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0,
+            NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
+    }
+
+    public static void SetTopMost(this Window window, bool enable)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var platformHandle = window.TryGetPlatformHandle();
+        if (platformHandle is null || platformHandle.Handle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var hwnd = platformHandle.Handle;
+        var insertAfter = enable ? HWND_TOPMOST : HWND_NOTOPMOST;
+        NativeMethods.SetWindowPos(hwnd, insertAfter, 0, 0, 0, 0,
+            NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
+    }
+
     public static void SendToDesktopBackground(this Window window)
     {
         if (!OperatingSystem.IsWindows())

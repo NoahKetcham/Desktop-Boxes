@@ -12,6 +12,7 @@ using Boxes.App.Services;
 using Boxes.App.Models;
 using Avalonia.Threading;
 using Avalonia.Media;
+using Boxes.App.Extensions;
 
 namespace Boxes.App.Views;
 
@@ -37,6 +38,12 @@ public partial class TaskbarBoxWindow : Window
     public TaskbarBoxWindow()
     {
         InitializeComponent();
+        Opened += (_, __) => this.SetAlwaysBelowApps();
+        Activated += (_, __) => { if (!AppServices.BoxWindowManager.IsBurstActive) this.SetAlwaysBelowApps(); };
+        PointerEntered += (_, __) => AppServices.BoxWindowManager.NotifyHover();
+        AddHandler(InputElement.PointerMovedEvent, OnPointerHoverActivity, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+        AddHandler(InputElement.PointerEnteredEvent, OnPointerHoverActivity, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+        AddHandler(InputElement.PointerWheelChangedEvent, OnPointerWheelActivity, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
         HookDataContext();
         _contentArea = this.FindControl<Border>("ContentArea");
         _rootGrid = this.FindControl<Grid>("RootGrid");
@@ -715,6 +722,22 @@ public partial class TaskbarBoxWindow : Window
             {
                 ViewModel.LaunchShortcutCommand.Execute(vm);
             }
+        }
+    }
+    
+    private void OnPointerHoverActivity(object? sender, PointerEventArgs e)
+    {
+        if (AppServices.BoxWindowManager.IsBurstActive)
+        {
+            AppServices.BoxWindowManager.NotifyHover();
+        }
+    }
+
+    private void OnPointerWheelActivity(object? sender, PointerWheelEventArgs e)
+    {
+        if (AppServices.BoxWindowManager.IsBurstActive)
+        {
+            AppServices.BoxWindowManager.NotifyHover();
         }
     }
     

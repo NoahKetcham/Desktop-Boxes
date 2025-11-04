@@ -56,6 +56,7 @@
                         <TextBlock Text="Integrations" FontWeight="SemiBold" FontSize="16"/>
                         <ToggleSwitch Content="OneDrive linked" IsChecked="{Binding OneDriveLinked, Mode=TwoWay}"/>
                         <ToggleSwitch Content="Google Drive linked" IsChecked="{Binding GoogleDriveLinked, Mode=TwoWay}"/>
+                        <Button Content="Create 'Show Boxes' Start Menu Shortcut" Command="{Binding CreateShowBoxesShortcutCommand}"/>
                         <StackPanel Orientation="Vertical" Spacing="8">
                             <Button Content="Save" Classes="btn-subtle" Command="{Binding SaveCommand}" HorizontalAlignment="Stretch"/>
                             <Button Content="Delete All Saved Data" Classes="btn-danger" Command="{Binding ResetDataCommand}" HorizontalAlignment="Stretch"/>

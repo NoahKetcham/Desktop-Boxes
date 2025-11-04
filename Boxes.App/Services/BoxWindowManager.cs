@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 using Avalonia;
 using Avalonia.Threading;
 using Boxes.App.Extensions;
@@ -21,15 +22,76 @@ public class BoxWindowManager
     private readonly Dictionary<Guid, WindowStateData> _windowStates = new();
     private readonly Dictionary<Guid, double> _lastExpandedHeights = new();
     private bool _areWindowsVisible = true;
+    private CancellationTokenSource? _burstCts;
+    private DateTime _lastHoverUtc;
 
     public bool AreWindowsVisible => _areWindowsVisible;
 
     public bool HasOpenWindows => _windows.Count > 0;
 
+    public bool IsBurstActive => _burstCts is not null;
+
     public Task ToggleAllWindowsVisibility()
     {
         var targetState = !_areWindowsVisible;
         return SetWindowsVisibility(targetState);
+    }
+
+    public void NotifyHover()
+    {
+        _lastHoverUtc = DateTime.UtcNow;
+    }
+
+    public async Task ShowBurstAsync(TimeSpan baseDuration)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            _burstCts?.Cancel();
+            _burstCts?.Dispose();
+            _burstCts = new CancellationTokenSource();
+            _lastHoverUtc = DateTime.UtcNow;
+            foreach (var w in _windows.Values)
+            {
+                w.SetTopMost(true);
+            }
+            foreach (var w in _taskbarWindows.Values)
+            {
+                w.SetTopMost(true);
+            }
+        });
+
+        var token = _burstCts.Token;
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                await Task.Delay(250, token).ConfigureAwait(false);
+                var idle = DateTime.UtcNow - _lastHoverUtc;
+                if (idle >= baseDuration)
+                {
+                    break;
+                }
+            }
+        }
+        catch (TaskCanceledException)
+        {
+        }
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            foreach (var w in _windows.Values)
+            {
+                w.SetTopMost(false);
+                w.SetAlwaysBelowApps();
+            }
+            foreach (var w in _taskbarWindows.Values)
+            {
+                w.SetTopMost(false);
+                w.SetAlwaysBelowApps();
+            }
+            _burstCts?.Dispose();
+            _burstCts = null;
+        });
     }
 
     public async Task SetWindowsVisibility(bool visible)
@@ -112,6 +174,7 @@ public class BoxWindowManager
                     existing.Show();
                 }
                 existing.Activate();
+                existing.SetAlwaysBelowApps();
                 return;
             }
 
@@ -174,6 +237,7 @@ public class BoxWindowManager
             {
                 window.Show();
                 window.Activate();
+                window.SetAlwaysBelowApps();
             }
             else
             {
@@ -199,6 +263,7 @@ public class BoxWindowManager
                         existing.Show();
                     }
                     existing.Activate();
+                    existing.SetAlwaysBelowApps();
                 }
                 else
                 {
@@ -222,6 +287,7 @@ public class BoxWindowManager
         {
             taskbar.Show();
             taskbar.Activate();
+            taskbar.SetAlwaysBelowApps();
         }
         else
         {

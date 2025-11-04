@@ -45,6 +45,10 @@ sealed class Program
             {
                 await AppServices.BoxWindowManager.SetWindowsVisibility(true);
             }
+            else if (string.Equals(command, "showburst", StringComparison.OrdinalIgnoreCase))
+            {
+                await AppServices.BoxWindowManager.ShowBurstAsync(TimeSpan.FromSeconds(5));
+            }
             else
             {
                 await AppServices.BoxWindowManager.ToggleAllWindowsVisibility();

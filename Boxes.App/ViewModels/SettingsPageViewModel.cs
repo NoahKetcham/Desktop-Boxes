@@ -37,6 +37,7 @@ public partial class SettingsPageViewModel : ViewModelBase
     public IAsyncRelayCommand CloseAllWindowsCommand { get; }
         public IAsyncRelayCommand ApplyAccentCommand { get; }
         public IAsyncRelayCommand ResetAccentCommand { get; }
+    public IAsyncRelayCommand CreateShowBoxesShortcutCommand { get; }
 
         [ObservableProperty]
         private string? accentHex;
@@ -49,6 +50,7 @@ public partial class SettingsPageViewModel : ViewModelBase
         CloseAllWindowsCommand = new AsyncRelayCommand(CloseAllWindowsAsync);
             ApplyAccentCommand = new AsyncRelayCommand(ApplyAccentAsync);
             ResetAccentCommand = new AsyncRelayCommand(ResetAccentAsync);
+        CreateShowBoxesShortcutCommand = new AsyncRelayCommand(CreateShowBoxesShortcutAsync);
         _ = LoadAsync();
     }
 
@@ -133,6 +135,15 @@ public partial class SettingsPageViewModel : ViewModelBase
         current.AccentHex = null;
         await AppServices.SettingsService.SaveAsync(current);
         AccentHex = null;
+    }
+
+    private async Task CreateShowBoxesShortcutAsync()
+    {
+        var ok = DesktopIntegrationService.CreateShowBurstStartMenuShortcut();
+        var message = ok
+            ? "Shortcut created in Start Menu → Programs. You can pin it to the taskbar."
+            : "Failed to create shortcut. Try running the app with sufficient permissions.";
+        await DialogService.ShowConfirmationAsync(message);
     }
 }
 
