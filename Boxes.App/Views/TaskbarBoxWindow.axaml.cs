@@ -31,6 +31,10 @@ public partial class TaskbarBoxWindow : Window
     private DateTime _lastReflow = DateTime.MinValue;
     private const double HysteresisPx = 5.0;
     private int? _stableInsertionIndex;
+    private readonly Dictionary<TaskbarBoxWindow, Tween> _activeTweens = new();
+    private DispatcherTimer? _tweenTimer;
+    private static readonly TimeSpan TweenInterval = TimeSpan.FromMilliseconds(12);
+    private static readonly TimeSpan TweenDuration = TimeSpan.FromMilliseconds(120);
 
     public TaskbarBoxWindow()
     {
@@ -211,10 +215,6 @@ public partial class TaskbarBoxWindow : Window
             var heightPx = (int)Math.Round(Bounds.Height * RenderScaling);
             y = monitor.Bottom - heightPx;
         }
-
-        var newPos = new PixelPoint(clampedX, y);
-        _lastWindowPosition = newPos;
-        Position = newPos;
 
         var now = DateTime.UtcNow;
         if (now - _lastReflow >= _dragReflowInterval)
@@ -843,19 +843,123 @@ public partial class TaskbarBoxWindow : Window
                 continue;
             }
 
-            var newPos = new PixelPoint(targetX, current.Y);
-            window.Position = newPos;
-
             if (ReferenceEquals(window, this))
             {
+                // Dragged window moves instantly (single-writer)
+                var newPos = new PixelPoint(targetX, current.Y);
+                window.Position = newPos;
                 _lastWindowPosition = newPos;
             }
-
-            if (window.DataContext is TaskbarBoxWindowViewModel vm)
+            else
             {
-                _ = AppServices.BoxWindowManager.SaveTaskbarWindowXAsync(vm.Model.Id, targetX);
+                // Neighbors tween toward target
+                StartOrUpdateTween(window, targetX);
             }
         }
+    }
+
+    private void StartOrUpdateTween(TaskbarBoxWindow window, int targetX)
+    {
+        if (ReferenceEquals(window, this))
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var currentX = window.Position.X;
+
+        if (_activeTweens.TryGetValue(window, out var tween))
+        {
+            tween.StartX = currentX;
+            tween.TargetX = targetX;
+            tween.StartTime = now;
+            tween.Duration = TweenDuration;
+            _activeTweens[window] = tween;
+        }
+        else
+        {
+            _activeTweens[window] = new Tween(window, currentX, targetX, now, TweenDuration);
+        }
+
+        EnsureTweenTimer();
+    }
+
+    private void EnsureTweenTimer()
+    {
+        if (_tweenTimer != null)
+        {
+            return;
+        }
+
+        _tweenTimer = new DispatcherTimer
+        {
+            Interval = TweenInterval
+        };
+        _tweenTimer.Tick += (_, __) => OnTweenTick();
+        _tweenTimer.Start();
+    }
+
+    private void OnTweenTick()
+    {
+        if (_activeTweens.Count == 0)
+        {
+            _tweenTimer?.Stop();
+            _tweenTimer = null;
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var completed = new List<TaskbarBoxWindow>();
+
+        foreach (var kvp in _activeTweens)
+        {
+            var tween = kvp.Value;
+            var t = (now - tween.StartTime).TotalMilliseconds / tween.Duration.TotalMilliseconds;
+            if (t >= 1.0)
+            {
+                var finalX = tween.TargetX;
+                var current = tween.Window.Position;
+                tween.Window.Position = new PixelPoint((int)Math.Round(finalX), current.Y);
+                completed.Add(tween.Window);
+                continue;
+            }
+
+            // Linear easing
+            if (t < 0) t = 0;
+            var x = tween.StartX + (tween.TargetX - tween.StartX) * t;
+            var currentPos = tween.Window.Position;
+            var newPos = new PixelPoint((int)Math.Round(x), currentPos.Y);
+            tween.Window.Position = newPos;
+        }
+
+        foreach (var w in completed)
+        {
+            _activeTweens.Remove(w);
+        }
+
+        if (_activeTweens.Count == 0)
+        {
+            _tweenTimer?.Stop();
+            _tweenTimer = null;
+        }
+    }
+
+    private sealed class Tween
+    {
+        public Tween(TaskbarBoxWindow window, double startX, double targetX, DateTime startTime, TimeSpan duration)
+        {
+            Window = window;
+            StartX = startX;
+            TargetX = targetX;
+            StartTime = startTime;
+            Duration = duration;
+        }
+
+        public TaskbarBoxWindow Window { get; }
+        public double StartX { get; set; }
+        public double TargetX { get; set; }
+        public DateTime StartTime { get; set; }
+        public TimeSpan Duration { get; set; }
     }
 
     private static BoxLayout CreateLayout(TaskbarBoxWindow window)
