@@ -51,3 +51,6 @@
 - Auto start the app when the computer starts up, only boxes windows should start not settings ui.
 
 - birng boxes to top on click of show desktop button.
+
+# NOTES:
+- Hysteresis is good for solving the jittering issue.
