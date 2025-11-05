@@ -11,6 +11,7 @@ using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Boxes.App.ViewModels;
 using Boxes.App.Services;
+using Boxes.App.Extensions;
 using Boxes.App.Models;
 using Avalonia.Threading;
 
@@ -42,6 +43,12 @@ public partial class DesktopBoxWindow : Window
         InitializeComponent();
         Opened += DesktopBoxWindow_Opened;
         PositionChanged += DesktopBoxWindow_PositionChanged;
+        Activated += (_, __) => { if (!AppServices.BoxWindowManager.IsBurstActive) this.SetAlwaysBelowApps(); };
+        PointerEntered += (_, __) => AppServices.BoxWindowManager.NotifyHover();
+        AddHandler(InputElement.PointerMovedEvent, OnPointerHoverActivity, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+        AddHandler(InputElement.PointerEnteredEvent, OnPointerHoverActivity, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+        AddHandler(InputElement.PointerWheelChangedEvent, OnPointerWheelActivity, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+        AddHandler(InputElement.PointerMovedEvent, (_, __) => AppServices.BoxWindowManager.NotifyHover(), RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
         _shortcutsItemsControl = this.FindControl<ItemsControl>("ShortcutsItemsControl");
         _contentArea = this.FindControl<Border>("ContentArea");
         _rootGrid = this.FindControl<Grid>("RootGrid");
@@ -119,6 +126,7 @@ public partial class DesktopBoxWindow : Window
     private async void DesktopBoxWindow_Opened(object? sender, EventArgs e)
     {
         _lastKnownPosition = Position;
+        this.SetAlwaysBelowApps();
         ApplyTransparencyFromSettings();
         if (DataContext is DesktopBoxWindowViewModel vm)
         {
@@ -145,22 +153,53 @@ public partial class DesktopBoxWindow : Window
     private void ApplyTransparency(ApplicationSettings settings)
     {
         var opacity = Math.Clamp(settings.BoxesTransparencyPercent, 0, 100) / 100.0;
+        var backgroundColorHex = settings.BoxBackgroundColor ?? "#1C2235";
         Dispatcher.UIThread.Post(() =>
         {
+            Color bgColor;
+            if (Color.TryParse(backgroundColorHex, out var parsedColor))
+            {
+                bgColor = parsedColor;
+            }
+            else
+            {
+                bgColor = Color.Parse("#1C2235");
+            }
+
             if (_rootGrid != null)
             {
-                if (_rootGrid.Background is ISolidColorBrush gridBg)
-                    _rootGrid.Background = new SolidColorBrush(gridBg.Color, opacity);
-                else
-                    _rootGrid.Background = new SolidColorBrush(Color.Parse("#1C2235"), opacity);
+                _rootGrid.Background = new SolidColorBrush(bgColor, opacity);
             }
 
             if (_headerBar != null)
             {
-                if (_headerBar.Background is ISolidColorBrush headerBg)
-                    _headerBar.Background = new SolidColorBrush(headerBg.Color, opacity);
+                // Calculate relative luminance to determine if background is dark or light
+                // Relative luminance formula: L = 0.2126*R + 0.7152*G + 0.0722*B
+                var r = bgColor.R / 255.0;
+                var g = bgColor.G / 255.0;
+                var b = bgColor.B / 255.0;
+                var luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                
+                Color headerColor;
+                if (luminance < 0.5)
+                {
+                    // Dark background: lighten the header bar (~10% lighter)
+                    headerColor = Color.FromRgb(
+                        (byte)Math.Min(255, bgColor.R + (255 - bgColor.R) * 0.1),
+                        (byte)Math.Min(255, bgColor.G + (255 - bgColor.G) * 0.1),
+                        (byte)Math.Min(255, bgColor.B + (255 - bgColor.B) * 0.1)
+                    );
+                }
                 else
-                    _headerBar.Background = new SolidColorBrush(Color.Parse("#232B46"), opacity);
+                {
+                    // Light background: darken the header bar (~20% darker)
+                    headerColor = Color.FromRgb(
+                        (byte)(bgColor.R * 0.8),
+                        (byte)(bgColor.G * 0.8),
+                        (byte)(bgColor.B * 0.8)
+                    );
+                }
+                _headerBar.Background = new SolidColorBrush(headerColor, opacity);
             }
         });
     }
@@ -370,6 +409,22 @@ public partial class DesktopBoxWindow : Window
     {
         // Stop event propagation so button clicks don't trigger window dragging
         e.Handled = true;
+    }
+
+    private void OnPointerHoverActivity(object? sender, PointerEventArgs e)
+    {
+        if (AppServices.BoxWindowManager.IsBurstActive)
+        {
+            AppServices.BoxWindowManager.NotifyHover();
+        }
+    }
+
+    private void OnPointerWheelActivity(object? sender, PointerWheelEventArgs e)
+    {
+        if (AppServices.BoxWindowManager.IsBurstActive)
+        {
+            AppServices.BoxWindowManager.NotifyHover();
+        }
     }
 
     private void AnchorToTaskbar(int? desiredX = null)

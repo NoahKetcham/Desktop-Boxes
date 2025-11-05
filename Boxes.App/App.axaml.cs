@@ -73,6 +73,13 @@ public partial class App : Application
                 DesktopIntegrationService.EnsureContextMenuRegistered(AppServices.BoxWindowManager.AreWindowsVisible);
             });
         }
+        else if (string.Equals(command, "showburst", StringComparison.OrdinalIgnoreCase))
+        {
+            Dispatcher.UIThread.Post(async () =>
+            {
+                await AppServices.BoxWindowManager.ToggleBurstAsync(TimeSpan.FromSeconds(5));
+            });
+        }
 
         return Task.CompletedTask;
     }

@@ -43,6 +43,19 @@ public static class AppServices
 
             SettingsService = new SettingsService(rootDirectory);
             SettingsService.InitializeAsync().GetAwaiter().GetResult();
+            // Apply persisted accent if present
+            try
+            {
+                var settings = SettingsService.GetAsync().GetAwaiter().GetResult();
+                if (!string.IsNullOrWhiteSpace(settings.AccentHex))
+                {
+                    AccentService.TryApplyAccentHex(settings.AccentHex);
+                }
+            }
+            catch
+            {
+                // ignore accent application failures on startup
+            }
 
             BoxService = new BoxService(rootDirectory);
             BoxService.InitializeAsync().GetAwaiter().GetResult();

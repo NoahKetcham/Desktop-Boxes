@@ -1,0 +1,43 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Card-like row container -->
+  <Style Selector="Border.card-row">
+    <Setter Property="Background" Value="{StaticResource SurfaceElevatedBrush}"/>
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusL}"/>
+    <Setter Property="Padding" Value="16"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="{StaticResource BorderThin}"/>
+    <Setter Property="BoxShadow" Value="{StaticResource ShadowBase}"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.16"/>
+        <ThicknessTransition Property="BorderThickness" Duration="0:0:0.16"/>
+        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.18"/>
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <!-- Hover state on the border itself -->
+  <Style Selector="Border.card-row:pointerover">
+    <Setter Property="Background" Value="#191C21"/>
+  </Style>
+
+  <!-- Selected and focus states driven by ListBoxItem ancestor -->
+  <Style Selector="ListBoxItem:selected Border.card-row">
+    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+    <Setter Property="BorderThickness" Value="{StaticResource BorderThin}"/>
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusL}"/>
+    <Setter Property="Background" Value="#122033"/>
+    <Setter Property="BoxShadow" Value="{StaticResource ShadowRaised}"/>
+  </Style>
+
+  <Style Selector="ListBoxItem:focus Border.card-row">
+    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+    <Setter Property="BorderThickness" Value="{StaticResource BorderThin}"/>
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusL}"/>
+  </Style>
+
+  <!-- ColumnDefinitions can't be set via Style; set directly on Grid where used -->
+</Styles>
+
+

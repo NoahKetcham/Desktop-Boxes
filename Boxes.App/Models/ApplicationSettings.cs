@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Boxes.App.Models;
 
 public class ApplicationSettings
@@ -8,5 +10,9 @@ public class ApplicationSettings
     public bool OneDriveLinked { get; set; }
     public bool GoogleDriveLinked { get; set; }
     public int BoxesTransparencyPercent { get; set; } = 100;
+    public string? AccentHex { get; set; }
+    public string BoxBackgroundColor { get; set; } = "#1C2235";
+    public List<string> RecentAccentColors { get; set; } = new();
+    public List<string> RecentBoxBackgroundColors { get; set; } = new();
 }
 

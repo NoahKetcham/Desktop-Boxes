@@ -114,4 +114,39 @@ public static class DesktopIntegrationService
             return false;
         }
     }
+
+    public static bool CreateShowBurstStartMenuShortcut()
+    {
+        try
+        {
+            var exePath = Process.GetCurrentProcess().MainModule?.FileName;
+            if (string.IsNullOrWhiteSpace(exePath))
+            {
+                return false;
+            }
+
+            var startMenu = Environment.GetFolderPath(Environment.SpecialFolder.StartMenu);
+            var programs = Path.Combine(startMenu, "Programs");
+            Directory.CreateDirectory(programs);
+            var linkPath = Path.Combine(programs, "Show Boxes.lnk");
+
+            var appId = "Boxes.App.ShowBoxes"; // distinct AppUserModelID for separate taskbar identity
+            return ShellLinkHelper.CreateShortcut(
+                linkPath,
+                exePath,
+                arguments: "--boxes-command showburst",
+                workingDir: Path.GetDirectoryName(exePath),
+                description: "Temporarily bring all Boxes to the top",
+                iconPath: exePath,
+                iconIndex: 0,
+                appUserModelId: appId,
+                relaunchDisplayName: "Show Boxes"
+            );
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[DesktopIntegrationService] Failed to create Start Menu shortcut: {ex}");
+            return false;
+        }
+    }
 }
