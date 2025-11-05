@@ -55,7 +55,7 @@
             </Grid>
         </Border>
 
-        <Border x:Name="ContentArea" Grid.Row="1" Padding="16" BorderBrush="#2D3654" BorderThickness="1" CornerRadius="0,0,8,8">
+        <Border x:Name="ContentArea" Grid.Row="1" Padding="16" IsVisible="{Binding IsExpanded}" CornerRadius="0,0,8,8">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <ItemsControl x:Name="ShortcutsItemsControl" ItemsSource="{Binding CurrentItems}" IsVisible="{Binding IsExpanded}">
                         <ItemsControl.ItemsPanel>
