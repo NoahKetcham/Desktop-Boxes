@@ -11,7 +11,10 @@
         CanMaximize="False"
         ShowInTaskbar="False"
         WindowStartupLocation="Manual"
-        SystemDecorations="None"
+        SystemDecorations="BorderOnly"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1"
         TransparencyLevelHint="Transparent"
         Background="Transparent">
 
