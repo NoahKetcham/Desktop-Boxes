@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -35,6 +37,21 @@ public partial class TaskbarBoxWindow : Window
     private DispatcherTimer? _tweenTimer;
     private static readonly TimeSpan TweenInterval = TimeSpan.FromMilliseconds(12);
     private static readonly TimeSpan TweenDuration = TimeSpan.FromMilliseconds(120);
+    private bool _isResizing;
+    private bool _isResizingTopEdge;
+    private bool _inSnapAdjust;
+    private bool _snapLocked;
+    private int _snapTargetTopPx;
+    private int _snapAnchorBottomPx;
+    private bool _hasSnapAnchor;
+    private const int _thresholdInPx = 20;
+    private const int _thresholdOutPx = 32;
+    private Border? _snapIndicator;
+    private double _snapIndicatorOpacity = 1.0;
+    private bool _hookSubscribed;
+    private bool _mouseDownOnThisWindow;
+    private static readonly object _logSync = new();
+    private static readonly string _logFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Boxes", "TaskbarSnap.log");
 
     public TaskbarBoxWindow()
     {
@@ -49,11 +66,35 @@ public partial class TaskbarBoxWindow : Window
         _contentArea = this.FindControl<Border>("ContentArea");
         _rootGrid = this.FindControl<Grid>("RootGrid");
         _headerBar = this.FindControl<Border>("HeaderBar");
+        _snapIndicator = this.FindControl<Border>("SnapIndicator");
         AppServices.SettingsService.SettingsChanged += OnSettingsChanged;
         ApplyTransparencyFromSettings();
         
+        // Subscribe to PropertyChanged to detect size changes during resize
+        PropertyChanged += OnWindowPropertyChanged;
+        
         // Apply desktop icon metrics
         ApplyDesktopIconMetrics();
+        
+        LogSnap($"TaskbarBoxWindow constructor completed, snapIndicator={_snapIndicator != null}");
+
+        // Subscribe to global mouse hook for down/up so system-border resizes are detected
+        try
+        {
+            GlobalMouseHookService.LeftButtonDown += OnGlobalMouseLeftButtonDown;
+            GlobalMouseHookService.LeftButtonUp += OnGlobalMouseLeftButtonUp;
+            _hookSubscribed = true;
+        }
+        catch { }
+    }
+    
+    private void OnWindowPropertyChanged(object? sender, Avalonia.AvaloniaPropertyChangedEventArgs e)
+    {
+        if ((e.Property == WidthProperty || e.Property == HeightProperty) && _isResizing && _isResizingTopEdge && !_inSnapAdjust)
+        {
+            LogSnap($"PropertyChanged: {e.Property.Name}={e.NewValue}, isResizing={_isResizing}, topEdge={_isResizingTopEdge}");
+            Dispatcher.UIThread.Post(() => EvaluateAndApplySnap(), DispatcherPriority.Normal);
+        }
     }
 
     internal TaskbarBoxWindowViewModel ViewModel => (TaskbarBoxWindowViewModel)DataContext!;
@@ -140,6 +181,12 @@ public partial class TaskbarBoxWindow : Window
                 }
                 _headerBar.Background = new SolidColorBrush(headerColor, opacity);
             }
+
+            if (_snapIndicator != null)
+            {
+                _snapIndicatorOpacity = Math.Min(1.0, opacity + 0.10);
+                _snapIndicator.Opacity = _snapIndicatorOpacity;
+            }
         });
     }
 
@@ -147,6 +194,12 @@ public partial class TaskbarBoxWindow : Window
     {
         base.OnClosed(e);
         AppServices.SettingsService.SettingsChanged -= OnSettingsChanged;
+        try
+        {
+            GlobalMouseHookService.LeftButtonDown -= OnGlobalMouseLeftButtonDown;
+            GlobalMouseHookService.LeftButtonUp -= OnGlobalMouseLeftButtonUp;
+        }
+        catch { }
     }
 
     private void Header_OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -276,6 +329,7 @@ public partial class TaskbarBoxWindow : Window
 
     private void ResizeHandle_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        LogSnap($"ResizeHandle_OnPointerPressed: IsExpanded={ViewModel.IsExpanded}, sender={sender?.GetType().Name}");
         if (!ViewModel.IsExpanded)
         {
             return;
@@ -293,9 +347,19 @@ public partial class TaskbarBoxWindow : Window
                 _ => null
             };
 
+            LogSnap($"ResizeHandle: tag={border.Tag}, edge={edge}");
             if (edge.HasValue)
             {
                 BeginResizeDrag(edge.Value, e);
+                _isResizing = true;
+                _isResizingTopEdge = edge.Value is WindowEdge.North or WindowEdge.NorthWest or WindowEdge.NorthEast;
+                if (!_isResizingTopEdge && _snapIndicator != null)
+                {
+                    _snapIndicator.IsVisible = false;
+                }
+                _snapLocked = false;
+                TryEnsureHookSubscribed();
+                LogSnap($"Resize start: edge={edge.Value}, topEdge={_isResizingTopEdge}, isResizing={_isResizing}");
                 e.Handled = true;
             }
         }
@@ -304,6 +368,7 @@ public partial class TaskbarBoxWindow : Window
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
         base.OnSizeChanged(e);
+        LogSnap($"OnSizeChanged fired: prev={e.PreviousSize}, new={e.NewSize}, isResizing={_isResizing}, topEdge={_isResizingTopEdge}, inSnapAdjust={_inSnapAdjust}");
         // Keep bottom edge anchored to taskbar while resizing
         var working = Screens.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
         int y;
@@ -318,12 +383,277 @@ public partial class TaskbarBoxWindow : Window
         }
         Position = new PixelPoint(Position.X, y);
 
+        // If the system border was used, promote into resizing when mouse is held on this window
+        if (!_isResizing && _mouseDownOnThisWindow)
+        {
+            _isResizing = true;
+            _isResizingTopEdge = true;
+            _snapLocked = false;
+            LogSnap("Promoted to resizing due to size change while mouse down on this window");
+        }
+
+        if (_isResizing && _isResizingTopEdge && !_inSnapAdjust)
+        {
+            LogSnap($"OnSizeChanged: heightPx={heightPx}, positionY={Position.Y}");
+            EvaluateAndApplySnap();
+        }
+
         // Persist size when in expanded state
         if (ViewModel.IsExpanded)
         {
             _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarExpandedHeightAsync(ViewModel.Model.Id, Height);
             _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarWidthAsync(ViewModel.Model.Id, Width);
             _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarWindowXAsync(ViewModel.Model.Id, Position.X);
+        }
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+        if (_isResizing && e.InitialPressMouseButton == MouseButton.Left)
+        {
+            CompleteResizeInteraction();
+        }
+    }
+
+    private void EvaluateAndApplySnap()
+    {
+        var others = AppServices.BoxWindowManager
+            .GetAllTaskbarWindows()
+            .Where(w => w.IsVisible && !ReferenceEquals(w, this))
+            .ToList();
+
+        if (others.Count == 0)
+        {
+            _snapLocked = false;
+            _hasSnapAnchor = false;
+            HideSnapIndicator();
+            LogSnap("Evaluate: no other windows visible");
+            return;
+        }
+
+        var hasTaskbarTop = TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTopPx, out _);
+        var myHeightPx = ComputeHeightPx(this);
+        var myBottomPx = hasTaskbarTop ? taskbarTopPx : Position.Y + myHeightPx;
+        var myTopPx = myBottomPx - myHeightPx;
+        LogSnap($"Evaluate: others={others.Count}, locked={_snapLocked}, hasAnchor={_hasSnapAnchor}, myTop={myTopPx}, myBottom={myBottomPx}, myHeight={myHeightPx}, posY={Position.Y}");
+
+        TaskbarBoxWindow? bestWindow = null;
+        var bestTopPx = 0;
+        var bestDelta = int.MaxValue;
+
+        foreach (var other in others)
+        {
+            var otherHeightPx = ComputeHeightPx(other);
+            var otherBottomPx = hasTaskbarTop ? taskbarTopPx : other.Position.Y + otherHeightPx;
+            var otherTopPx = otherBottomPx - otherHeightPx;
+            var delta = Math.Abs(otherTopPx - myTopPx);
+            if (delta < bestDelta)
+            {
+                bestDelta = delta;
+                bestTopPx = otherTopPx;
+                bestWindow = other;
+            }
+        }
+
+        if (bestWindow is null)
+        {
+            _snapLocked = false;
+            _hasSnapAnchor = false;
+            HideSnapIndicator();
+            LogSnap("Evaluate: best window null");
+            return;
+        }
+
+        var bestName = SafeGetWindowLabel(bestWindow);
+        LogSnap($"Evaluate: best={bestName}, bestTop={bestTopPx}, delta={bestDelta}");
+
+        if (_snapLocked)
+        {
+            if (bestDelta > _thresholdOutPx)
+            {
+                _snapLocked = false;
+                _hasSnapAnchor = false;
+                HideSnapIndicator();
+                LogSnap($"Unlock snap: delta {bestDelta} exceeded {_thresholdOutPx}");
+                return;
+            }
+
+            if (!_hasSnapAnchor)
+            {
+                _snapAnchorBottomPx = myBottomPx;
+                _hasSnapAnchor = true;
+                LogSnap($"Snap locked: establishing anchorBottom={_snapAnchorBottomPx}");
+            }
+
+            ApplySnapHeightTo(_snapTargetTopPx, _snapAnchorBottomPx);
+            ShowSnapIndicator();
+            return;
+        }
+
+        if (bestDelta <= _thresholdInPx)
+        {
+            _snapLocked = true;
+            _snapTargetTopPx = bestTopPx;
+            _snapAnchorBottomPx = myBottomPx;
+            _hasSnapAnchor = true;
+            ApplySnapHeightTo(_snapTargetTopPx, _snapAnchorBottomPx);
+            ShowSnapIndicator();
+            LogSnap($"Snap engaged: targetTop={_snapTargetTopPx}, anchorBottom={_snapAnchorBottomPx}, delta={bestDelta}");
+        }
+        else
+        {
+            HideSnapIndicator();
+            LogSnap($"No snap: delta {bestDelta} > {_thresholdInPx}");
+        }
+    }
+
+    private void ApplySnapHeightTo(int targetTopPx, int anchorBottomPx)
+    {
+        var minHeightPx = (int)Math.Round(MinHeight * RenderScaling);
+        var targetHeightPx = Math.Max(anchorBottomPx - targetTopPx, minHeightPx);
+        _inSnapAdjust = true;
+        try
+        {
+            Height = targetHeightPx / RenderScaling;
+            LogSnap($"ApplySnapHeightTo: targetTop={targetTopPx}, anchorBottom={anchorBottomPx}, targetHeightPx={targetHeightPx}");
+        }
+        finally
+        {
+            _inSnapAdjust = false;
+        }
+    }
+
+    private void TryEnsureHookSubscribed()
+    {
+        if (_hookSubscribed || !OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        GlobalMouseHookService.LeftButtonUp += OnGlobalMouseLeftButtonUp;
+        _hookSubscribed = true;
+        LogSnap("Subscribed to GlobalMouseHookService.LeftButtonUp");
+    }
+
+    private void OnGlobalMouseLeftButtonUp(object? sender, GlobalMouseHookService.GlobalMouseEventArgs e)
+    {
+        if (e.Button != GlobalMouseHookService.GlobalMouseButton.Left)
+        {
+            return;
+        }
+
+        LogSnap("GlobalMouseHookService.LeftButtonUp received");
+        _mouseDownOnThisWindow = false;
+        if (_isResizing)
+        {
+            CompleteResizeInteraction();
+        }
+    }
+
+    private void OnGlobalMouseLeftButtonDown(object? sender, GlobalMouseHookService.GlobalMouseEventArgs e)
+    {
+        if (e.Button != GlobalMouseHookService.GlobalMouseButton.Left)
+        {
+            return;
+        }
+
+        var myHwnd = this.GetWindowHandle();
+        _mouseDownOnThisWindow = myHwnd != IntPtr.Zero && e.WindowHandle == myHwnd;
+        LogSnap($"GlobalMouseHookService.LeftButtonDown: onThisWindow={_mouseDownOnThisWindow}");
+    }
+
+    private void CompleteResizeInteraction()
+    {
+        _isResizing = false;
+        _isResizingTopEdge = false;
+        _snapLocked = false;
+        _hasSnapAnchor = false;
+        HideSnapIndicator();
+        LogSnap("Resize interaction completed");
+
+        if (_hookSubscribed)
+        {
+            GlobalMouseHookService.LeftButtonUp -= OnGlobalMouseLeftButtonUp;
+            _hookSubscribed = false;
+            LogSnap("Unsubscribed from GlobalMouseHookService.LeftButtonUp");
+        }
+    }
+
+    private void ShowSnapIndicator()
+    {
+        if (_snapIndicator != null && _isResizing && _isResizingTopEdge)
+        {
+            _snapIndicator.Opacity = _snapIndicatorOpacity;
+            _snapIndicator.IsVisible = true;
+            LogSnap("Snap indicator shown");
+        }
+    }
+
+    private void HideSnapIndicator()
+    {
+        if (_snapIndicator != null)
+        {
+            _snapIndicator.IsVisible = false;
+            LogSnap("Snap indicator hidden");
+        }
+    }
+
+    private static int ComputeHeightPx(TaskbarBoxWindow window)
+    {
+        var scale = window.RenderScaling;
+        var heightPx = (int)Math.Round(window.Bounds.Height * scale);
+        if (heightPx <= 0)
+        {
+            heightPx = (int)Math.Round(window.Height * scale);
+        }
+        LogRead(window, $"ComputeHeightPx: bounds={window.Bounds.Height}, height={window.Height}, scale={scale}, heightPx={heightPx}");
+        return Math.Max(1, heightPx);
+    }
+
+    private static void LogRead(TaskbarBoxWindow window, string message)
+    {
+        WriteLog($"[TaskbarSnap] [{window.GetHashCode():X}] {message}");
+    }
+
+    private void LogSnap(string message)
+    {
+        WriteLog($"[TaskbarSnap] [{GetHashCode():X}] {message}");
+    }
+
+    private static string SafeGetWindowLabel(TaskbarBoxWindow window)
+    {
+        try
+        {
+            return window.ViewModel?.Model?.Name ?? window.ToString() ?? "<window>";
+        }
+        catch
+        {
+            return "<window>";
+        }
+    }
+
+    private static void WriteLog(string line)
+    {
+        var timestamped = $"{DateTime.Now:HH:mm:ss.fff} {line}";
+        Debug.WriteLine(timestamped);
+        Console.WriteLine(timestamped);
+        try
+        {
+            lock (_logSync)
+            {
+                var directory = Path.GetDirectoryName(_logFilePath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                File.AppendAllText(_logFilePath, timestamped + Environment.NewLine);
+            }
+        }
+        catch
+        {
+            // Swallow logging failures
         }
     }
 
