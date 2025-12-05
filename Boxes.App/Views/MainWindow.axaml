@@ -65,7 +65,7 @@
         </Border>
 
         <Border Grid.Column="2" Background="{StaticResource AdvertisingBackgroundBrush}" Padding="28" CornerRadius="16">
-            <ContentControl Content="{Binding Advertising}"/>
+            <ContentControl Content="{Binding SidebarContent}"/>
         </Border>
     </Grid>
 
