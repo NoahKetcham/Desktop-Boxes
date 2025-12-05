@@ -24,6 +24,7 @@ public class BoxWindowManager
     private readonly Dictionary<Guid, double> _lastExpandedHeights = new();
     private bool _areWindowsVisible = true;
     private CancellationTokenSource? _burstCts;
+    private bool _globalMouseHookSubscribed;
     private DateTime _lastHoverUtc;
 
     public bool AreWindowsVisible => _areWindowsVisible;
@@ -62,7 +63,7 @@ public class BoxWindowManager
                 w.SetTopMost(true);
             }
             // Install global mouse hook to end burst on outside click
-            GlobalMouseHookService.Start(OnGlobalMouseDown);
+            EnsureGlobalMouseHook();
         });
 
         var token = myCts.Token;
@@ -98,7 +99,7 @@ public class BoxWindowManager
                     w.SetAlwaysBelowApps();
                 }
                 _burstCts = null;
-                GlobalMouseHookService.Stop();
+                ReleaseGlobalMouseHook();
             });
         }
 
@@ -127,7 +128,7 @@ public class BoxWindowManager
                 w.SetTopMost(false);
                 w.SetAlwaysBelowApps();
             }
-            GlobalMouseHookService.Stop();
+            ReleaseGlobalMouseHook();
         });
     }
 
@@ -136,8 +137,9 @@ public class BoxWindowManager
         return IsBurstActive ? EndBurstAsync() : ShowBurstAsync(baseDuration);
     }
 
-    private void OnGlobalMouseDown(IntPtr clickedHwnd)
+    private void OnGlobalMouseDown(object? sender, GlobalMouseHookService.GlobalMouseEventArgs e)
     {
+        var clickedHwnd = e.WindowHandle;
         if (!IsBurstActive)
         {
             return;
@@ -170,6 +172,28 @@ public class BoxWindowManager
             // End burst on next UI tick
             _ = Dispatcher.UIThread.InvokeAsync(async () => await EndBurstAsync());
         }
+    }
+
+    private void EnsureGlobalMouseHook()
+    {
+        if (_globalMouseHookSubscribed)
+        {
+            return;
+        }
+
+        GlobalMouseHookService.ButtonDown += OnGlobalMouseDown;
+        _globalMouseHookSubscribed = true;
+    }
+
+    private void ReleaseGlobalMouseHook()
+    {
+        if (!_globalMouseHookSubscribed)
+        {
+            return;
+        }
+
+        GlobalMouseHookService.ButtonDown -= OnGlobalMouseDown;
+        _globalMouseHookSubscribed = false;
     }
 
     public async Task SetWindowsVisibility(bool visible)

@@ -116,6 +116,7 @@ public class SettingsService
         ThemePreference = settings.ThemePreference,
         AutoSnapEnabled = settings.AutoSnapEnabled,
         ShowBoxOutlines = settings.ShowBoxOutlines,
+        RunAtStartup = settings.RunAtStartup,
         OneDriveLinked = settings.OneDriveLinked,
         GoogleDriveLinked = settings.GoogleDriveLinked,
         BoxesTransparencyPercent = settings.BoxesTransparencyPercent,

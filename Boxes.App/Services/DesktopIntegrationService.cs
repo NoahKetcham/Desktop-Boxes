@@ -13,6 +13,8 @@ public static class DesktopIntegrationService
     private const string ContextMenuBaseKey = "Software\\Classes\\DesktopBackground\\shell\\ConfigureBoxes";
     private const string PipeName = "Boxes.App.DesktopIntegration";
 
+        private const string StartupShortcutName = "Desktop Boxes.lnk";
+
     public static void EnsureContextMenuRegistered(bool areBoxesVisible)
     {
         try
@@ -114,6 +116,65 @@ public static class DesktopIntegrationService
             return false;
         }
     }
+
+        public static bool EnableRunAtStartup()
+        {
+            try
+            {
+                var exePath = Process.GetCurrentProcess().MainModule?.FileName;
+                if (string.IsNullOrWhiteSpace(exePath))
+                {
+                    return false;
+                }
+
+                var startupDir = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+                if (string.IsNullOrWhiteSpace(startupDir))
+                {
+                    return false;
+                }
+
+                Directory.CreateDirectory(startupDir);
+                var linkPath = Path.Combine(startupDir, StartupShortcutName);
+
+                return ShellLinkHelper.CreateShortcut(
+                    linkPath,
+                    exePath,
+                    arguments: string.Empty,
+                    workingDir: Path.GetDirectoryName(exePath),
+                    description: "Start Desktop Boxes automatically with Windows",
+                    iconPath: exePath,
+                    iconIndex: 0,
+                    appUserModelId: "Boxes.App"
+                );
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[DesktopIntegrationService] Failed to enable run at startup: {ex}");
+                return false;
+            }
+        }
+
+        public static void DisableRunAtStartup()
+        {
+            try
+            {
+                var startupDir = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+                if (string.IsNullOrWhiteSpace(startupDir))
+                {
+                    return;
+                }
+
+                var linkPath = Path.Combine(startupDir, StartupShortcutName);
+                if (File.Exists(linkPath))
+                {
+                    File.Delete(linkPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[DesktopIntegrationService] Failed to disable run at startup: {ex}");
+            }
+        }
 
     public static bool CreateShowBurstStartMenuShortcut()
     {
