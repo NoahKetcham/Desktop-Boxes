@@ -51,6 +51,16 @@ public static class AppServices
                 {
                     AccentService.TryApplyAccentHex(settings.AccentHex);
                 }
+
+                // Ensure run-at-startup shortcut matches persisted setting
+                if (settings.RunAtStartup)
+                {
+                    _ = DesktopIntegrationService.EnableRunAtStartup();
+                }
+                else
+                {
+                    DesktopIntegrationService.DisableRunAtStartup();
+                }
             }
             catch
             {

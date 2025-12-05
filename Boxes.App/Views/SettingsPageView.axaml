@@ -118,6 +118,7 @@
                         <TextBlock Text="Behavior" FontWeight="SemiBold" FontSize="16"/>
                         <ToggleSwitch Content="Auto snap new boxes" IsChecked="{Binding AutoSnapEnabled, Mode=TwoWay}"/>
                         <ToggleSwitch Content="Show box outlines" IsChecked="{Binding ShowBoxOutlines, Mode=TwoWay}"/>
+                        <ToggleSwitch Content="Run Desktop Boxes at Windows startup" IsChecked="{Binding RunAtStartup, Mode=TwoWay}"/>
                     </StackPanel>
                 </Border>
 

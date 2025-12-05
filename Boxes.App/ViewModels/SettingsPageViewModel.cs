@@ -25,6 +25,9 @@ public partial class SettingsPageViewModel : ViewModelBase
     [ObservableProperty]
     private bool showBoxOutlines = true;
 
+        [ObservableProperty]
+        private bool runAtStartup;
+
     [ObservableProperty]
     private bool oneDriveLinked;
 
@@ -107,6 +110,7 @@ public partial class SettingsPageViewModel : ViewModelBase
             ThemePreference = ThemePreference,
             AutoSnapEnabled = AutoSnapEnabled,
             ShowBoxOutlines = ShowBoxOutlines,
+            RunAtStartup = RunAtStartup,
             OneDriveLinked = OneDriveLinked,
             GoogleDriveLinked = GoogleDriveLinked,
                 BoxesTransparencyPercent = BoxesTransparencyPercent,
@@ -117,6 +121,15 @@ public partial class SettingsPageViewModel : ViewModelBase
         };
 
         await AppServices.SettingsService.SaveAsync(model);
+
+        if (RunAtStartup)
+        {
+            _ = DesktopIntegrationService.EnableRunAtStartup();
+        }
+        else
+        {
+            DesktopIntegrationService.DisableRunAtStartup();
+        }
     }
 
     private void Apply(ApplicationSettings settings)
@@ -124,6 +137,7 @@ public partial class SettingsPageViewModel : ViewModelBase
         ThemePreference = settings.ThemePreference;
         AutoSnapEnabled = settings.AutoSnapEnabled;
         ShowBoxOutlines = settings.ShowBoxOutlines;
+        RunAtStartup = settings.RunAtStartup;
         OneDriveLinked = settings.OneDriveLinked;
         GoogleDriveLinked = settings.GoogleDriveLinked;
         BoxesTransparencyPercent = settings.BoxesTransparencyPercent;
