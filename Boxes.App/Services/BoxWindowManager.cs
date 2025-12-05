@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 using Avalonia;
 using Avalonia.Threading;
 using Boxes.App.Extensions;
@@ -11,6 +12,7 @@ using Boxes.App.Views;
 using System.IO;
 using Avalonia.Controls;
 using Avalonia.Platform;
+using Boxes.App.Extensions;
 
 namespace Boxes.App.Services;
 
@@ -21,15 +23,177 @@ public class BoxWindowManager
     private readonly Dictionary<Guid, WindowStateData> _windowStates = new();
     private readonly Dictionary<Guid, double> _lastExpandedHeights = new();
     private bool _areWindowsVisible = true;
+    private CancellationTokenSource? _burstCts;
+    private bool _globalMouseHookSubscribed;
+    private DateTime _lastHoverUtc;
 
     public bool AreWindowsVisible => _areWindowsVisible;
 
     public bool HasOpenWindows => _windows.Count > 0;
 
+    public bool IsBurstActive => _burstCts is not null;
+
     public Task ToggleAllWindowsVisibility()
     {
         var targetState = !_areWindowsVisible;
         return SetWindowsVisibility(targetState);
+    }
+
+    public void NotifyHover()
+    {
+        _lastHoverUtc = DateTime.UtcNow;
+    }
+
+    public async Task ShowBurstAsync(TimeSpan baseDuration)
+    {
+        // Create a new CTS and cancel the previous one safely without disposing it immediately
+        CancellationTokenSource myCts = new();
+        var previous = Interlocked.Exchange(ref _burstCts, myCts);
+        previous?.Cancel();
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            _lastHoverUtc = DateTime.UtcNow;
+            foreach (var w in _windows.Values)
+            {
+                w.SetTopMost(true);
+            }
+            foreach (var w in _taskbarWindows.Values)
+            {
+                w.SetTopMost(true);
+            }
+            // Install global mouse hook to end burst on outside click
+            EnsureGlobalMouseHook();
+        });
+
+        var token = myCts.Token;
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                await Task.Delay(250, token).ConfigureAwait(false);
+                var idle = DateTime.UtcNow - _lastHoverUtc;
+                if (idle >= baseDuration)
+                {
+                    break;
+                }
+            }
+        }
+        catch (TaskCanceledException)
+        {
+        }
+
+        // Only revert if this instance still owns the burst (was not superseded)
+        if (ReferenceEquals(_burstCts, myCts))
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                foreach (var w in _windows.Values)
+                {
+                    w.SetTopMost(false);
+                    w.SetAlwaysBelowApps();
+                }
+                foreach (var w in _taskbarWindows.Values)
+                {
+                    w.SetTopMost(false);
+                    w.SetAlwaysBelowApps();
+                }
+                _burstCts = null;
+                ReleaseGlobalMouseHook();
+            });
+        }
+
+        myCts.Dispose();
+    }
+
+    public async Task EndBurstAsync()
+    {
+        var prior = Interlocked.Exchange(ref _burstCts, null);
+        if (prior is null)
+        {
+            return;
+        }
+        prior.Cancel();
+        prior.Dispose();
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            foreach (var w in _windows.Values)
+            {
+                w.SetTopMost(false);
+                w.SetAlwaysBelowApps();
+            }
+            foreach (var w in _taskbarWindows.Values)
+            {
+                w.SetTopMost(false);
+                w.SetAlwaysBelowApps();
+            }
+            ReleaseGlobalMouseHook();
+        });
+    }
+
+    public Task ToggleBurstAsync(TimeSpan baseDuration)
+    {
+        return IsBurstActive ? EndBurstAsync() : ShowBurstAsync(baseDuration);
+    }
+
+    private void OnGlobalMouseDown(object? sender, GlobalMouseHookService.GlobalMouseEventArgs e)
+    {
+        var clickedHwnd = e.WindowHandle;
+        if (!IsBurstActive)
+        {
+            return;
+        }
+
+        // Determine if the clicked window belongs to our app windows
+        bool isOurWindow = false;
+        foreach (var w in _windows.Values)
+        {
+            if (w.GetWindowHandle() == clickedHwnd)
+            {
+                isOurWindow = true;
+                break;
+            }
+        }
+        if (!isOurWindow)
+        {
+            foreach (var tw in _taskbarWindows.Values)
+            {
+                if (tw.GetWindowHandle() == clickedHwnd)
+                {
+                    isOurWindow = true;
+                    break;
+                }
+            }
+        }
+
+        if (!isOurWindow)
+        {
+            // End burst on next UI tick
+            _ = Dispatcher.UIThread.InvokeAsync(async () => await EndBurstAsync());
+        }
+    }
+
+    private void EnsureGlobalMouseHook()
+    {
+        if (_globalMouseHookSubscribed)
+        {
+            return;
+        }
+
+        GlobalMouseHookService.ButtonDown += OnGlobalMouseDown;
+        _globalMouseHookSubscribed = true;
+    }
+
+    private void ReleaseGlobalMouseHook()
+    {
+        if (!_globalMouseHookSubscribed)
+        {
+            return;
+        }
+
+        GlobalMouseHookService.ButtonDown -= OnGlobalMouseDown;
+        _globalMouseHookSubscribed = false;
     }
 
     public async Task SetWindowsVisibility(bool visible)
@@ -112,6 +276,7 @@ public class BoxWindowManager
                     existing.Show();
                 }
                 existing.Activate();
+                existing.SetAlwaysBelowApps();
                 return;
             }
 
@@ -174,6 +339,7 @@ public class BoxWindowManager
             {
                 window.Show();
                 window.Activate();
+                window.SetAlwaysBelowApps();
             }
             else
             {
@@ -199,6 +365,7 @@ public class BoxWindowManager
                         existing.Show();
                     }
                     existing.Activate();
+                    existing.SetAlwaysBelowApps();
                 }
                 else
                 {
@@ -222,6 +389,7 @@ public class BoxWindowManager
         {
             taskbar.Show();
             taskbar.Activate();
+            taskbar.SetAlwaysBelowApps();
         }
         else
         {
@@ -816,6 +984,32 @@ public class BoxWindowManager
         }
 
         return (snapTarget, targetWindow);
+    }
+
+    /// <summary>
+    /// Gets all other taskbar windows (excluding the current one) for snap detection.
+    /// </summary>
+    public IEnumerable<TaskbarBoxWindow> GetOtherTaskbarWindows(TaskbarBoxWindow currentWindow)
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            return Dispatcher.UIThread.InvokeAsync(() => GetOtherTaskbarWindows(currentWindow)).GetAwaiter().GetResult();
+        }
+
+        return _taskbarWindows.Values.Where(w => w != currentWindow && w.IsVisible);
+    }
+
+    /// <summary>
+    /// Gets all taskbar windows including the current one.
+    /// </summary>
+    public IEnumerable<TaskbarBoxWindow> GetAllTaskbarWindows()
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            return Dispatcher.UIThread.InvokeAsync(() => GetAllTaskbarWindows()).GetAwaiter().GetResult();
+        }
+
+        return _taskbarWindows.Values.Where(w => w.IsVisible);
     }
 }
 

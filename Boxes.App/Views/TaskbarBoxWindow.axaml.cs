@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -11,6 +14,7 @@ using Boxes.App.Services;
 using Boxes.App.Models;
 using Avalonia.Threading;
 using Avalonia.Media;
+using Boxes.App.Extensions;
 
 namespace Boxes.App.Views;
 
@@ -18,23 +22,79 @@ public partial class TaskbarBoxWindow : Window
 {
     private bool _dragging;
     private PixelPoint _startWindow;
-    private Point _startPointer;
+    private PixelPoint _startScreenPosition;
+    private PixelPoint _lastWindowPosition;
     private Border? _contentArea;
     private Grid? _rootGrid;
     private Border? _headerBar;
+    private DragLayoutContext? _dragLayoutContext;
+    private const double LayoutGap = 15d;
+    private readonly TimeSpan _dragReflowInterval = TimeSpan.FromMilliseconds(12);
+    private DateTime _lastReflow = DateTime.MinValue;
+    private const double HysteresisPx = 5.0;
+    private int? _stableInsertionIndex;
+    private readonly Dictionary<TaskbarBoxWindow, Tween> _activeTweens = new();
+    private DispatcherTimer? _tweenTimer;
+    private static readonly TimeSpan TweenInterval = TimeSpan.FromMilliseconds(12);
+    private static readonly TimeSpan TweenDuration = TimeSpan.FromMilliseconds(120);
+    private bool _isResizing;
+    private bool _isResizingTopEdge;
+    private bool _inSnapAdjust;
+    private bool _snapLocked;
+    private int _snapTargetTopPx;
+    private int _snapAnchorBottomPx;
+    private bool _hasSnapAnchor;
+    private const int _thresholdInPx = 20;
+    private const int _thresholdOutPx = 32;
+    private Border? _snapIndicator;
+    private double _snapIndicatorOpacity = 1.0;
+    private bool _hookSubscribed;
+    private bool _mouseDownOnThisWindow;
+    private static readonly object _logSync = new();
+    private static readonly string _logFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Boxes", "TaskbarSnap.log");
 
     public TaskbarBoxWindow()
     {
         InitializeComponent();
+        Opened += (_, __) => this.SetAlwaysBelowApps();
+        Activated += (_, __) => { if (!AppServices.BoxWindowManager.IsBurstActive) this.SetAlwaysBelowApps(); };
+        PointerEntered += (_, __) => AppServices.BoxWindowManager.NotifyHover();
+        AddHandler(InputElement.PointerMovedEvent, OnPointerHoverActivity, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+        AddHandler(InputElement.PointerEnteredEvent, OnPointerHoverActivity, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
+        AddHandler(InputElement.PointerWheelChangedEvent, OnPointerWheelActivity, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
         HookDataContext();
         _contentArea = this.FindControl<Border>("ContentArea");
         _rootGrid = this.FindControl<Grid>("RootGrid");
         _headerBar = this.FindControl<Border>("HeaderBar");
+        _snapIndicator = this.FindControl<Border>("SnapIndicator");
         AppServices.SettingsService.SettingsChanged += OnSettingsChanged;
         ApplyTransparencyFromSettings();
         
+        // Subscribe to PropertyChanged to detect size changes during resize
+        PropertyChanged += OnWindowPropertyChanged;
+        
         // Apply desktop icon metrics
         ApplyDesktopIconMetrics();
+        
+        LogSnap($"TaskbarBoxWindow constructor completed, snapIndicator={_snapIndicator != null}");
+
+        // Subscribe to global mouse hook for down/up so system-border resizes are detected
+        try
+        {
+            GlobalMouseHookService.LeftButtonDown += OnGlobalMouseLeftButtonDown;
+            GlobalMouseHookService.LeftButtonUp += OnGlobalMouseLeftButtonUp;
+            _hookSubscribed = true;
+        }
+        catch { }
+    }
+    
+    private void OnWindowPropertyChanged(object? sender, Avalonia.AvaloniaPropertyChangedEventArgs e)
+    {
+        if ((e.Property == WidthProperty || e.Property == HeightProperty) && _isResizing && _isResizingTopEdge && !_inSnapAdjust)
+        {
+            LogSnap($"PropertyChanged: {e.Property.Name}={e.NewValue}, isResizing={_isResizing}, topEdge={_isResizingTopEdge}");
+            Dispatcher.UIThread.Post(() => EvaluateAndApplySnap(), DispatcherPriority.Normal);
+        }
     }
 
     internal TaskbarBoxWindowViewModel ViewModel => (TaskbarBoxWindowViewModel)DataContext!;
@@ -73,22 +133,59 @@ public partial class TaskbarBoxWindow : Window
     private void ApplyTransparency(ApplicationSettings settings)
     {
         var opacity = Math.Clamp(settings.BoxesTransparencyPercent, 0, 100) / 100.0;
+        var backgroundColorHex = settings.BoxBackgroundColor ?? "#1C2235";
         Dispatcher.UIThread.Post(() =>
         {
+            Color bgColor;
+            if (Color.TryParse(backgroundColorHex, out var parsedColor))
+            {
+                bgColor = parsedColor;
+            }
+            else
+            {
+                bgColor = Color.Parse("#1C2235");
+            }
+
             if (_rootGrid != null)
             {
-                if (_rootGrid.Background is ISolidColorBrush gridBg)
-                    _rootGrid.Background = new SolidColorBrush(gridBg.Color, opacity);
-                else
-                    _rootGrid.Background = new SolidColorBrush(Color.Parse("#1C2235"), opacity);
+                _rootGrid.Background = new SolidColorBrush(bgColor, opacity);
             }
 
             if (_headerBar != null)
             {
-                if (_headerBar.Background is ISolidColorBrush headerBg)
-                    _headerBar.Background = new SolidColorBrush(headerBg.Color, opacity);
+                // Calculate relative luminance to determine if background is dark or light
+                // Relative luminance formula: L = 0.2126*R + 0.7152*G + 0.0722*B
+                var r = bgColor.R / 255.0;
+                var g = bgColor.G / 255.0;
+                var b = bgColor.B / 255.0;
+                var luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                
+                Color headerColor;
+                if (luminance < 0.5)
+                {
+                    // Dark background: lighten the header bar (~10% lighter)
+                    headerColor = Color.FromRgb(
+                        (byte)Math.Min(255, bgColor.R + (255 - bgColor.R) * 0.1),
+                        (byte)Math.Min(255, bgColor.G + (255 - bgColor.G) * 0.1),
+                        (byte)Math.Min(255, bgColor.B + (255 - bgColor.B) * 0.1)
+                    );
+                }
                 else
-                    _headerBar.Background = new SolidColorBrush(Color.Parse("#232B46"), opacity);
+                {
+                    // Light background: darken the header bar (~20% darker)
+                    headerColor = Color.FromRgb(
+                        (byte)(bgColor.R * 0.8),
+                        (byte)(bgColor.G * 0.8),
+                        (byte)(bgColor.B * 0.8)
+                    );
+                }
+                _headerBar.Background = new SolidColorBrush(headerColor, opacity);
+            }
+
+            if (_snapIndicator != null)
+            {
+                _snapIndicatorOpacity = Math.Min(1.0, opacity + 0.10);
+                _snapIndicator.Opacity = _snapIndicatorOpacity;
             }
         });
     }
@@ -97,6 +194,12 @@ public partial class TaskbarBoxWindow : Window
     {
         base.OnClosed(e);
         AppServices.SettingsService.SettingsChanged -= OnSettingsChanged;
+        try
+        {
+            GlobalMouseHookService.LeftButtonDown -= OnGlobalMouseLeftButtonDown;
+            GlobalMouseHookService.LeftButtonUp -= OnGlobalMouseLeftButtonUp;
+        }
+        catch { }
     }
 
     private void Header_OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -106,9 +209,18 @@ public partial class TaskbarBoxWindow : Window
             return;
         }
 
+        // Convert window-relative pointer position to screen coordinates
+        var pointerRelative = e.GetPosition(this);
+        var screenX = Position.X + (int)Math.Round(pointerRelative.X);
+        var screenY = Position.Y + (int)Math.Round(pointerRelative.Y);
+
         _dragging = false; // become true only after threshold movement
         _startWindow = Position;
-        _startPointer = e.GetPosition(this);
+        _lastWindowPosition = Position;
+        _startScreenPosition = new PixelPoint(screenX, screenY);
+        CaptureDragLayoutContext();
+        _stableInsertionIndex = _dragLayoutContext?.OriginalIndex;
+        _lastReflow = DateTime.MinValue;
         e.Pointer.Capture((IInputElement)sender!);
         e.Handled = true;
     }
@@ -121,21 +233,30 @@ public partial class TaskbarBoxWindow : Window
             return;
         }
 
-        var current = e.GetPosition(this);
-        var deltaX = current.X - _startPointer.X;
+        // Compute current pointer position in screen coordinates using last known window position
+        var currentPointerRelative = e.GetPosition(this);
+        var currentScreenX = _lastWindowPosition.X + (int)Math.Round(currentPointerRelative.X);
+        var currentScreenY = _lastWindowPosition.Y + (int)Math.Round(currentPointerRelative.Y);
+        var currentScreenPos = new PixelPoint(currentScreenX, currentScreenY);
+
+        // Horizontal delta from initial press in screen coordinates
+        var deltaX = currentScreenPos.X - _startScreenPosition.X;
+
         if (!_dragging)
         {
             if (Math.Abs(deltaX) < 6)
             {
                 return; // still within click threshold
             }
-            _dragging = true; // crossed threshold: start dragging
+            _dragging = true; // crossed threshold
         }
 
-        var newX = _startWindow.X + (int)deltaX;
-        var working = Screens.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
-        var clampedX = Math.Clamp(newX, working.X, working.Right - (int)Bounds.Width);
+        var proposedX = _startWindow.X + deltaX;
+        var monitor = GetMonitorBoundsForWindow(this);
+        var windowWidthPx = (int)Math.Round(Bounds.Width * RenderScaling);
+        var clampedX = Math.Clamp(proposedX, monitor.X, monitor.Right - windowWidthPx);
 
+        // Anchor to taskbar vertically
         int y;
         if (Boxes.App.Extensions.TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTop, out _))
         {
@@ -145,24 +266,40 @@ public partial class TaskbarBoxWindow : Window
         else
         {
             var heightPx = (int)Math.Round(Bounds.Height * RenderScaling);
-            y = working.Bottom - heightPx;
+            y = monitor.Bottom - heightPx;
         }
-        Position = new PixelPoint(clampedX, y);
+
+        var now = DateTime.UtcNow;
+        if (now - _lastReflow >= _dragReflowInterval)
+        {
+            LiveReflowDuringDrag(clampedX);
+            _lastReflow = now;
+        }
+
         e.Handled = true;
     }
+
+    
 
     private void Header_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         if (!_dragging)
         {
             // Treat as click only if very small movement since press
-            var delta = Math.Abs(e.GetPosition(this).X - _startPointer.X);
+            var currentPointerRelative = e.GetPosition(this);
+            var currentScreenX = _lastWindowPosition.X + (int)Math.Round(currentPointerRelative.X);
+            var currentScreenY = _lastWindowPosition.Y + (int)Math.Round(currentPointerRelative.Y);
+            var currentScreenPos = new PixelPoint(currentScreenX, currentScreenY);
+            var delta = Math.Abs(currentScreenPos.X - _startScreenPosition.X);
             if (e.InitialPressMouseButton == MouseButton.Left && delta < 6)
                 ViewModel.ToggleExpanded();
             return;
         }
+        HandleAutoShiftOnDrop();
 
         _dragging = false;
+        _stableInsertionIndex = null;
+        
         e.Pointer.Capture(null);
         e.Handled = true;
         // Persist X position after drag ends
@@ -192,6 +329,7 @@ public partial class TaskbarBoxWindow : Window
 
     private void ResizeHandle_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        LogSnap($"ResizeHandle_OnPointerPressed: IsExpanded={ViewModel.IsExpanded}, sender={sender?.GetType().Name}");
         if (!ViewModel.IsExpanded)
         {
             return;
@@ -209,9 +347,19 @@ public partial class TaskbarBoxWindow : Window
                 _ => null
             };
 
+            LogSnap($"ResizeHandle: tag={border.Tag}, edge={edge}");
             if (edge.HasValue)
             {
                 BeginResizeDrag(edge.Value, e);
+                _isResizing = true;
+                _isResizingTopEdge = edge.Value is WindowEdge.North or WindowEdge.NorthWest or WindowEdge.NorthEast;
+                if (!_isResizingTopEdge && _snapIndicator != null)
+                {
+                    _snapIndicator.IsVisible = false;
+                }
+                _snapLocked = false;
+                TryEnsureHookSubscribed();
+                LogSnap($"Resize start: edge={edge.Value}, topEdge={_isResizingTopEdge}, isResizing={_isResizing}");
                 e.Handled = true;
             }
         }
@@ -220,6 +368,7 @@ public partial class TaskbarBoxWindow : Window
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
         base.OnSizeChanged(e);
+        LogSnap($"OnSizeChanged fired: prev={e.PreviousSize}, new={e.NewSize}, isResizing={_isResizing}, topEdge={_isResizingTopEdge}, inSnapAdjust={_inSnapAdjust}");
         // Keep bottom edge anchored to taskbar while resizing
         var working = Screens.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
         int y;
@@ -234,12 +383,277 @@ public partial class TaskbarBoxWindow : Window
         }
         Position = new PixelPoint(Position.X, y);
 
+        // If the system border was used, promote into resizing when mouse is held on this window
+        if (!_isResizing && _mouseDownOnThisWindow)
+        {
+            _isResizing = true;
+            _isResizingTopEdge = true;
+            _snapLocked = false;
+            LogSnap("Promoted to resizing due to size change while mouse down on this window");
+        }
+
+        if (_isResizing && _isResizingTopEdge && !_inSnapAdjust)
+        {
+            LogSnap($"OnSizeChanged: heightPx={heightPx}, positionY={Position.Y}");
+            EvaluateAndApplySnap();
+        }
+
         // Persist size when in expanded state
         if (ViewModel.IsExpanded)
         {
             _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarExpandedHeightAsync(ViewModel.Model.Id, Height);
             _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarWidthAsync(ViewModel.Model.Id, Width);
             _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarWindowXAsync(ViewModel.Model.Id, Position.X);
+        }
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+        if (_isResizing && e.InitialPressMouseButton == MouseButton.Left)
+        {
+            CompleteResizeInteraction();
+        }
+    }
+
+    private void EvaluateAndApplySnap()
+    {
+        var others = AppServices.BoxWindowManager
+            .GetAllTaskbarWindows()
+            .Where(w => w.IsVisible && !ReferenceEquals(w, this))
+            .ToList();
+
+        if (others.Count == 0)
+        {
+            _snapLocked = false;
+            _hasSnapAnchor = false;
+            HideSnapIndicator();
+            LogSnap("Evaluate: no other windows visible");
+            return;
+        }
+
+        var hasTaskbarTop = TaskbarMetrics.TryGetPrimaryTaskbarTop(out var taskbarTopPx, out _);
+        var myHeightPx = ComputeHeightPx(this);
+        var myBottomPx = hasTaskbarTop ? taskbarTopPx : Position.Y + myHeightPx;
+        var myTopPx = myBottomPx - myHeightPx;
+        LogSnap($"Evaluate: others={others.Count}, locked={_snapLocked}, hasAnchor={_hasSnapAnchor}, myTop={myTopPx}, myBottom={myBottomPx}, myHeight={myHeightPx}, posY={Position.Y}");
+
+        TaskbarBoxWindow? bestWindow = null;
+        var bestTopPx = 0;
+        var bestDelta = int.MaxValue;
+
+        foreach (var other in others)
+        {
+            var otherHeightPx = ComputeHeightPx(other);
+            var otherBottomPx = hasTaskbarTop ? taskbarTopPx : other.Position.Y + otherHeightPx;
+            var otherTopPx = otherBottomPx - otherHeightPx;
+            var delta = Math.Abs(otherTopPx - myTopPx);
+            if (delta < bestDelta)
+            {
+                bestDelta = delta;
+                bestTopPx = otherTopPx;
+                bestWindow = other;
+            }
+        }
+
+        if (bestWindow is null)
+        {
+            _snapLocked = false;
+            _hasSnapAnchor = false;
+            HideSnapIndicator();
+            LogSnap("Evaluate: best window null");
+            return;
+        }
+
+        var bestName = SafeGetWindowLabel(bestWindow);
+        LogSnap($"Evaluate: best={bestName}, bestTop={bestTopPx}, delta={bestDelta}");
+
+        if (_snapLocked)
+        {
+            if (bestDelta > _thresholdOutPx)
+            {
+                _snapLocked = false;
+                _hasSnapAnchor = false;
+                HideSnapIndicator();
+                LogSnap($"Unlock snap: delta {bestDelta} exceeded {_thresholdOutPx}");
+                return;
+            }
+
+            if (!_hasSnapAnchor)
+            {
+                _snapAnchorBottomPx = myBottomPx;
+                _hasSnapAnchor = true;
+                LogSnap($"Snap locked: establishing anchorBottom={_snapAnchorBottomPx}");
+            }
+
+            ApplySnapHeightTo(_snapTargetTopPx, _snapAnchorBottomPx);
+            ShowSnapIndicator();
+            return;
+        }
+
+        if (bestDelta <= _thresholdInPx)
+        {
+            _snapLocked = true;
+            _snapTargetTopPx = bestTopPx;
+            _snapAnchorBottomPx = myBottomPx;
+            _hasSnapAnchor = true;
+            ApplySnapHeightTo(_snapTargetTopPx, _snapAnchorBottomPx);
+            ShowSnapIndicator();
+            LogSnap($"Snap engaged: targetTop={_snapTargetTopPx}, anchorBottom={_snapAnchorBottomPx}, delta={bestDelta}");
+        }
+        else
+        {
+            HideSnapIndicator();
+            LogSnap($"No snap: delta {bestDelta} > {_thresholdInPx}");
+        }
+    }
+
+    private void ApplySnapHeightTo(int targetTopPx, int anchorBottomPx)
+    {
+        var minHeightPx = (int)Math.Round(MinHeight * RenderScaling);
+        var targetHeightPx = Math.Max(anchorBottomPx - targetTopPx, minHeightPx);
+        _inSnapAdjust = true;
+        try
+        {
+            Height = targetHeightPx / RenderScaling;
+            LogSnap($"ApplySnapHeightTo: targetTop={targetTopPx}, anchorBottom={anchorBottomPx}, targetHeightPx={targetHeightPx}");
+        }
+        finally
+        {
+            _inSnapAdjust = false;
+        }
+    }
+
+    private void TryEnsureHookSubscribed()
+    {
+        if (_hookSubscribed || !OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        GlobalMouseHookService.LeftButtonUp += OnGlobalMouseLeftButtonUp;
+        _hookSubscribed = true;
+        LogSnap("Subscribed to GlobalMouseHookService.LeftButtonUp");
+    }
+
+    private void OnGlobalMouseLeftButtonUp(object? sender, GlobalMouseHookService.GlobalMouseEventArgs e)
+    {
+        if (e.Button != GlobalMouseHookService.GlobalMouseButton.Left)
+        {
+            return;
+        }
+
+        LogSnap("GlobalMouseHookService.LeftButtonUp received");
+        _mouseDownOnThisWindow = false;
+        if (_isResizing)
+        {
+            CompleteResizeInteraction();
+        }
+    }
+
+    private void OnGlobalMouseLeftButtonDown(object? sender, GlobalMouseHookService.GlobalMouseEventArgs e)
+    {
+        if (e.Button != GlobalMouseHookService.GlobalMouseButton.Left)
+        {
+            return;
+        }
+
+        var myHwnd = this.GetWindowHandle();
+        _mouseDownOnThisWindow = myHwnd != IntPtr.Zero && e.WindowHandle == myHwnd;
+        LogSnap($"GlobalMouseHookService.LeftButtonDown: onThisWindow={_mouseDownOnThisWindow}");
+    }
+
+    private void CompleteResizeInteraction()
+    {
+        _isResizing = false;
+        _isResizingTopEdge = false;
+        _snapLocked = false;
+        _hasSnapAnchor = false;
+        HideSnapIndicator();
+        LogSnap("Resize interaction completed");
+
+        if (_hookSubscribed)
+        {
+            GlobalMouseHookService.LeftButtonUp -= OnGlobalMouseLeftButtonUp;
+            _hookSubscribed = false;
+            LogSnap("Unsubscribed from GlobalMouseHookService.LeftButtonUp");
+        }
+    }
+
+    private void ShowSnapIndicator()
+    {
+        if (_snapIndicator != null && _isResizing && _isResizingTopEdge)
+        {
+            _snapIndicator.Opacity = _snapIndicatorOpacity;
+            _snapIndicator.IsVisible = true;
+            LogSnap("Snap indicator shown");
+        }
+    }
+
+    private void HideSnapIndicator()
+    {
+        if (_snapIndicator != null)
+        {
+            _snapIndicator.IsVisible = false;
+            LogSnap("Snap indicator hidden");
+        }
+    }
+
+    private static int ComputeHeightPx(TaskbarBoxWindow window)
+    {
+        var scale = window.RenderScaling;
+        var heightPx = (int)Math.Round(window.Bounds.Height * scale);
+        if (heightPx <= 0)
+        {
+            heightPx = (int)Math.Round(window.Height * scale);
+        }
+        LogRead(window, $"ComputeHeightPx: bounds={window.Bounds.Height}, height={window.Height}, scale={scale}, heightPx={heightPx}");
+        return Math.Max(1, heightPx);
+    }
+
+    private static void LogRead(TaskbarBoxWindow window, string message)
+    {
+        WriteLog($"[TaskbarSnap] [{window.GetHashCode():X}] {message}");
+    }
+
+    private void LogSnap(string message)
+    {
+        WriteLog($"[TaskbarSnap] [{GetHashCode():X}] {message}");
+    }
+
+    private static string SafeGetWindowLabel(TaskbarBoxWindow window)
+    {
+        try
+        {
+            return window.ViewModel?.Model?.Name ?? window.ToString() ?? "<window>";
+        }
+        catch
+        {
+            return "<window>";
+        }
+    }
+
+    private static void WriteLog(string line)
+    {
+        var timestamped = $"{DateTime.Now:HH:mm:ss.fff} {line}";
+        Debug.WriteLine(timestamped);
+        Console.WriteLine(timestamped);
+        try
+        {
+            lock (_logSync)
+            {
+                var directory = Path.GetDirectoryName(_logFilePath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                File.AppendAllText(_logFilePath, timestamped + Environment.NewLine);
+            }
+        }
+        catch
+        {
+            // Swallow logging failures
         }
     }
 
@@ -282,6 +696,652 @@ public partial class TaskbarBoxWindow : Window
         }
     }
     
+    private void OnPointerHoverActivity(object? sender, PointerEventArgs e)
+    {
+        if (AppServices.BoxWindowManager.IsBurstActive)
+        {
+            AppServices.BoxWindowManager.NotifyHover();
+        }
+    }
+
+    private void OnPointerWheelActivity(object? sender, PointerWheelEventArgs e)
+    {
+        if (AppServices.BoxWindowManager.IsBurstActive)
+        {
+            AppServices.BoxWindowManager.NotifyHover();
+        }
+    }
+    
+    private void HandleAutoShiftOnDrop()
+    {
+        if (_dragLayoutContext is not { } context || ViewModel?.Model is null)
+        {
+            _dragLayoutContext = null;
+            return;
+        }
+
+        var allWindows = AppServices.BoxWindowManager.GetAllTaskbarWindows()
+            .Where(w => w.IsVisible)
+            .ToList();
+
+        if (allWindows.Count <= 1)
+        {
+            _dragLayoutContext = null;
+            return;
+        }
+
+        var monitorBounds = GetMonitorBoundsForWindow(this);
+        var draggedBox = CreateLayout(this);
+        draggedBox.X = Math.Clamp(Position.X, monitorBounds.X, monitorBounds.Right - draggedBox.Width);
+
+        var others = new List<BoxLayout>(allWindows.Count - 1);
+        foreach (var window in allWindows)
+        {
+            if (ReferenceEquals(window, this))
+            {
+                continue;
+            }
+
+            others.Add(CreateLayout(window));
+        }
+
+        if (others.Count == 0)
+        {
+            _dragLayoutContext = null;
+            return;
+        }
+
+        others.Sort(static (a, b) => a.Left.CompareTo(b.Left));
+
+        var insertionIndex = ComputeInsertionIndex(others, draggedBox);
+        insertionIndex = Math.Clamp(insertionIndex, 0, others.Count);
+
+        var ordered = new List<BoxLayout>(others.Count + 1);
+        ordered.AddRange(others);
+        ordered.Insert(insertionIndex, draggedBox);
+
+        var originalIndex = Math.Clamp(context.OriginalIndex, 0, ordered.Count - 1);
+        var direction = Math.Sign(insertionIndex - originalIndex);
+
+        var leftNeighbor = insertionIndex > 0 ? ordered[insertionIndex - 1] : null;
+        var rightNeighbor = insertionIndex + 1 < ordered.Count ? ordered[insertionIndex + 1] : null;
+
+        AlignDraggedWithinNeighbors(draggedBox, leftNeighbor, rightNeighbor, monitorBounds, direction);
+
+        if (direction > 0)
+        {
+            EnsureRightSegment(ordered, insertionIndex, monitorBounds);
+        }
+        else if (direction < 0)
+        {
+            EnsureLeftSegment(ordered, insertionIndex, monitorBounds);
+        }
+        else
+        {
+            EnsureLeftSegment(ordered, insertionIndex, monitorBounds);
+            EnsureRightSegment(ordered, insertionIndex, monitorBounds);
+        }
+
+        ordered.Sort(static (a, b) => a.Left.CompareTo(b.Left));
+        if (!IsWithinBounds(ordered, monitorBounds))
+        {
+            PackWithinBounds(ordered, draggedBox, monitorBounds);
+        }
+
+        ApplyLayout(ordered);
+
+        _dragLayoutContext = null;
+    }
+
+    private void LiveReflowDuringDrag(int proposedX)
+    {
+        // Gather all visible taskbar windows
+        var allWindows = AppServices.BoxWindowManager.GetAllTaskbarWindows()
+            .Where(w => w.IsVisible)
+            .ToList();
+
+        if (allWindows.Count <= 1 || ViewModel?.Model is null)
+        {
+            return;
+        }
+
+        var monitorBounds = GetMonitorBoundsForWindow(this);
+
+        // Build dragged layout and clamp within monitor
+        var dragged = CreateLayout(this);
+        dragged.X = Math.Clamp(proposedX, monitorBounds.X, monitorBounds.Right - dragged.Width);
+
+        // Build other layouts
+        var others = new List<BoxLayout>(allWindows.Count - 1);
+        foreach (var window in allWindows)
+        {
+            if (ReferenceEquals(window, this))
+            {
+                continue;
+            }
+            others.Add(CreateLayout(window));
+        }
+
+        if (others.Count == 0)
+        {
+            return;
+        }
+
+        others.Sort(static (a, b) => a.Left.CompareTo(b.Left));
+
+        // Compute candidate insertion index by centers
+        var candidate = ComputeInsertionIndex(others, dragged);
+
+        // Hysteresis: only change stable index when crossing boundary ±HysteresisPx
+        var prevStable = _stableInsertionIndex ?? candidate;
+        var nextStable = prevStable;
+
+        if (candidate > prevStable)
+        {
+            var boundaryCenter = prevStable < others.Count ? others[prevStable].Center : double.PositiveInfinity;
+            if (dragged.Center >= boundaryCenter + HysteresisPx)
+            {
+                nextStable = candidate;
+            }
+        }
+        else if (candidate < prevStable)
+        {
+            var boundaryCenter = prevStable - 1 >= 0 ? others[prevStable - 1].Center : double.NegativeInfinity;
+            if (dragged.Center <= boundaryCenter - HysteresisPx)
+            {
+                nextStable = candidate;
+            }
+        }
+
+        var direction = Math.Sign(nextStable - prevStable);
+        _stableInsertionIndex = Math.Clamp(nextStable, 0, others.Count);
+
+        // Compose ordered list with dragged inserted
+        var ordered = new List<BoxLayout>(others.Count + 1);
+        ordered.AddRange(others);
+        ordered.Insert(_stableInsertionIndex.Value, dragged);
+
+        // Neighbor-aware alignment for dragged
+        var leftNeighbor = _stableInsertionIndex > 0 ? ordered[_stableInsertionIndex.Value - 1] : null;
+        var rightNeighbor = _stableInsertionIndex + 1 < ordered.Count ? ordered[_stableInsertionIndex.Value + 1] : null;
+        AlignDraggedWithinNeighbors(dragged, leftNeighbor, rightNeighbor, monitorBounds, direction);
+
+        // Enforce spacing constraints outward
+        if (direction > 0)
+        {
+            EnsureRightSegment(ordered, _stableInsertionIndex.Value, monitorBounds);
+        }
+        else if (direction < 0)
+        {
+            EnsureLeftSegment(ordered, _stableInsertionIndex.Value, monitorBounds);
+        }
+        else
+        {
+            EnsureLeftSegment(ordered, _stableInsertionIndex.Value, monitorBounds);
+            EnsureRightSegment(ordered, _stableInsertionIndex.Value, monitorBounds);
+        }
+
+        // Keep everything within bounds if needed
+        ordered.Sort(static (a, b) => a.Left.CompareTo(b.Left));
+        if (!IsWithinBounds(ordered, monitorBounds))
+        {
+            PackWithinBounds(ordered, dragged, monitorBounds);
+        }
+
+        // Apply reflow
+        ApplyLayout(ordered);
+    }
+
+    private void CaptureDragLayoutContext()
+    {
+        if (ViewModel?.Model is null)
+        {
+            _dragLayoutContext = null;
+            return;
+        }
+
+        var allWindows = AppServices.BoxWindowManager.GetAllTaskbarWindows()
+            .Where(w => w.IsVisible)
+            .ToList();
+
+        if (allWindows.Count <= 1)
+        {
+            _dragLayoutContext = null;
+            return;
+        }
+
+        var boxes = new List<BoxLayout>(allWindows.Count);
+        foreach (var window in allWindows)
+        {
+            boxes.Add(CreateLayout(window));
+        }
+
+        boxes.Sort(static (a, b) => a.Left.CompareTo(b.Left));
+
+        var originalIndex = boxes.FindIndex(b => b.Id == ViewModel.Model.Id);
+        if (originalIndex < 0)
+        {
+            _dragLayoutContext = null;
+            return;
+        }
+
+        _dragLayoutContext = new DragLayoutContext(originalIndex);
+    }
+
+    private static PixelRect GetMonitorBoundsForWindow(TaskbarBoxWindow window)
+    {
+        var screens = window.Screens;
+        if (screens?.All is { } allScreens)
+        {
+            var position = window.Position;
+            foreach (var screen in allScreens)
+            {
+                if (screen.Bounds.Contains(position))
+                {
+                    return screen.WorkingArea;
+                }
+            }
+        }
+
+        return screens?.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
+    }
+
+    private static int ComputeInsertionIndex(IReadOnlyList<BoxLayout> boxes, BoxLayout dragged)
+    {
+        if (boxes.Count == 0)
+        {
+            return 0;
+        }
+
+        const double epsilon = 0.1;
+        for (var i = 0; i < boxes.Count; i++)
+        {
+            var box = boxes[i];
+            if (dragged.Center < box.Center - epsilon)
+            {
+                return i;
+            }
+        }
+
+        return boxes.Count;
+    }
+
+    private static void AlignDraggedWithinNeighbors(BoxLayout dragged, BoxLayout? leftNeighbor, BoxLayout? rightNeighbor, PixelRect monitorBounds, int direction)
+    {
+        double minLeft = monitorBounds.X;
+        if (leftNeighbor != null)
+        {
+            minLeft = Math.Max(minLeft, leftNeighbor.Right + LayoutGap);
+        }
+
+        double maxLeft = monitorBounds.Right - dragged.Width;
+        if (rightNeighbor != null)
+        {
+            maxLeft = Math.Min(maxLeft, rightNeighbor.Left - LayoutGap - dragged.Width);
+        }
+
+        if (minLeft <= maxLeft)
+        {
+            dragged.X = Math.Clamp(dragged.X, minLeft, maxLeft);
+            return;
+        }
+
+        if (direction > 0)
+        {
+            dragged.X = minLeft;
+        }
+        else if (direction < 0)
+        {
+            dragged.X = maxLeft;
+        }
+        else
+        {
+            dragged.X = Math.Clamp(dragged.X, monitorBounds.X, monitorBounds.Right - dragged.Width);
+        }
+    }
+
+    private static void EnsureRightSegment(IList<BoxLayout> boxes, int pivotIndex, PixelRect monitorBounds)
+    {
+        for (var i = pivotIndex + 1; i < boxes.Count; i++)
+        {
+            var prev = boxes[i - 1];
+            var requiredLeft = prev.Right + LayoutGap;
+            if (boxes[i].Left < requiredLeft)
+            {
+                var delta = requiredLeft - boxes[i].Left;
+                ShiftRange(boxes, i, boxes.Count - 1, delta);
+            }
+        }
+
+        if (boxes.Count == 0)
+        {
+            return;
+        }
+
+        var overflow = boxes[^1].Right - monitorBounds.Right;
+        if (overflow > 0)
+        {
+            ShiftRange(boxes, pivotIndex + 1, boxes.Count - 1, -overflow);
+
+            for (var i = pivotIndex + 1; i < boxes.Count; i++)
+            {
+                var prev = boxes[i - 1];
+                var requiredLeft = prev.Right + LayoutGap;
+                if (boxes[i].Left < requiredLeft)
+                {
+                    boxes[i].X = requiredLeft;
+                }
+            }
+        }
+    }
+
+    private static void EnsureLeftSegment(IList<BoxLayout> boxes, int pivotIndex, PixelRect monitorBounds)
+    {
+        for (var i = pivotIndex - 1; i >= 0; i--)
+        {
+            var next = boxes[i + 1];
+            var requiredRight = next.Left - LayoutGap;
+            if (boxes[i].Right > requiredRight)
+            {
+                var delta = boxes[i].Right - requiredRight;
+                ShiftRange(boxes, 0, i, -delta);
+            }
+        }
+
+        if (boxes.Count == 0)
+        {
+            return;
+        }
+
+        var overflow = monitorBounds.X - boxes[0].Left;
+        if (overflow > 0)
+        {
+            ShiftRange(boxes, 0, pivotIndex - 1, overflow);
+
+            for (var i = pivotIndex - 1; i >= 0; i--)
+            {
+                if (i < 0)
+                {
+                    break;
+                }
+
+                var next = boxes[i + 1];
+                var requiredRight = next.Left - LayoutGap;
+                if (boxes[i].Right > requiredRight)
+                {
+                    boxes[i].X = requiredRight - boxes[i].Width;
+                }
+            }
+        }
+    }
+
+    private static void ShiftRange(IList<BoxLayout> boxes, int startIndex, int endIndex, double delta)
+    {
+        if (delta == 0 || startIndex > endIndex)
+        {
+            return;
+        }
+
+        startIndex = Math.Max(startIndex, 0);
+        endIndex = Math.Min(endIndex, boxes.Count - 1);
+
+        for (var i = startIndex; i <= endIndex; i++)
+        {
+            boxes[i].X += delta;
+        }
+    }
+
+    private static bool IsWithinBounds(IReadOnlyList<BoxLayout> boxes, PixelRect monitorBounds)
+    {
+        if (boxes.Count == 0)
+        {
+            return true;
+        }
+
+        var first = boxes[0];
+        var last = boxes[^1];
+        return first.Left >= monitorBounds.X - 0.5 && last.Right <= monitorBounds.Right + 0.5;
+    }
+
+    private static void PackWithinBounds(List<BoxLayout> boxes, BoxLayout dragged, PixelRect monitorBounds)
+    {
+        boxes.Sort(static (a, b) => a.Left.CompareTo(b.Left));
+        var draggedIndex = boxes.IndexOf(dragged);
+        if (draggedIndex < 0)
+        {
+            draggedIndex = 0;
+        }
+
+        var minLeft = monitorBounds.X;
+        var maxLeft = monitorBounds.Right - dragged.Width;
+        if (maxLeft < minLeft)
+        {
+            maxLeft = minLeft;
+        }
+
+        dragged.X = Math.Clamp(dragged.X, minLeft, maxLeft);
+
+        for (var i = draggedIndex - 1; i >= 0; i--)
+        {
+            var next = boxes[i + 1];
+            var targetRight = next.Left - LayoutGap;
+            boxes[i].X = targetRight - boxes[i].Width;
+        }
+
+        for (var i = draggedIndex + 1; i < boxes.Count; i++)
+        {
+            var prev = boxes[i - 1];
+            var targetLeft = prev.Right + LayoutGap;
+            boxes[i].X = targetLeft;
+        }
+
+        if (boxes.Count == 0)
+        {
+            return;
+        }
+
+        var overflowLeft = monitorBounds.X - boxes[0].Left;
+        if (overflowLeft > 0)
+        {
+            foreach (var box in boxes)
+            {
+                box.X += overflowLeft;
+            }
+        }
+
+        var overflowRight = boxes[^1].Right - monitorBounds.Right;
+        if (overflowRight > 0)
+        {
+            foreach (var box in boxes)
+            {
+                box.X -= overflowRight;
+            }
+        }
+    }
+
+    private void ApplyLayout(List<BoxLayout> boxes)
+    {
+        boxes.Sort(static (a, b) => a.Left.CompareTo(b.Left));
+
+        foreach (var box in boxes)
+        {
+            var window = box.Window;
+            var targetX = (int)Math.Round(box.X);
+            var current = window.Position;
+            if (current.X == targetX)
+            {
+                continue;
+            }
+
+            if (ReferenceEquals(window, this))
+            {
+                // Dragged window moves instantly (single-writer)
+                var newPos = new PixelPoint(targetX, current.Y);
+                window.Position = newPos;
+                _lastWindowPosition = newPos;
+            }
+            else
+            {
+                // Neighbors tween toward target
+                StartOrUpdateTween(window, targetX);
+            }
+        }
+    }
+
+    private void StartOrUpdateTween(TaskbarBoxWindow window, int targetX)
+    {
+        if (ReferenceEquals(window, this))
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var currentX = window.Position.X;
+
+        if (_activeTweens.TryGetValue(window, out var tween))
+        {
+            tween.StartX = currentX;
+            tween.TargetX = targetX;
+            tween.StartTime = now;
+            tween.Duration = TweenDuration;
+            _activeTweens[window] = tween;
+        }
+        else
+        {
+            _activeTweens[window] = new Tween(window, currentX, targetX, now, TweenDuration);
+        }
+
+        EnsureTweenTimer();
+    }
+
+    private void EnsureTweenTimer()
+    {
+        if (_tweenTimer != null)
+        {
+            return;
+        }
+
+        _tweenTimer = new DispatcherTimer
+        {
+            Interval = TweenInterval
+        };
+        _tweenTimer.Tick += (_, __) => OnTweenTick();
+        _tweenTimer.Start();
+    }
+
+    private void OnTweenTick()
+    {
+        if (_activeTweens.Count == 0)
+        {
+            _tweenTimer?.Stop();
+            _tweenTimer = null;
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var completed = new List<TaskbarBoxWindow>();
+
+        foreach (var kvp in _activeTweens)
+        {
+            var tween = kvp.Value;
+            var t = (now - tween.StartTime).TotalMilliseconds / tween.Duration.TotalMilliseconds;
+            if (t >= 1.0)
+            {
+                var finalX = tween.TargetX;
+                var current = tween.Window.Position;
+                tween.Window.Position = new PixelPoint((int)Math.Round(finalX), current.Y);
+                completed.Add(tween.Window);
+                continue;
+            }
+
+            // Linear easing
+            if (t < 0) t = 0;
+            var x = tween.StartX + (tween.TargetX - tween.StartX) * t;
+            var currentPos = tween.Window.Position;
+            var newPos = new PixelPoint((int)Math.Round(x), currentPos.Y);
+            tween.Window.Position = newPos;
+        }
+
+        foreach (var w in completed)
+        {
+            _activeTweens.Remove(w);
+        }
+
+        if (_activeTweens.Count == 0)
+        {
+            _tweenTimer?.Stop();
+            _tweenTimer = null;
+        }
+    }
+
+    private sealed class Tween
+    {
+        public Tween(TaskbarBoxWindow window, double startX, double targetX, DateTime startTime, TimeSpan duration)
+        {
+            Window = window;
+            StartX = startX;
+            TargetX = targetX;
+            StartTime = startTime;
+            Duration = duration;
+        }
+
+        public TaskbarBoxWindow Window { get; }
+        public double StartX { get; set; }
+        public double TargetX { get; set; }
+        public DateTime StartTime { get; set; }
+        public TimeSpan Duration { get; set; }
+    }
+
+    private static BoxLayout CreateLayout(TaskbarBoxWindow window)
+    {
+        if (window.DataContext is not TaskbarBoxWindowViewModel vm)
+        {
+            throw new InvalidOperationException("Taskbar window is missing its view model.");
+        }
+
+        var scale = window.RenderScaling;
+        var widthPx = Math.Round(window.Bounds.Width * scale);
+
+        if (widthPx <= 0)
+        {
+            widthPx = Math.Round(window.Width * scale);
+        }
+
+        if (widthPx <= 0)
+        {
+            widthPx = 1;
+        }
+
+        return new BoxLayout(vm.Model.Id, window, window.Position.X, widthPx);
+    }
+
+    private sealed class BoxLayout
+    {
+        public BoxLayout(Guid id, TaskbarBoxWindow window, double x, double width)
+        {
+            Id = id;
+            Window = window;
+            X = x;
+            Width = width;
+        }
+
+        public Guid Id { get; }
+
+        public TaskbarBoxWindow Window { get; }
+
+        public double X { get; set; }
+
+        public double Width { get; }
+
+        public double Left => X;
+
+        public double Right => X + Width;
+
+        public double Center => X + Width / 2d;
+    }
+
+    private readonly record struct DragLayoutContext(int OriginalIndex);
+
     private void ApplyDesktopIconMetrics()
     {
         var shortcutsControl = this.FindControl<ItemsControl>("ShortcutsItemsControl");

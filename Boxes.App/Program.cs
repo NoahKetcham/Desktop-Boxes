@@ -20,11 +20,24 @@ sealed class Program
             return;
         }
 
+        // Assign a distinct AppUserModelID for the main application windows
+        AppUserModelService.TrySetCurrentProcessAppUserModelId("Boxes.App.Main");
+
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
     private static void RunCommandMode(string command)
     {
+        // Use a different AppUserModelID for special commands to avoid taskbar grouping
+        if (string.Equals(command, "showburst", StringComparison.OrdinalIgnoreCase))
+        {
+            AppUserModelService.TrySetCurrentProcessAppUserModelId("Boxes.App.ShowBoxes");
+        }
+        else
+        {
+            AppUserModelService.TrySetCurrentProcessAppUserModelId("Boxes.App.Cli");
+        }
+
         DesktopIntegrationService.EnsureContextMenuRegistered(AppServices.BoxWindowManager.AreWindowsVisible);
 
         if (DesktopIntegrationService.SendCommandAsync(command).GetAwaiter().GetResult())
@@ -44,6 +57,10 @@ sealed class Program
             else if (string.Equals(command, "show", StringComparison.OrdinalIgnoreCase))
             {
                 await AppServices.BoxWindowManager.SetWindowsVisibility(true);
+            }
+            else if (string.Equals(command, "showburst", StringComparison.OrdinalIgnoreCase))
+            {
+                await AppServices.BoxWindowManager.ToggleBurstAsync(TimeSpan.FromSeconds(5));
             }
             else
             {

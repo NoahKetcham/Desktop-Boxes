@@ -18,6 +18,7 @@ public static class AppServices
     public static ShellIconService ShellIconService { get; private set; } = null!;
     public static DataMaintenanceService DataMaintenanceService { get; private set; } = null!;
     public static WindowStateService WindowStateService { get; private set; } = null!;
+    public static DesktopBuildService DesktopBuildService { get; private set; } = null!;
     public static Window? MainWindowOwner { get; set; }
 
     public static event EventHandler<DesktopBox>? BoxUpdated;
@@ -42,6 +43,29 @@ public static class AppServices
 
             SettingsService = new SettingsService(rootDirectory);
             SettingsService.InitializeAsync().GetAwaiter().GetResult();
+            // Apply persisted accent if present
+            try
+            {
+                var settings = SettingsService.GetAsync().GetAwaiter().GetResult();
+                if (!string.IsNullOrWhiteSpace(settings.AccentHex))
+                {
+                    AccentService.TryApplyAccentHex(settings.AccentHex);
+                }
+
+                // Ensure run-at-startup shortcut matches persisted setting
+                if (settings.RunAtStartup)
+                {
+                    _ = DesktopIntegrationService.EnableRunAtStartup();
+                }
+                else
+                {
+                    DesktopIntegrationService.DisableRunAtStartup();
+                }
+            }
+            catch
+            {
+                // ignore accent application failures on startup
+            }
 
             BoxService = new BoxService(rootDirectory);
             BoxService.InitializeAsync().GetAwaiter().GetResult();
@@ -50,6 +74,8 @@ public static class AppServices
             DesktopCleanupService = new DesktopCleanupService(rootDirectory);
             WindowStateService = new WindowStateService(rootDirectory);
             WindowStateService.InitializeAsync().GetAwaiter().GetResult();
+            DesktopBuildService = new DesktopBuildService(rootDirectory);
+            DesktopBuildService.InitializeAsync().GetAwaiter().GetResult();
             ShellIconService = new ShellIconService();
             DataMaintenanceService = new DataMaintenanceService(rootDirectory);
             _initialized = true;
