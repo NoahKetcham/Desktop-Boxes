@@ -108,7 +108,8 @@ public partial class DashboardBoxSettingsViewModel : ViewModelBase
         Clear();
 
         await AppServices.BoxService.DeleteAsync(boxToDelete.Id);
-        await AppServices.BoxWindowManager.CloseAsync(boxToDelete.Id);
+        await AppServices.WindowStateService.DeleteAsync(boxToDelete.Id);
+        await AppServices.BoxWindowManager.CloseAsync(boxToDelete.Id, persistState: false);
         _dashboard.Boxes.Remove(boxToDelete);
 
         if (_dashboard.SelectedBox == boxToDelete)

@@ -274,7 +274,8 @@ public partial class DashboardPageViewModel : ViewModelBase
 
         var toRemove = SelectedBox;
         await AppServices.BoxService.DeleteAsync(toRemove.Id);
-        await AppServices.BoxWindowManager.CloseAsync(toRemove.Id);
+        await AppServices.WindowStateService.DeleteAsync(toRemove.Id);
+        await AppServices.BoxWindowManager.CloseAsync(toRemove.Id, persistState: false);
         Boxes.Remove(toRemove);
         SelectedBox = Boxes.FirstOrDefault();
     }

@@ -88,6 +88,22 @@ public class WindowStateService
         }
     }
 
+    public async Task DeleteAsync(Guid boxId)
+    {
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_states.Remove(boxId))
+            {
+                await PersistAsync().ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     private async Task PersistAsync()
     {
         await using var stream = File.Create(_storagePath);
