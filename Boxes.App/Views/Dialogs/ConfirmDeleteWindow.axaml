@@ -4,29 +4,38 @@
         xmlns:vm="using:Boxes.App.ViewModels"
         x:Class="Boxes.App.Views.Dialogs.ConfirmDeleteWindow"
         x:DataType="vm:ConfirmDeleteDialogViewModel"
-        Width="360"
-        Height="220"
-        Title="Delete box"
+        Width="380"
+        Height="240"
+        Title="Delete Box"
+        CanResize="False"
         WindowStartupLocation="CenterOwner">
 
     <Window.DataContext>
         <vm:ConfirmDeleteDialogViewModel/>
     </Window.DataContext>
 
-    <Border Padding="24">
-        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="16">
-            <StackPanel>
-                <TextBlock Text="Remove this box?" FontSize="18" FontWeight="SemiBold"/>
-                <TextBlock Text="You can recreate it later, but any saved layout settings will be cleared." Opacity="0.7" TextWrapping="Wrap"/>
+    <Border Padding="28" Background="{StaticResource SurfaceBrush}">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="20">
+            <StackPanel Spacing="6">
+                <TextBlock Text="Delete this box?" FontSize="20" FontWeight="SemiBold"/>
+                <TextBlock Text="This action cannot be undone. The box and its layout settings will be permanently removed." 
+                           Classes="subtitle" TextWrapping="Wrap"/>
             </StackPanel>
 
-            <Border Grid.Row="1" Background="#141B2D" CornerRadius="12" Padding="16">
-                <TextBlock Text="{Binding Message}" TextWrapping="Wrap"/>
+            <Border Grid.Row="1" Background="{StaticResource SurfaceElevatedBrush}" 
+                    CornerRadius="{StaticResource RadiusM}" Padding="16"
+                    BorderBrush="#5A1F1F" BorderThickness="1">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="📦" FontSize="24" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Message}" TextWrapping="Wrap" VerticalAlignment="Center" FontWeight="Medium"/>
+                </StackPanel>
             </Border>
 
-            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-                <Button Content="Cancel" Command="{Binding CancelCommand}"/>
-                <Button Content="Delete" Command="{Binding ConfirmCommand}" Foreground="#FF5555"/>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <Button Content="Keep Box" Classes="btn-subtle" Command="{Binding CancelCommand}"
+                        ToolTip.Tip="Cancel and keep the box" AutomationProperties.Name="Cancel deletion"/>
+                <Button Content="Delete" Classes="btn-danger" Command="{Binding ConfirmCommand}"
+                        ToolTip.Tip="Permanently delete this box" AutomationProperties.Name="Confirm deletion"/>
             </StackPanel>
         </Grid>
     </Border>

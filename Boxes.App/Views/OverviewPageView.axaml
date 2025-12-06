@@ -8,48 +8,159 @@
         <vm:OverviewPageViewModel/>
     </Design.DataContext>
 
-    <StackPanel Spacing="24">
-        <StackPanel Spacing="4">
-            <TextBlock Text="{Binding Headline}" FontSize="24" FontWeight="Bold"/>
-            <TextBlock Text="{Binding Subtitle}" Opacity="0.7"/>
-        </StackPanel>
-
-        <UniformGrid Columns="3" Rows="1" HorizontalAlignment="Stretch" Margin="0,16,0,0">
-            <Border Padding="16" CornerRadius="12" Background="#1F9AFF" Opacity="0.9">
-                <StackPanel Spacing="10">
-                    <TextBlock Text="Active Boxes" FontWeight="Bold"/>
-                    <TextBlock Text="12" FontSize="32" FontWeight="SemiBold"/>
-                </StackPanel>
-            </Border>
-            <Border Padding="16" CornerRadius="12" Background="#7B61FF" Opacity="0.9">
-                <StackPanel Spacing="10">
-                    <TextBlock Text="Items Organized" FontWeight="Bold"/>
-                    <TextBlock Text="358" FontSize="32" FontWeight="SemiBold"/>
-                </StackPanel>
-            </Border>
-            <Border Padding="16" CornerRadius="12" Background="#FF8A65" Opacity="0.9">
-                <StackPanel Spacing="10">
-                    <TextBlock Text="Automation Savings" FontWeight="Bold"/>
-                    <TextBlock Text="4.5 hrs" FontSize="32" FontWeight="SemiBold"/>
-                </StackPanel>
-            </Border>
-        </UniformGrid>
-
-        <Border Background="#12162A" CornerRadius="12" Padding="20">
-            <StackPanel Spacing="12">
-                <TextBlock Text="Recent activity" FontWeight="SemiBold" FontSize="18"/>
-                <ItemsControl>
-                    <ItemsControl.Items>
-                        <StackPanel>
-                            <TextBlock Text="• Screenshot moved to 'Screenshots'"/>
-                            <TextBlock Text="• Contract pinned in 'Important Files'"/>
-                            <TextBlock Text="• Todo box synced"/>
-                        </StackPanel>
-                    </ItemsControl.Items>
-                </ItemsControl>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="28" MaxWidth="900" HorizontalAlignment="Center">
+            <!-- Header -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="{Binding Headline}" Classes="title"/>
+                <TextBlock Text="{Binding Subtitle}" Classes="subtitle"/>
             </StackPanel>
-        </Border>
-    </StackPanel>
+
+            <!-- Stats Cards -->
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="16" Margin="0,8,0,0">
+                <!-- Active Boxes Card -->
+                <Border Grid.Column="0" Padding="20" CornerRadius="{StaticResource RadiusL}" 
+                        BoxShadow="{StaticResource ShadowBase}">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                            <GradientStop Color="#2563EB" Offset="0"/>
+                            <GradientStop Color="#1D4ED8" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <StackPanel Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="📦" FontSize="18"/>
+                            <TextBlock Text="Active Boxes" FontWeight="Medium" FontSize="13" Opacity="0.9"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding ActiveBoxCount}" FontSize="36" FontWeight="Bold" Classes="numeric"/>
+                        <TextBlock Text="desktop organizers" FontSize="11" Opacity="0.7"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Items Organized Card -->
+                <Border Grid.Column="1" Padding="20" CornerRadius="{StaticResource RadiusL}"
+                        BoxShadow="{StaticResource ShadowBase}">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                            <GradientStop Color="#7C3AED" Offset="0"/>
+                            <GradientStop Color="#6D28D9" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <StackPanel Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="🔗" FontSize="18"/>
+                            <TextBlock Text="Shortcuts" FontWeight="Medium" FontSize="13" Opacity="0.9"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding TotalItemCount}" FontSize="36" FontWeight="Bold" Classes="numeric"/>
+                        <TextBlock Text="items in boxes" FontSize="11" Opacity="0.7"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Files Discovered Card -->
+                <Border Grid.Column="2" Padding="20" CornerRadius="{StaticResource RadiusL}"
+                        BoxShadow="{StaticResource ShadowBase}">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                            <GradientStop Color="#EA580C" Offset="0"/>
+                            <GradientStop Color="#C2410C" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <StackPanel Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="📂" FontSize="18"/>
+                            <TextBlock Text="Scanned Files" FontWeight="Medium" FontSize="13" Opacity="0.9"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding ScannedFilesCount}" FontSize="36" FontWeight="Bold" Classes="numeric"/>
+                        <TextBlock Text="desktop items found" FontSize="11" Opacity="0.7"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Desktop Status Card -->
+            <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" 
+                    CornerRadius="{StaticResource RadiusL}" Padding="20">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
+                        <Border Width="48" Height="48" CornerRadius="24" VerticalAlignment="Center">
+                            <Border.Background>
+                                <SolidColorBrush Color="#22C55E" Opacity="0.2"/>
+                            </Border.Background>
+                            <TextBlock Text="✨" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="Desktop Status" FontWeight="SemiBold" FontSize="15"/>
+                            <TextBlock FontSize="12" Opacity="0.7">
+                                <Run Text="{Binding IsDesktopClean, StringFormat='Desktop is {0}'}" />
+                            </TextBlock>
+                        </StackPanel>
+                    </StackPanel>
+                    
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                        <StackPanel Spacing="2" HorizontalAlignment="Center">
+                            <TextBlock Text="{Binding DesktopBuildsCount}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" Classes="numeric"/>
+                            <TextBlock Text="Saved Builds" FontSize="11" Opacity="0.6" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Recent Activity Card -->
+            <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" 
+                    CornerRadius="{StaticResource RadiusL}" Padding="20">
+                <StackPanel Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="📋" FontSize="16"/>
+                        <TextBlock Text="Status Overview" FontWeight="SemiBold" FontSize="16"/>
+                    </StackPanel>
+                    
+                    <ItemsControl ItemsSource="{Binding RecentActivity}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{StaticResource SurfaceBrush}" 
+                                        CornerRadius="{StaticResource RadiusS}" 
+                                        Padding="14,12" Margin="0,0,0,8">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="{Binding Title}" FontWeight="Medium" FontSize="13"/>
+                                            <TextBlock Text="{Binding Description}" FontSize="11" Opacity="0.6"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+            
+            <!-- Quick Tips Card -->
+            <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" 
+                    CornerRadius="{StaticResource RadiusL}" Padding="20" Margin="0,0,0,20">
+                <StackPanel Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="💡" FontSize="16"/>
+                        <TextBlock Text="Quick Tips" FontWeight="SemiBold" FontSize="16"/>
+                    </StackPanel>
+                    
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <Border Grid.Column="0" Background="{StaticResource SurfaceBrush}" 
+                                CornerRadius="{StaticResource RadiusS}" Padding="14,12">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="🖱️ Drag &amp; Drop" FontWeight="Medium" FontSize="12"/>
+                                <TextBlock Text="Drag files directly into any box to add them" FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Background="{StaticResource SurfaceBrush}" 
+                                CornerRadius="{StaticResource RadiusS}" Padding="14,12">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="📌 Taskbar Snap" FontWeight="Medium" FontSize="12"/>
+                                <TextBlock Text="Pin boxes to the taskbar for quick access" FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
 
 </UserControl>
 

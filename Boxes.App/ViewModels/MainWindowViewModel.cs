@@ -35,9 +35,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         NavigationItems = new ObservableCollection<NavigationItemViewModel>
         {
-            new("Overview", "High-level status and quick stats", overview),
-            new("Dashboard", "Create and manage your boxes", _dashboard),
-            new("Settings", "Configure appearance and behavior", settings)
+            new("Overview", "High-level status and quick stats", overview, "📊"),
+            new("Dashboard", "Create and manage your boxes", _dashboard, "📦"),
+            new("Settings", "Configure appearance and behavior", settings, "⚙️")
         };
 
         SelectedNavigationItem = NavigationItems.FirstOrDefault();

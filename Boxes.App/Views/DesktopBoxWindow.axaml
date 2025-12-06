@@ -1,4 +1,4 @@
-﻿<Window xmlns="https://github.com/avaloniaui"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Boxes.App.ViewModels"
         x:Class="Boxes.App.Views.DesktopBoxWindow"
@@ -19,6 +19,40 @@
         TransparencyLevelHint="Transparent"
         Background="Transparent">
 
+    <Window.Styles>
+        <!-- Shortcut item hover effects -->
+        <Style Selector="Border.shortcut-item">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.shortcut-item:pointerover">
+            <Setter Property="Background" Value="#20FFFFFF"/>
+        </Style>
+        
+        <!-- Header button styles -->
+        <Style Selector="Button.header-btn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.1"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.header-btn:pointerover">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Background" Value="#20FFFFFF"/>
+        </Style>
+    </Window.Styles>
+
     <Grid x:Name="RootGrid" Background="#1C2235" ClipToBounds="True"
           DragDrop.AllowDrop="True"
           DragDrop.DragEnter="Content_OnDragEnter"
@@ -28,7 +62,7 @@
         <!-- Snap indicator line - shown when within snap range -->
         <Border x:Name="SnapIndicator" 
                 Height="2" 
-                Background="#FF4444" 
+                Background="{StaticResource AccentBrush}" 
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Top"
                 IsVisible="False"
@@ -39,25 +73,63 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border x:Name="HeaderBar" Grid.Row="0" Background="#232B46" Padding="12" MinHeight="40" PointerPressed="Header_PointerPressed" PointerMoved="Header_PointerMoved" PointerReleased="Header_PointerReleased">
+        <!-- Header Bar -->
+        <Border x:Name="HeaderBar" Grid.Row="0" Background="#232B46" Padding="10,8" MinHeight="40" 
+                CornerRadius="8,8,0,0"
+                PointerPressed="Header_PointerPressed" PointerMoved="Header_PointerMoved" PointerReleased="Header_PointerReleased">
             <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
-                <Grid.Styles>
-                    <Style Selector="Button">
-                        <Setter Property="IsVisible" Value="False"/>
-                    </Style>
-                </Grid.Styles>
-                <Button Grid.Column="0" Content="↑" Width="24" Height="24" Command="{Binding NavigateUpCommand}" VerticalAlignment="Center"
+                <!-- Navigation Up Button -->
+                <Button Grid.Column="0" Classes="header-btn" Width="26" Height="26" 
+                        Command="{Binding NavigateUpCommand}" VerticalAlignment="Center"
                         IsVisible="{Binding CanNavigateUp}"
-                        PointerPressed="Button_OnPointerPressed"/>
-                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                <Button Grid.Column="2" Width="32" Height="24" Content="â‡•" Command="{Binding ToggleSnapCommand}" Margin="8,0"/>
-                <Button Content="Ã—" Grid.Column="3" Width="24" Height="24" Command="{Binding CloseCommand}"/>
+                        PointerPressed="Button_OnPointerPressed"
+                        ToolTip.Tip="Go back">
+                    <TextBlock Text="←" FontSize="14" HorizontalAlignment="Center"/>
+                </Button>
+                
+                <!-- Box Name with breadcrumb hint -->
+                <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0">
+                    <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" 
+                               HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="180"/>
+                    <TextBlock Text="{Binding CurrentPath}" FontSize="9" Opacity="0.6" 
+                               HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="180"
+                               IsVisible="{Binding CanNavigateUp}"/>
+                </StackPanel>
+                
+                <!-- Snap to Taskbar Button -->
+                <Button Grid.Column="2" Classes="header-btn" Width="26" Height="26" 
+                        Command="{Binding ToggleSnapCommand}" Margin="4,0"
+                        ToolTip.Tip="Snap to taskbar"
+                        PointerPressed="Button_OnPointerPressed">
+                    <TextBlock Text="📌" FontSize="11" HorizontalAlignment="Center"/>
+                </Button>
+                
+                <!-- Close Button -->
+                <Button Grid.Column="3" Classes="header-btn" Width="26" Height="26" 
+                        Command="{Binding CloseCommand}"
+                        ToolTip.Tip="Close box"
+                        PointerPressed="Button_OnPointerPressed">
+                    <TextBlock Text="✕" FontSize="12" HorizontalAlignment="Center"/>
+                </Button>
             </Grid>
         </Border>
 
-        <Border x:Name="ContentArea" Grid.Row="1" Padding="16" IsVisible="{Binding IsExpanded}" CornerRadius="0,0,8,8">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <ItemsControl x:Name="ShortcutsItemsControl" ItemsSource="{Binding CurrentItems}" IsVisible="{Binding IsExpanded}">
+        <!-- Content Area -->
+        <Border x:Name="ContentArea" Grid.Row="1" Padding="12" IsVisible="{Binding IsExpanded}" CornerRadius="0,0,8,8">
+            <Grid>
+                <!-- Empty State -->
+                <Border IsVisible="{Binding CurrentItems.Count, Converter={StaticResource IntIsZeroToBoolConverter}}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" Padding="20">
+                    <StackPanel Spacing="8" HorizontalAlignment="Center">
+                        <TextBlock Text="📁" FontSize="32" HorizontalAlignment="Center" Opacity="0.5"/>
+                        <TextBlock Text="No items yet" FontSize="13" FontWeight="Medium" Opacity="0.7" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Drag files here to add them" FontSize="11" Opacity="0.5" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Items List -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="ShortcutsItemsControl" ItemsSource="{Binding CurrentItems}" IsVisible="{Binding IsExpanded}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <WrapPanel x:Name="IconWrapPanel" ItemWidth="78" ItemHeight="97" />
@@ -65,26 +137,40 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:DesktopFileViewModel">
-                                <Border x:Name="ItemBorder" Background="Transparent" Margin="0" Cursor="Hand" DoubleTapped="ShortcutTile_OnDoubleTapped">
-                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Spacing="4" Margin="0,4,0,0">
-                                        <Border x:Name="IconBorder" Width="48" Height="48" Background="Transparent" CornerRadius="4" HorizontalAlignment="Center">
-                                            <Image x:Name="IconImage" Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform"/>
+                                <Border Classes="shortcut-item" Margin="2" Padding="4" Cursor="Hand" 
+                                        DoubleTapped="ShortcutTile_OnDoubleTapped"
+                                        ToolTip.Tip="{Binding FileName}">
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Spacing="4">
+                                        <!-- Icon with subtle shadow -->
+                                        <Border Width="48" Height="48" CornerRadius="4" HorizontalAlignment="Center"
+                                                BoxShadow="0 1 3 0 #40000000">
+                                            <Image Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform"/>
                                         </Border>
-                                        <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="70" FontSize="11"/>
+                                        <!-- File name with ellipsis -->
+                                        <TextBlock Text="{Binding DisplayName}" 
+                                                   TextWrapping="Wrap" 
+                                                   TextAlignment="Center" 
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="68" 
+                                                   MaxHeight="32"
+                                                   FontSize="10"
+                                                   LineHeight="14"/>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-            </ScrollViewer>
+                </ScrollViewer>
+            </Grid>
         </Border>
 
+        <!-- Resize Handles -->
         <Border Tag="Right" HorizontalAlignment="Right" VerticalAlignment="Stretch" Width="6" Background="Transparent"
-                PointerPressed="ResizeHandle_OnPointerPressed"/>
+                Cursor="SizeWestEast" PointerPressed="ResizeHandle_OnPointerPressed"/>
         <Border Tag="Bottom" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" Height="6" Background="Transparent"
-                PointerPressed="ResizeHandle_OnPointerPressed"/>
+                Cursor="SizeNorthSouth" PointerPressed="ResizeHandle_OnPointerPressed"/>
         <Border Tag="BottomRight" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="12" Height="12" Background="Transparent"
-                PointerPressed="ResizeHandle_OnPointerPressed"/>
+                Cursor="SizeAll" PointerPressed="ResizeHandle_OnPointerPressed"/>
     </Grid>
 
 </Window>

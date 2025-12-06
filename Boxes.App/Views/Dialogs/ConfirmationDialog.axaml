@@ -3,17 +3,26 @@
         xmlns:vm="using:Boxes.App.ViewModels"
         x:Class="Boxes.App.Views.Dialogs.ConfirmationDialog"
         x:DataType="vm:ConfirmationDialogViewModel"
-        Width="360"
-        Height="180"
+        Width="400"
+        Height="200"
         CanResize="False"
-        WindowStartupLocation="CenterOwner">
-    <Border Padding="16" Background="{DynamicResource ThemeBackgroundBrush}">
-        <StackPanel Spacing="16">
-            <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontSize="14"/>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-                <Button Content="Cancel" Command="{Binding CancelCommand}"/>
-                <Button Content="Confirm" Command="{Binding ConfirmCommand}"/>
+        WindowStartupLocation="CenterOwner"
+        Title="Confirm Action">
+    <Border Padding="28" Background="{StaticResource SurfaceBrush}">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="20">
+            <TextBlock Text="Please Confirm" FontSize="18" FontWeight="SemiBold"/>
+            
+            <Border Grid.Row="1" Background="{StaticResource SurfaceElevatedBrush}" 
+                    CornerRadius="{StaticResource RadiusM}" Padding="16">
+                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontSize="14" LineHeight="22"/>
+            </Border>
+            
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <Button Content="Cancel" Classes="btn-subtle" Command="{Binding CancelCommand}"
+                        ToolTip.Tip="Cancel this action" AutomationProperties.Name="Cancel"/>
+                <Button Content="Confirm" Classes="btn-primary" Command="{Binding ConfirmCommand}"
+                        ToolTip.Tip="Proceed with this action" AutomationProperties.Name="Confirm"/>
             </StackPanel>
-        </StackPanel>
+        </Grid>
     </Border>
 </Window>
