@@ -4,29 +4,36 @@
         xmlns:vm="using:Boxes.App.ViewModels"
         x:Class="Boxes.App.Views.Dialogs.DesktopBuildNameDialog"
         x:DataType="vm:DesktopBuildNameDialogViewModel"
-        Width="400"
-        Height="200"
+        Width="420"
+        Height="220"
         Title="Save Desktop Build"
+        CanResize="False"
         WindowStartupLocation="CenterOwner">
 
     <Window.DataContext>
         <vm:DesktopBuildNameDialogViewModel/>
     </Window.DataContext>
 
-    <Border Padding="24">
-        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12">
-            <StackPanel>
-                <TextBlock Text="Save Desktop Build" FontSize="18" FontWeight="SemiBold"/>
-                <TextBlock Text="Enter a name for this desktop configuration." Opacity="0.7"/>
+    <Border Padding="28" Background="{StaticResource SurfaceBrush}">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="20">
+            <StackPanel Spacing="6">
+                <TextBlock Text="Save Desktop Build" FontSize="20" FontWeight="SemiBold"/>
+                <TextBlock Text="Save your current box configuration as a named snapshot you can restore later." 
+                           Classes="subtitle" TextWrapping="Wrap"/>
             </StackPanel>
 
-            <StackPanel Grid.Row="1" Spacing="12" VerticalAlignment="Center">
-                <TextBox Watermark="Build name" Text="{Binding Name, Mode=TwoWay}"/>
+            <StackPanel Grid.Row="1" Spacing="8" VerticalAlignment="Center">
+                <TextBlock Text="Build Name" FontSize="13" FontWeight="Medium" Opacity="0.9"/>
+                <TextBox Watermark="e.g., Work Setup, Gaming, Projects" Text="{Binding Name, Mode=TwoWay}"
+                         ToolTip.Tip="Enter a memorable name for this configuration"
+                         AutomationProperties.Name="Desktop build name"/>
             </StackPanel>
 
-            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-                <Button Content="Cancel" Command="{Binding CancelCommand}"/>
-                <Button Content="Save" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"/>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <Button Content="Cancel" Classes="btn-subtle" Command="{Binding CancelCommand}"
+                        ToolTip.Tip="Cancel and close" AutomationProperties.Name="Cancel"/>
+                <Button Content="Save Build" Classes="btn-primary" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"
+                        ToolTip.Tip="Save this desktop configuration" AutomationProperties.Name="Save desktop build"/>
             </StackPanel>
         </Grid>
     </Border>

@@ -4,6 +4,7 @@ public class NavigationItemViewModel : ViewModelBase
 {
     public string Title { get; }
     public string Description { get; }
+    public string Icon { get; }
     public ViewModelBase Content { get; }
 
     private bool _isSelected;
@@ -13,11 +14,12 @@ public class NavigationItemViewModel : ViewModelBase
         set => SetProperty(ref _isSelected, value);
     }
 
-    public NavigationItemViewModel(string title, string description, ViewModelBase content)
+    public NavigationItemViewModel(string title, string description, ViewModelBase content, string icon = "📁")
     {
         Title = title;
         Description = description;
         Content = content;
+        Icon = icon;
     }
 }
 
