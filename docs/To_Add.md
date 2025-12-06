@@ -34,12 +34,15 @@
     - Automated tasks
 
 # TO-DO:
+- inscpect and improve upon current data saving/updating functionality.
+    - many save features are not working as expected.
 - Add feature to click and drag desktop (highlighted area) to create a new box the shape of highlighted area.
 - start building themes, well organized each theme in its own file probably.
 - Auto start the app when the computer starts up, only boxes windows should start not settings ui.
     - Currently both boxes and settings ui start when the computer starts up.
 - Work on adaptive sizing for icons, sizing, spacing and text.
 - Enhance settings save and load functionality.
+-    - (Completed 2025-12-05 – Added sidebar box settings with auto-save for name/description, click-out deselect, and inline delete replacing popup.)
 - Add feature to click and drag desktop (highlighted area) to create a new box the shape of highlighted area.
 - Focus on standard boxes optimizations and improvements before taskbar boxes.
 - Add multi-monitor support.

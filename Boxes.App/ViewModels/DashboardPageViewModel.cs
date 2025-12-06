@@ -1,18 +1,14 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System;
 using Boxes.App.Models;
 using Boxes.App.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Avalonia.Controls;
-using Boxes.App.Views;
-using Boxes.App.ViewModels;
-using Boxes.App.Views.Dialogs;
-using System.Collections.Generic;
 
 namespace Boxes.App.ViewModels;
 
@@ -39,6 +35,12 @@ public partial class DashboardPageViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool isCleaningDesktop;
+
+    /// <summary>
+    /// The sidebar viewmodel that displays box settings in the right panel on the Dashboard page.
+    /// Injected by MainWindowViewModel.
+    /// </summary>
+    public DashboardBoxSettingsViewModel? BoxSettingsHost { get; set; }
 
     public int ScannedFilesCount => ScannedFiles.Count;
 
@@ -388,49 +390,20 @@ public partial class DashboardPageViewModel : ViewModelBase
         NavigateHomeCommand.NotifyCanExecuteChanged();
     }
 
-    private async Task ConfigureBoxSettingsAsync(BoxSummaryViewModel? box)
+    private Task ConfigureBoxSettingsAsync(BoxSummaryViewModel? box)
     {
-        box ??= SelectedBox;
-        if (box is null)
+        // NOTE: The old shortcut-selection dialog (ShortcutSelectionDialog/ShortcutSelectionViewModel)
+        // is deprecated. Box settings are now displayed in the right-side panel sidebar.
+        // The old dialog may be reintroduced later for advanced shortcut management.
+
+        var target = box ?? SelectedBox;
+        if (target is null)
         {
-            return;
+            return Task.CompletedTask;
         }
 
-        var scannedFiles = await AppServices.ScannedFileService.GetScannedFilesAsync();
-        var windowState = await AppServices.WindowStateService.GetAsync(box.Id);
-        var isSnapped = windowState.Mode == WindowMode.Taskbar;
-        
-        var viewModel = new ShortcutSelectionViewModel(box.Id, box.Name, scannedFiles, box.ShortcutIds, isSnapped);
-        var dialog = new ShortcutSelectionDialog(viewModel);
-
-        dialog.SnapRequested += async (_, _) =>
-        {
-            await AppServices.BoxWindowManager.SnapToTaskbarAsync(box.Id).ConfigureAwait(false);
-        };
-
-        dialog.UnsnapRequested += async (_, _) =>
-        {
-            await AppServices.BoxWindowManager.UnsnapFromTaskbarAsync(box.Id).ConfigureAwait(false);
-        };
-
-        var owner = AppServices.MainWindowOwner;
-        if (owner is null)
-        {
-            return;
-        }
-
-        var result = await dialog.ShowAsync(owner);
-        if (result is null)
-        {
-            return;
-        }
-
-        box.ShortcutIds = result.Select(s => s.Id).ToList();
-        box.ItemCount = box.ShortcutIds.Count;
-
-        var updated = await AppServices.BoxService.AddOrUpdateAsync(box.ToModel());
-        await AppServices.BoxWindowManager.UpdateAsync(updated);
-        box.UpdateFromModel(updated);
+        BoxSettingsHost?.LoadBox(target);
+        return Task.CompletedTask;
     }
 
     public async Task CreateShortcutsAsync()

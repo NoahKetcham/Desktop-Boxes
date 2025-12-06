@@ -29,7 +29,11 @@
     </Window.Resources>
 
     <Grid ColumnDefinitions="220,*,320" RowDefinitions="*" ColumnSpacing="24" Margin="24">
-        <Border Grid.Column="0" Background="{StaticResource NavBackgroundBrush}" Padding="20" CornerRadius="16">
+        <Border Grid.Column="0"
+                Background="{StaticResource NavBackgroundBrush}"
+                Padding="20"
+                CornerRadius="16"
+                PointerPressed="OnDeselectPointerPressed">
             <StackPanel Spacing="32">
                 <StackPanel Spacing="4">
                     <TextBlock Text="Boxes" FontSize="26" FontWeight="Bold"/>
@@ -60,7 +64,11 @@
             </StackPanel>
         </Border>
 
-        <Border Grid.Column="1" Background="{StaticResource ContentBackgroundBrush}" Padding="32" CornerRadius="16">
+        <Border Grid.Column="1"
+                Background="{StaticResource ContentBackgroundBrush}"
+                Padding="32"
+                CornerRadius="16"
+                PointerPressed="OnDeselectPointerPressed">
             <ContentControl Content="{Binding CurrentPage}"/>
         </Border>
 

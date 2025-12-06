@@ -93,7 +93,7 @@ Format:
 ### docs/To_Add.md
 • NEVER delete anything unless the user explicitly asks  
 • To mark a task complete:
-  – Add a sub-bullet: “(Completed YYYY-MM-DD – reason)”  
+  – Add a sub-bullet: “(Completed YYYY-MM-DD)”  
   – DO NOT remove history  
 
 ### docs/taskHierarchy.md

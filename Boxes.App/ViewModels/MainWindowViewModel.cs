@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -14,15 +14,30 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private ViewModelBase? currentPage;
 
+    [ObservableProperty]
+    private ViewModelBase sidebarContent;
+
     public AdvertisingViewModel Advertising { get; } = new();
+
+    private readonly DashboardBoxSettingsViewModel _dashboardSidebar;
+    private readonly DashboardPageViewModel _dashboard;
 
     public MainWindowViewModel()
     {
+        var overview = new OverviewPageViewModel();
+        _dashboard = new DashboardPageViewModel();
+        var settings = new SettingsPageViewModel();
+
+        _dashboardSidebar = new DashboardBoxSettingsViewModel(_dashboard);
+        _dashboard.BoxSettingsHost = _dashboardSidebar;
+
+        sidebarContent = Advertising;
+
         NavigationItems = new ObservableCollection<NavigationItemViewModel>
         {
-            new("Overview", "High-level status and quick stats", new OverviewPageViewModel()),
-            new("Dashboard", "Create and manage your boxes", new DashboardPageViewModel()),
-            new("Settings", "Configure appearance and behavior", new SettingsPageViewModel())
+            new("Overview", "High-level status and quick stats", overview),
+            new("Dashboard", "Create and manage your boxes", _dashboard),
+            new("Settings", "Configure appearance and behavior", settings)
         };
 
         SelectedNavigationItem = NavigationItems.FirstOrDefault();
@@ -36,5 +51,10 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         CurrentPage = value?.Content;
+
+        // Show dashboard sidebar when on Dashboard, advertising on other pages
+        SidebarContent = value?.Content is DashboardPageViewModel
+            ? _dashboardSidebar
+            : Advertising;
     }
 }
