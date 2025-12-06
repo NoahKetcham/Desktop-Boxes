@@ -136,7 +136,7 @@ public partial class DesktopBoxWindow : Window
 
     private void OnSettingsChanged(object? sender, ApplicationSettings e)
     {
-        ApplyTransparency(e);
+        ApplyAllSettings(e);
     }
 
     private void ApplyTransparencyFromSettings()
@@ -145,15 +145,16 @@ public partial class DesktopBoxWindow : Window
         {
             if (t.Status == System.Threading.Tasks.TaskStatus.RanToCompletion && t.Result is { } s)
             {
-                ApplyTransparency(s);
+                ApplyAllSettings(s);
             }
         });
     }
 
-    private void ApplyTransparency(ApplicationSettings settings)
+    private void ApplyAllSettings(ApplicationSettings settings)
     {
         var opacity = Math.Clamp(settings.BoxesTransparencyPercent, 0, 100) / 100.0;
         var backgroundColorHex = settings.BoxBackgroundColor ?? "#1C2235";
+        
         Dispatcher.UIThread.Post(() =>
         {
             Color bgColor;
@@ -166,15 +167,43 @@ public partial class DesktopBoxWindow : Window
                 bgColor = Color.Parse("#1C2235");
             }
 
+            // Apply background and transparency
             if (_rootGrid != null)
             {
                 _rootGrid.Background = new SolidColorBrush(bgColor, opacity);
+                _rootGrid.ClipToBounds = true;
             }
 
+            // Apply corner radius
+            var cornerRadius = Math.Clamp(settings.BoxCornerRadius, 0, 20);
+            if (_contentArea != null)
+            {
+                _contentArea.CornerRadius = new CornerRadius(0, 0, cornerRadius, cornerRadius);
+            }
+
+            // Apply header settings
             if (_headerBar != null)
             {
+                // Show/hide header
+                _headerBar.IsVisible = settings.ShowBoxHeader;
+                
+                // Apply header height
+                var headerHeight = Math.Clamp(settings.BoxHeaderHeight, 30, 60);
+                _headerBar.MinHeight = headerHeight;
+                _headerBar.Padding = new Thickness(10, (headerHeight - 26) / 2);
+                
+                // Apply header corner radius (only top corners when header is visible)
+                _headerBar.CornerRadius = settings.ShowBoxHeader 
+                    ? new CornerRadius(cornerRadius, cornerRadius, 0, 0)
+                    : new CornerRadius(0);
+                
+                // If header is hidden, content area gets full corner radius
+                if (_contentArea != null && !settings.ShowBoxHeader)
+                {
+                    _contentArea.CornerRadius = new CornerRadius(cornerRadius);
+                }
+
                 // Calculate relative luminance to determine if background is dark or light
-                // Relative luminance formula: L = 0.2126*R + 0.7152*G + 0.0722*B
                 var r = bgColor.R / 255.0;
                 var g = bgColor.G / 255.0;
                 var b = bgColor.B / 255.0;
@@ -201,7 +230,67 @@ public partial class DesktopBoxWindow : Window
                 }
                 _headerBar.Background = new SolidColorBrush(headerColor, opacity);
             }
+
+            // Apply icon size and label visibility to shortcut items
+            ApplyIconSettings(settings);
         });
+    }
+
+    private void ApplyIconSettings(ApplicationSettings settings)
+    {
+        if (_shortcutsItemsControl == null) return;
+
+        var iconSize = Math.Clamp(settings.BoxIconSize, 32, 64);
+        var showLabels = settings.ShowShortcutLabels;
+
+        // Calculate item dimensions based on icon size
+        var itemWidth = iconSize + 30;  // Icon + padding
+        var itemHeight = showLabels ? iconSize + 49 : iconSize + 16;  // Icon + label space or just padding
+
+        // Update WrapPanel item sizes
+        var wrapPanel = _shortcutsItemsControl.GetVisualDescendants()
+            .OfType<WrapPanel>()
+            .FirstOrDefault();
+
+        if (wrapPanel != null)
+        {
+            wrapPanel.ItemWidth = itemWidth;
+            wrapPanel.ItemHeight = itemHeight;
+        }
+
+        // Update icon sizes and label visibility in existing items
+        foreach (var item in _shortcutsItemsControl.GetVisualDescendants().OfType<Border>())
+        {
+            if (item.Classes.Contains("shortcut-item"))
+            {
+                // Find the icon Image and label TextBlock
+                var stackPanel = item.GetVisualDescendants().OfType<StackPanel>().FirstOrDefault();
+                if (stackPanel != null)
+                {
+                    var iconBorder = stackPanel.GetVisualDescendants().OfType<Border>().FirstOrDefault();
+                    var image = stackPanel.GetVisualDescendants().OfType<Image>().FirstOrDefault();
+                    var textBlock = stackPanel.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault();
+
+                    if (iconBorder != null)
+                    {
+                        iconBorder.Width = iconSize;
+                        iconBorder.Height = iconSize;
+                    }
+
+                    if (image != null)
+                    {
+                        image.Width = iconSize;
+                        image.Height = iconSize;
+                    }
+
+                    if (textBlock != null)
+                    {
+                        textBlock.IsVisible = showLabels;
+                        textBlock.MaxWidth = iconSize + 20;
+                    }
+                }
+            }
+        }
     }
 
     private void Header_PointerPressed(object? sender, PointerPressedEventArgs e)
