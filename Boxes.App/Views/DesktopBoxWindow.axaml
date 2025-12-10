@@ -33,6 +33,11 @@
         <Style Selector="Border.shortcut-item:pointerover">
             <Setter Property="Background" Value="#20FFFFFF"/>
         </Style>
+        <Style Selector="Border.shortcut-item.drop-target">
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="#20FFFFFF"/>
+        </Style>
         
         <!-- Header button styles -->
         <Style Selector="Button.header-btn">
@@ -129,7 +134,11 @@
                 
                 <!-- Items List -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <ItemsControl x:Name="ShortcutsItemsControl" ItemsSource="{Binding CurrentItems}" IsVisible="{Binding IsExpanded}">
+                    <ItemsControl x:Name="ShortcutsItemsControl" ItemsSource="{Binding CurrentItems}" IsVisible="{Binding IsExpanded}"
+                                  DragDrop.AllowDrop="True"
+                                  DragDrop.DragOver="Shortcuts_OnDragOver"
+                                  DragDrop.Drop="Shortcuts_OnDrop"
+                                  DragDrop.DragLeave="Shortcuts_OnDragLeave">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <WrapPanel x:Name="IconWrapPanel" ItemWidth="78" ItemHeight="97" />
@@ -137,8 +146,11 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:DesktopFileViewModel">
-                                <Border Classes="shortcut-item" Margin="2" Padding="4" Cursor="Hand" 
+                                <Border Classes="shortcut-item" Margin="4" Padding="4" Cursor="Hand" 
                                         DoubleTapped="ShortcutTile_OnDoubleTapped"
+                                        PointerPressed="ShortcutTile_OnPointerPressed"
+                                        PointerReleased="ShortcutTile_OnPointerReleased"
+                                        PointerMoved="ShortcutTile_OnPointerMoved"
                                         ToolTip.Tip="{Binding FileName}">
                                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Spacing="4">
                                         <!-- Icon with subtle shadow -->
@@ -153,8 +165,10 @@
                                                    TextTrimming="CharacterEllipsis"
                                                    MaxWidth="68" 
                                                    MaxHeight="32"
+                                                   MaxLines="2"
                                                    FontSize="10"
-                                                   LineHeight="14"/>
+                                                   LineHeight="14"
+                                                   Margin="0,0,0,2"/>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>

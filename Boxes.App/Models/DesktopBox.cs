@@ -22,5 +22,10 @@ public class DesktopBox
     public double? ExpandedPositionX { get; set; }
     public double? ExpandedPositionY { get; set; }
     public bool WasSnapExpanded { get; set; }
+
+    /// <summary>
+    /// Stores item display order per parent folder. Root is keyed by Guid.Empty.
+    /// </summary>
+    public Dictionary<Guid, List<Guid>> ItemOrder { get; set; } = new();
 }
 

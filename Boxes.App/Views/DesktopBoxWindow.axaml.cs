@@ -37,6 +37,11 @@ public partial class DesktopBoxWindow : Window
         private double _savedWindowHeight = 240;
         private DispatcherTimer? _expandAnimationTimer;
         private Border? _snapIndicator;
+        private const string DragDataFormat = "application/x-boxes-shortcut-id";
+        private Point _dragStartPoint;
+        private DesktopFileViewModel? _draggedItem;
+        private bool _isDraggingItem;
+        private Control? _currentDropTarget;
 
     public DesktopBoxWindow()
     {
@@ -576,6 +581,114 @@ public partial class DesktopBoxWindow : Window
                 ViewModel.LaunchShortcutCommand.Execute(file);
             }
         }
+    }
+
+    private void ShortcutTile_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && sender is Control control && control.DataContext is DesktopFileViewModel vm)
+        {
+            _dragStartPoint = e.GetPosition(this);
+            _draggedItem = vm;
+            _isDraggingItem = false;
+        }
+    }
+
+    private async void ShortcutTile_OnPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_draggedItem is null || _isDraggingItem == true)
+        {
+            return;
+        }
+
+        var point = e.GetPosition(this);
+        var delta = point - _dragStartPoint;
+
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && (Math.Abs(delta.X) + Math.Abs(delta.Y)) > 6)
+        {
+            _isDraggingItem = true;
+            var data = new DataObject();
+            data.Set(DragDataFormat, _draggedItem.Id.ToString());
+            await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
+            ClearDragVisuals();
+            _draggedItem = null;
+            _isDraggingItem = false;
+        }
+    }
+
+    private void ShortcutTile_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        _draggedItem = null;
+        _isDraggingItem = false;
+    }
+
+    private void Shortcuts_OnDragOver(object? sender, DragEventArgs e)
+    {
+        if (!e.Data.Contains(DragDataFormat))
+        {
+            e.DragEffects = DragDropEffects.None;
+            return;
+        }
+
+        e.DragEffects = DragDropEffects.Move;
+        e.Handled = true;
+
+        var targetControl = e.Source as Control;
+        SetDropTargetHighlight(targetControl);
+    }
+
+    private async void Shortcuts_OnDrop(object? sender, DragEventArgs e)
+    {
+        if (!e.Data.Contains(DragDataFormat))
+        {
+            return;
+        }
+
+        var draggedText = e.Data.Get(DragDataFormat) as string;
+        if (!Guid.TryParse(draggedText, out var draggedId))
+        {
+            ClearDragVisuals();
+            return;
+        }
+
+        var targetVm = (e.Source as Control)?.DataContext as DesktopFileViewModel;
+        var dropBeforeId = targetVm?.Id == draggedId ? (Guid?)null : targetVm?.Id;
+
+        await ViewModel.ReorderCurrentItemsAsync(draggedId, dropBeforeId);
+
+        ClearDragVisuals();
+        e.Handled = true;
+    }
+
+    private void Shortcuts_OnDragLeave(object? sender, DragEventArgs e)
+    {
+        ClearDragVisuals();
+    }
+
+    private void SetDropTargetHighlight(Control? control)
+    {
+        if (_currentDropTarget is Control previous)
+        {
+            previous.Classes.Set("drop-target", false);
+        }
+
+        var border = control?.FindAncestorOfType<Border>() ?? control as Border;
+        if (border != null && border.Classes.Contains("shortcut-item"))
+        {
+            border.Classes.Set("drop-target", true);
+            _currentDropTarget = border;
+            return;
+        }
+
+        _currentDropTarget = null;
+    }
+
+    private void ClearDragVisuals()
+    {
+        if (_currentDropTarget is Control border)
+        {
+            border.Classes.Set("drop-target", false);
+        }
+        _currentDropTarget = null;
     }
 
     private void Content_OnDragEnter(object? sender, DragEventArgs e)

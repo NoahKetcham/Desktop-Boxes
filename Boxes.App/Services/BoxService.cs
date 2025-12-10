@@ -150,6 +150,7 @@ public class BoxService
                 existing.ExpandedPositionX = box.ExpandedPositionX;
                 existing.ExpandedPositionY = box.ExpandedPositionY;
                 existing.WasSnapExpanded = box.WasSnapExpanded;
+                existing.ItemOrder = new Dictionary<Guid, List<Guid>>(box.ItemOrder.ToDictionary(kvp => kvp.Key, kvp => new List<Guid>(kvp.Value)));
             }
 
             await PersistAsync().ConfigureAwait(false);
@@ -222,7 +223,8 @@ public class BoxService
         ExpandedHeight = box.ExpandedHeight,
         ExpandedPositionX = box.ExpandedPositionX,
         ExpandedPositionY = box.ExpandedPositionY,
-        WasSnapExpanded = box.WasSnapExpanded
+        WasSnapExpanded = box.WasSnapExpanded,
+        ItemOrder = new Dictionary<Guid, List<Guid>>(box.ItemOrder.ToDictionary(kvp => kvp.Key, kvp => new List<Guid>(kvp.Value)))
     };
 }
 
