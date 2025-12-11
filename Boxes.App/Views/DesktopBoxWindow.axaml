@@ -19,6 +19,14 @@
         TransparencyLevelHint="Transparent"
         Background="Transparent">
 
+    <Window.Resources>
+        <x:Double x:Key="IconSize">48</x:Double>
+        <x:Double x:Key="IconItemWidth">78</x:Double>
+        <x:Double x:Key="IconItemHeight">97</x:Double>
+        <x:Double x:Key="IconLabelMaxWidth">68</x:Double>
+        <x:Boolean x:Key="ShowShortcutLabels">True</x:Boolean>
+    </Window.Resources>
+
     <Window.Styles>
         <!-- Shortcut item hover effects -->
         <Style Selector="Border.shortcut-item">
@@ -141,7 +149,9 @@
                                   DragDrop.DragLeave="Shortcuts_OnDragLeave">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel x:Name="IconWrapPanel" ItemWidth="78" ItemHeight="97" />
+                                <WrapPanel x:Name="IconWrapPanel" 
+                                           ItemWidth="{DynamicResource IconItemWidth}" 
+                                           ItemHeight="{DynamicResource IconItemHeight}" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -154,16 +164,17 @@
                                         ToolTip.Tip="{Binding FileName}">
                                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Spacing="4">
                                         <!-- Icon with subtle shadow -->
-                                        <Border Width="48" Height="48" CornerRadius="4" HorizontalAlignment="Center"
+                                        <Border Width="{DynamicResource IconSize}" Height="{DynamicResource IconSize}" CornerRadius="4" HorizontalAlignment="Center"
                                                 BoxShadow="0 1 3 0 #40000000">
-                                            <Image Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform"/>
+                                            <Image Source="{Binding Icon}" Width="{DynamicResource IconSize}" Height="{DynamicResource IconSize}" Stretch="Uniform"/>
                                         </Border>
                                         <!-- File name with ellipsis -->
                                         <TextBlock Text="{Binding DisplayName}" 
                                                    TextWrapping="Wrap" 
                                                    TextAlignment="Center" 
                                                    TextTrimming="CharacterEllipsis"
-                                                   MaxWidth="68" 
+                                                   IsVisible="{DynamicResource ShowShortcutLabels}"
+                                                   MaxWidth="{DynamicResource IconLabelMaxWidth}" 
                                                    MaxHeight="32"
                                                    MaxLines="2"
                                                    FontSize="10"

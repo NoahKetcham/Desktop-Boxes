@@ -245,57 +245,7 @@ public partial class DesktopBoxWindow : Window
     {
         if (_shortcutsItemsControl == null) return;
 
-        var iconSize = Math.Clamp(settings.BoxIconSize, 32, 64);
-        var showLabels = settings.ShowShortcutLabels;
-
-        // Calculate item dimensions based on icon size
-        var itemWidth = iconSize + 30;  // Icon + padding
-        var itemHeight = showLabels ? iconSize + 49 : iconSize + 16;  // Icon + label space or just padding
-
-        // Update WrapPanel item sizes
-        var wrapPanel = _shortcutsItemsControl.GetVisualDescendants()
-            .OfType<WrapPanel>()
-            .FirstOrDefault();
-
-        if (wrapPanel != null)
-        {
-            wrapPanel.ItemWidth = itemWidth;
-            wrapPanel.ItemHeight = itemHeight;
-        }
-
-        // Update icon sizes and label visibility in existing items
-        foreach (var item in _shortcutsItemsControl.GetVisualDescendants().OfType<Border>())
-        {
-            if (item.Classes.Contains("shortcut-item"))
-            {
-                // Find the icon Image and label TextBlock
-                var stackPanel = item.GetVisualDescendants().OfType<StackPanel>().FirstOrDefault();
-                if (stackPanel != null)
-                {
-                    var iconBorder = stackPanel.GetVisualDescendants().OfType<Border>().FirstOrDefault();
-                    var image = stackPanel.GetVisualDescendants().OfType<Image>().FirstOrDefault();
-                    var textBlock = stackPanel.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault();
-
-                    if (iconBorder != null)
-                    {
-                        iconBorder.Width = iconSize;
-                        iconBorder.Height = iconSize;
-                    }
-
-                    if (image != null)
-                    {
-                        image.Width = iconSize;
-                        image.Height = iconSize;
-                    }
-
-                    if (textBlock != null)
-                    {
-                        textBlock.IsVisible = showLabels;
-                        textBlock.MaxWidth = iconSize + 20;
-                    }
-                }
-            }
-        }
+        UpdateIconResources(settings.BoxIconSize, settings.ShowShortcutLabels);
     }
 
     private void Header_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -895,6 +845,7 @@ public partial class DesktopBoxWindow : Window
             return;
 
         var metrics = DesktopIconMetricsService.GetDesktopIconMetrics();
+        UpdateIconResources(metrics.IconSize, showLabels: true, itemWidthOverride: metrics.HorizontalSpacing, itemHeightOverride: metrics.VerticalSpacing);
         
         // Apply metrics immediately and also on Loaded event to ensure it takes effect
         void ApplyMetrics()
@@ -922,30 +873,35 @@ public partial class DesktopBoxWindow : Window
         {
             ApplyMetrics();
         };
-        
-        // Subscribe to LayoutUpdated as a fallback to catch any timing issues
-        _shortcutsItemsControl.LayoutUpdated += (s, e) =>
-        {
-            var wrapPanel = _shortcutsItemsControl.GetVisualDescendants()
-                .OfType<WrapPanel>()
-                .FirstOrDefault();
-            
-            if (wrapPanel != null && (wrapPanel.ItemWidth != metrics.HorizontalSpacing || wrapPanel.ItemHeight != metrics.VerticalSpacing))
-            {
-                wrapPanel.ItemWidth = metrics.HorizontalSpacing;
-                wrapPanel.ItemHeight = metrics.VerticalSpacing;
-            }
-        };
-        
-        // Store metrics in resources for potential future use
+    }
+
+    private void UpdateIconResources(int iconSize, bool showLabels, int? itemWidthOverride = null, int? itemHeightOverride = null)
+    {
         if (Resources == null)
         {
             Resources = new ResourceDictionary();
         }
-        
-        Resources["IconSize"] = metrics.IconSize;
-        Resources["HorizontalSpacing"] = metrics.HorizontalSpacing;
-        Resources["VerticalSpacing"] = metrics.VerticalSpacing;
+
+        var clampedSize = Math.Clamp(iconSize, 32, 64);
+        var itemWidth = itemWidthOverride ?? clampedSize + 30;
+        var itemHeight = itemHeightOverride ?? (showLabels ? clampedSize + 49 : clampedSize + 16);
+        var labelWidth = clampedSize + 20;
+
+        Resources["IconSize"] = (double)clampedSize;
+        Resources["IconItemWidth"] = (double)itemWidth;
+        Resources["IconItemHeight"] = (double)itemHeight;
+        Resources["IconLabelMaxWidth"] = (double)labelWidth;
+        Resources["ShowShortcutLabels"] = showLabels;
+
+        if (_shortcutsItemsControl?.GetVisualDescendants().OfType<WrapPanel>().FirstOrDefault() is { } wrapPanel)
+        {
+            wrapPanel.ItemWidth = itemWidth;
+            wrapPanel.ItemHeight = itemHeight;
+        }
+
+        _shortcutsItemsControl?.InvalidateMeasure();
+        _shortcutsItemsControl?.InvalidateArrange();
+        _shortcutsItemsControl?.InvalidateVisual();
     }
 
     protected override void OnClosed(EventArgs e)
