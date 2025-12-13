@@ -19,11 +19,13 @@
        <StyleInclude Source="avares://Boxes.App/Styles/Cards.axaml"/>
        <StyleInclude Source="avares://Boxes.App/Styles/Badges.axaml"/>
        <StyleInclude Source="avares://Boxes.App/Styles/ScrollBar.axaml"/>
+       <StyleInclude Source="avares://Boxes.App/Styles/AnimatedCollapsePresenter.axaml"/>
    </Application.Styles>
 
   <Application.Resources>
       <ResourceDictionary>
           <conv:IntIsZeroToBoolConverter x:Key="IntIsZeroToBoolConverter" />
+          <conv:StringEqualsToBoolConverter x:Key="StringEqualsToBoolConverter" />
       </ResourceDictionary>
   </Application.Resources>
 </Application>
