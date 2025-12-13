@@ -53,6 +53,12 @@ public partial class SettingsPageViewModel : ViewModelBase
     [ObservableProperty]
     private bool showShortcutLabels = true;
 
+    [ObservableProperty]
+    private int boxContentPadding = 12;
+
+    [ObservableProperty]
+    private int boxContentVerticalPadding = 12;
+
     public IAsyncRelayCommand SaveCommand { get; }
     public IAsyncRelayCommand ResetDataCommand { get; }
     public IAsyncRelayCommand OpenAllWindowsCommand { get; }
@@ -139,7 +145,9 @@ public partial class SettingsPageViewModel : ViewModelBase
             ShowBoxHeader = ShowBoxHeader,
             BoxCornerRadius = BoxCornerRadius,
             BoxIconSize = BoxIconSize,
-            ShowShortcutLabels = ShowShortcutLabels
+            ShowShortcutLabels = ShowShortcutLabels,
+            BoxContentPadding = BoxContentPadding,
+            BoxContentVerticalPadding = BoxContentVerticalPadding
         };
 
         await AppServices.SettingsService.SaveAsync(model);
@@ -205,6 +213,8 @@ public partial class SettingsPageViewModel : ViewModelBase
         BoxCornerRadius = settings.BoxCornerRadius;
         BoxIconSize = settings.BoxIconSize;
         ShowShortcutLabels = settings.ShowShortcutLabels;
+        BoxContentPadding = settings.BoxContentPadding;
+        BoxContentVerticalPadding = settings.BoxContentVerticalPadding;
     }
 
     // Auto-save box customization settings when they change
@@ -213,6 +223,8 @@ public partial class SettingsPageViewModel : ViewModelBase
     partial void OnBoxCornerRadiusChanged(int value) => _ = SaveBoxCustomizationAsync();
     partial void OnBoxIconSizeChanged(int value) => _ = SaveBoxCustomizationAsync();
     partial void OnShowShortcutLabelsChanged(bool value) => _ = SaveBoxCustomizationAsync();
+    partial void OnBoxContentPaddingChanged(int value) => _ = SaveBoxCustomizationAsync();
+    partial void OnBoxContentVerticalPaddingChanged(int value) => _ = SaveBoxCustomizationAsync();
 
     private async Task SaveBoxCustomizationAsync()
     {
@@ -222,6 +234,8 @@ public partial class SettingsPageViewModel : ViewModelBase
         current.BoxCornerRadius = BoxCornerRadius;
         current.BoxIconSize = BoxIconSize;
         current.ShowShortcutLabels = ShowShortcutLabels;
+        current.BoxContentPadding = BoxContentPadding;
+        current.BoxContentVerticalPadding = BoxContentVerticalPadding;
         await AppServices.SettingsService.SaveAsync(current);
     }
 

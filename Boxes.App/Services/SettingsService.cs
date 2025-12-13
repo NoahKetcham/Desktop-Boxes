@@ -129,7 +129,9 @@ public class SettingsService
         ShowBoxHeader = settings.ShowBoxHeader,
         BoxCornerRadius = settings.BoxCornerRadius,
         BoxIconSize = settings.BoxIconSize,
-        ShowShortcutLabels = settings.ShowShortcutLabels
+        ShowShortcutLabels = settings.ShowShortcutLabels,
+        BoxContentPadding = settings.BoxContentPadding,
+        BoxContentVerticalPadding = settings.BoxContentVerticalPadding
     };
 
     private void RaiseChanged()

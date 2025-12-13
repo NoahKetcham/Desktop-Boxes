@@ -172,6 +172,16 @@ public partial class DesktopBoxWindow : Window
                 bgColor = Color.Parse("#1C2235");
             }
 
+            // Apply content padding (horizontal and vertical independently)
+            var contentPadding = Math.Clamp(settings.BoxContentPadding, 0, 64);
+            var verticalPadding = Math.Clamp(settings.BoxContentVerticalPadding, 0, 64);
+            if (_contentArea != null)
+            {
+                var currentPadding = _contentArea.Padding;
+                var vertical = verticalPadding > 0 ? verticalPadding : (currentPadding.Top > 0 ? currentPadding.Top : 12);
+                _contentArea.Padding = new Thickness(contentPadding, vertical, contentPadding, vertical);
+            }
+
             // Apply background and transparency
             if (_rootGrid != null)
             {

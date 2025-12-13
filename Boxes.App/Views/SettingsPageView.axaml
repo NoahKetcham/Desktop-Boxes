@@ -197,6 +197,34 @@
                                         ToolTip.Tip="Size of shortcut icons inside boxes"/>
                             </StackPanel>
                         </Border>
+
+                        <!-- Horizontal Padding Slider -->
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="Horizontal Padding" FontWeight="Medium" FontSize="13"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding BoxContentPadding, StringFormat='{}{0}px'}" 
+                                               FontSize="12" Opacity="0.8" Classes="numeric"/>
+                                </Grid>
+                                <Slider Minimum="0" Maximum="32" Value="{Binding BoxContentPadding, Mode=TwoWay}" 
+                                        TickFrequency="2" IsSnapToTickEnabled="True"
+                                        ToolTip.Tip="Distance between box content and window border (left/right)"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Vertical Padding Slider -->
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="Vertical Padding" FontWeight="Medium" FontSize="13"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding BoxContentVerticalPadding, StringFormat='{}{0}px'}" 
+                                               FontSize="12" Opacity="0.8" Classes="numeric"/>
+                                </Grid>
+                                <Slider Minimum="0" Maximum="32" Value="{Binding BoxContentVerticalPadding, Mode=TwoWay}" 
+                                        TickFrequency="2" IsSnapToTickEnabled="True"
+                                        ToolTip.Tip="Distance between box content and window border (top/bottom)"/>
+                            </StackPanel>
+                        </Border>
                         
                         <!-- Show Labels Toggle -->
                         <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12">

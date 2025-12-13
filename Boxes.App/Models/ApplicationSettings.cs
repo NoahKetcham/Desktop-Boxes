@@ -22,5 +22,7 @@ public class ApplicationSettings
     public int BoxCornerRadius { get; set; } = 8;
     public int BoxIconSize { get; set; } = 48;
     public bool ShowShortcutLabels { get; set; } = true;
+    public int BoxContentPadding { get; set; } = 12;
+    public int BoxContentVerticalPadding { get; set; } = 12;
 }
 

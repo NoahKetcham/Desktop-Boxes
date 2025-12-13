@@ -143,6 +143,7 @@
                 <!-- Items List -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <ItemsControl x:Name="ShortcutsItemsControl" ItemsSource="{Binding CurrentItems}" IsVisible="{Binding IsExpanded}"
+                                  HorizontalAlignment="Center"
                                   DragDrop.AllowDrop="True"
                                   DragDrop.DragOver="Shortcuts_OnDragOver"
                                   DragDrop.Drop="Shortcuts_OnDrop"
@@ -151,7 +152,8 @@
                             <ItemsPanelTemplate>
                                 <WrapPanel x:Name="IconWrapPanel" 
                                            ItemWidth="{DynamicResource IconItemWidth}" 
-                                           ItemHeight="{DynamicResource IconItemHeight}" />
+                                           ItemHeight="{DynamicResource IconItemHeight}"
+                                           HorizontalAlignment="Center" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
