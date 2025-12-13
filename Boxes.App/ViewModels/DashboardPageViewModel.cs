@@ -19,6 +19,7 @@ public partial class DashboardPageViewModel : ViewModelBase
     public ObservableCollection<DesktopFileViewModel> CurrentScannedItems { get; } = new();
     public ObservableCollection<DesktopFileViewModel> ScanNavigationStack { get; } = new();
     public ObservableCollection<DesktopBuildViewModel> DesktopBuilds { get; } = new();
+    public ObservableCollection<BoxTemplateOptionViewModel> AvailableTemplates { get; } = new();
 
     public string CurrentScanPath => ScanNavigationStack.Count == 0
         ? "Desktop"
@@ -62,6 +63,9 @@ public partial class DashboardPageViewModel : ViewModelBase
     public IAsyncRelayCommand SaveDesktopBuildCommand { get; }
     public IAsyncRelayCommand<DesktopBuildViewModel?> RestoreDesktopBuildCommand { get; }
     public IAsyncRelayCommand<DesktopBuildViewModel?> DeleteDesktopBuildCommand { get; }
+    public IRelayCommand<BoxSummaryViewModel?> ToggleTemplatesForBoxCommand { get; }
+    public IAsyncRelayCommand<BoxTemplateOptionViewModel?> SelectTemplateForSelectedBoxCommand { get; }
+    public IRelayCommand<BoxTemplateOptionViewModel?> ShowTemplateInfoCommand { get; }
 
     public DashboardPageViewModel()
     {
@@ -80,9 +84,13 @@ public partial class DashboardPageViewModel : ViewModelBase
         SaveDesktopBuildCommand = new AsyncRelayCommand(SaveDesktopBuildAsync);
         RestoreDesktopBuildCommand = new AsyncRelayCommand<DesktopBuildViewModel?>(RestoreDesktopBuildAsync);
         DeleteDesktopBuildCommand = new AsyncRelayCommand<DesktopBuildViewModel?>(DeleteDesktopBuildAsync);
+        ToggleTemplatesForBoxCommand = new RelayCommand<BoxSummaryViewModel?>(ToggleTemplatesForBox);
+        SelectTemplateForSelectedBoxCommand = new AsyncRelayCommand<BoxTemplateOptionViewModel?>(SelectTemplateForSelectedBoxAsync);
+        ShowTemplateInfoCommand = new RelayCommand<BoxTemplateOptionViewModel?>(ShowTemplateInfo);
 
         ScannedFiles.CollectionChanged += OnScannedFilesCollectionChanged;
 
+        SeedAvailableTemplates();
         _ = InitializeAsync();
         AppServices.BoxUpdated += OnBoxUpdated;
     }
@@ -405,6 +413,84 @@ public partial class DashboardPageViewModel : ViewModelBase
 
         BoxSettingsHost?.LoadBox(target);
         return Task.CompletedTask;
+    }
+
+    private void ToggleTemplatesForBox(BoxSummaryViewModel? box)
+    {
+        if (box is null)
+        {
+            return;
+        }
+
+        var willExpand = !box.IsTemplatesExpanded;
+        foreach (var b in Boxes)
+        {
+            b.IsTemplatesExpanded = false;
+        }
+
+        box.IsTemplatesExpanded = willExpand;
+        SelectedBox = box;
+
+        if (willExpand)
+        {
+            // Ensure the sidebar is focused on the same box so that template info can "return" to Box Settings on click-out.
+            BoxSettingsHost?.LoadBox(box);
+        }
+    }
+
+    private async Task SelectTemplateForSelectedBoxAsync(BoxTemplateOptionViewModel? template)
+    {
+        if (template is null || SelectedBox is null)
+        {
+            return;
+        }
+
+        // Fetch the latest persisted model so we don't accidentally overwrite other fields we don't surface in the summary VM.
+        var latest = await AppServices.BoxService.GetBoxAsync(SelectedBox.Id).ConfigureAwait(false);
+        if (latest is null)
+        {
+            latest = SelectedBox.ToModel();
+        }
+
+        latest.TemplateKey = template.Key;
+        var updated = await AppServices.BoxService.AddOrUpdateAsync(latest).ConfigureAwait(false);
+        await AppServices.BoxWindowManager.UpdateAsync(updated).ConfigureAwait(false);
+
+        SelectedBox.TemplateKey = template.Key;
+    }
+
+    private void ShowTemplateInfo(BoxTemplateOptionViewModel? template)
+    {
+        if (template is null || SelectedBox is null)
+        {
+            return;
+        }
+
+        // Make sure we have a current box loaded, then swap the sidebar into template-info mode.
+        BoxSettingsHost?.LoadBox(SelectedBox);
+        BoxSettingsHost?.ShowTemplateInfo(template);
+    }
+
+    private void SeedAvailableTemplates()
+    {
+        AvailableTemplates.Clear();
+        AvailableTemplates.Add(new BoxTemplateOptionViewModel(
+            key: "minimal",
+            name: "Minimal",
+            shortDescription: "A clean, uncluttered look.",
+            longDescription: "Minimal template focuses on content with reduced chrome. Placeholder details for Task 2."));
+
+        AvailableTemplates.Add(new BoxTemplateOptionViewModel(
+            key: "compactGrid",
+            name: "Compact Grid",
+            shortDescription: "Smaller spacing, denser layout.",
+            longDescription: "Compact Grid packs more shortcuts into the same space. Placeholder details for Task 2."));
+
+        AvailableTemplates.Add(new BoxTemplateOptionViewModel(
+            key: "headerPlusBadges",
+            name: "Header + Badges",
+            shortDescription: "Emphasized header and metadata badges.",
+            longDescription: "Header + Badges highlights section header and adds more at-a-glance info. Placeholder details for Task 2."));
     }
 
     public async Task CreateShortcutsAsync()

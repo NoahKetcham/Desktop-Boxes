@@ -9,11 +9,24 @@ namespace Boxes.App.ViewModels;
 
 public partial class DashboardBoxSettingsViewModel : ViewModelBase
 {
+    public enum DashboardSidebarMode
+    {
+        Empty,
+        BoxSettings,
+        TemplateInfo
+    }
+
     private readonly DashboardPageViewModel _dashboard;
     private readonly SemaphoreSlim _saveGate = new(1, 1);
 
     [ObservableProperty]
     private BoxSummaryViewModel? currentBox;
+
+    [ObservableProperty]
+    private DashboardSidebarMode mode = DashboardSidebarMode.Empty;
+
+    [ObservableProperty]
+    private BoxTemplateOptionViewModel? currentTemplateInfo;
 
     [ObservableProperty]
     private string boxName = string.Empty;
@@ -22,8 +35,12 @@ public partial class DashboardBoxSettingsViewModel : ViewModelBase
     private string boxDescription = string.Empty;
 
     public bool HasCurrentBox => CurrentBox != null;
+    public bool IsEmptyMode => Mode == DashboardSidebarMode.Empty;
+    public bool IsBoxSettingsMode => Mode == DashboardSidebarMode.BoxSettings;
+    public bool IsTemplateInfoMode => Mode == DashboardSidebarMode.TemplateInfo;
 
     public IRelayCommand ClearCommand { get; }
+    public IRelayCommand BackToBoxSettingsCommand { get; }
     public IAsyncRelayCommand DeleteCommand { get; }
 
     public DashboardBoxSettingsViewModel(DashboardPageViewModel dashboard)
@@ -31,12 +48,25 @@ public partial class DashboardBoxSettingsViewModel : ViewModelBase
         _dashboard = dashboard;
         DeleteCommand = new AsyncRelayCommand(DeleteAsync, () => CurrentBox != null);
         ClearCommand = new RelayCommand(Clear);
+        BackToBoxSettingsCommand = new RelayCommand(BackToBoxSettings);
     }
 
     partial void OnCurrentBoxChanged(BoxSummaryViewModel? value)
     {
         OnPropertyChanged(nameof(HasCurrentBox));
         DeleteCommand.NotifyCanExecuteChanged();
+
+        if (value is null && Mode != DashboardSidebarMode.TemplateInfo)
+        {
+            Mode = DashboardSidebarMode.Empty;
+        }
+    }
+
+    partial void OnModeChanged(DashboardSidebarMode value)
+    {
+        OnPropertyChanged(nameof(IsEmptyMode));
+        OnPropertyChanged(nameof(IsBoxSettingsMode));
+        OnPropertyChanged(nameof(IsTemplateInfoMode));
     }
 
     partial void OnBoxNameChanged(string value)
@@ -54,6 +84,7 @@ public partial class DashboardBoxSettingsViewModel : ViewModelBase
         CurrentBox = box;
         BoxName = box.Name;
         BoxDescription = box.Description;
+        Mode = DashboardSidebarMode.BoxSettings;
     }
 
     public void Clear()
@@ -61,6 +92,43 @@ public partial class DashboardBoxSettingsViewModel : ViewModelBase
         CurrentBox = null;
         BoxName = string.Empty;
         BoxDescription = string.Empty;
+        CurrentTemplateInfo = null;
+        Mode = DashboardSidebarMode.Empty;
+    }
+
+    public void ShowTemplateInfo(BoxTemplateOptionViewModel template)
+    {
+        CurrentTemplateInfo = template;
+        Mode = DashboardSidebarMode.TemplateInfo;
+    }
+
+    public void DismissTemplateInfoOrClear()
+    {
+        if (Mode == DashboardSidebarMode.TemplateInfo)
+        {
+            Mode = CurrentBox != null ? DashboardSidebarMode.BoxSettings : DashboardSidebarMode.Empty;
+            if (Mode != DashboardSidebarMode.TemplateInfo)
+            {
+                CurrentTemplateInfo = null;
+            }
+            return;
+        }
+
+        if (Mode == DashboardSidebarMode.BoxSettings || HasCurrentBox)
+        {
+            Clear();
+        }
+    }
+
+    private void BackToBoxSettings()
+    {
+        if (Mode != DashboardSidebarMode.TemplateInfo)
+        {
+            return;
+        }
+
+        Mode = CurrentBox != null ? DashboardSidebarMode.BoxSettings : DashboardSidebarMode.Empty;
+        CurrentTemplateInfo = null;
     }
 
     private async Task SaveCurrentAsync()

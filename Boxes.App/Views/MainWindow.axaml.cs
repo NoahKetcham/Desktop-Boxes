@@ -18,9 +18,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (vm.SidebarContent is DashboardBoxSettingsViewModel dashboardSidebar && dashboardSidebar.HasCurrentBox)
+        if (vm.SidebarContent is DashboardBoxSettingsViewModel dashboardSidebar)
         {
-            dashboardSidebar.Clear();
+            dashboardSidebar.DismissTemplateInfoOrClear();
         }
     }
 }

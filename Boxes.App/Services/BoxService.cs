@@ -136,6 +136,7 @@ public class BoxService
             {
                 existing.Name = box.Name;
                 existing.Description = box.Description;
+                existing.TemplateKey = box.TemplateKey;
                 existing.TargetPath = box.TargetPath;
                 existing.ItemCount = box.ItemCount;
                 existing.ShortcutIds = new List<Guid>(box.ShortcutIds);
@@ -210,6 +211,7 @@ public class BoxService
         Id = box.Id,
         Name = box.Name,
         Description = box.Description,
+        TemplateKey = box.TemplateKey,
         TargetPath = box.TargetPath,
         ItemCount = box.ItemCount,
         ShortcutIds = new List<Guid>(box.ShortcutIds),

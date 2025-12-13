@@ -18,9 +18,3 @@
 *.tmp
 *.bak
 
-# docs/
-docs/taskHierarchy.md
-docs/To_Add.md
-docs/auto_readme.internal.md
-docs/commands.md
-
