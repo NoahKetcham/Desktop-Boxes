@@ -37,6 +37,8 @@
 - inscpect and improve upon current data saving/updating functionality.
     - many save features are not working as expected.
 - Add feature to click and drag desktop (highlighted area) to create a new box the shape of highlighted area.
+- Implement box window templates (dashboard picker + template info + selection persistence).
+    - (Partially completed 2025-12-14 – Added Dashboard template picker UI, template info panel, and persisted `TemplateKey` placeholder; documented the expander animation approach in `docs/thatSauce/TemplateExpanderAnimation.md`.)
 - start building themes, well organized each theme in its own file probably.
 - Auto start the app when the computer starts up, only boxes windows should start not settings ui.
     - Currently both boxes and settings ui start when the computer starts up.

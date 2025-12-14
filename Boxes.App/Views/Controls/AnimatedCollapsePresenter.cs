@@ -15,11 +15,13 @@ namespace Boxes.App.Views.Controls;
 
 public class AnimatedCollapsePresenter : ContentControl
 {
+    private static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(45);
+
     public static readonly StyledProperty<bool> IsExpandedProperty =
         AvaloniaProperty.Register<AnimatedCollapsePresenter, bool>(nameof(IsExpanded));
 
     public static readonly StyledProperty<TimeSpan> AnimationDurationProperty =
-        AvaloniaProperty.Register<AnimatedCollapsePresenter, TimeSpan>(nameof(AnimationDuration), TimeSpan.FromMilliseconds(320));
+        AvaloniaProperty.Register<AnimatedCollapsePresenter, TimeSpan>(nameof(AnimationDuration), TimeSpan.FromMilliseconds(380));
 
     public bool IsExpanded
     {
@@ -49,7 +51,10 @@ public class AnimatedCollapsePresenter : ContentControl
 
         if (change.Property == IsExpandedProperty)
         {
-            _ = AnimateToStateAsync((bool)change.NewValue!);
+            if (change.NewValue is bool expanded)
+            {
+                _ = AnimateToStateAsync(expanded);
+            }
         }
     }
 
@@ -62,15 +67,15 @@ public class AnimatedCollapsePresenter : ContentControl
 
         if (IsExpanded)
         {
-            _presenter.IsVisible = true;
             _presenter.Opacity = 1;
             _presenter.Height = double.NaN; // Auto
+            _presenter.IsHitTestVisible = true;
         }
         else
         {
-            _presenter.IsVisible = false;
             _presenter.Opacity = 0;
             _presenter.Height = 0;
+            _presenter.IsHitTestVisible = false;
         }
     }
 
@@ -87,6 +92,14 @@ public class AnimatedCollapsePresenter : ContentControl
 
         try
         {
+            // Small debounce/hysteresis to avoid rapid toggle jitter and end-of-animation flicker.
+            await Task.Delay(DebounceDelay, token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            if (IsExpanded != expanded)
+            {
+                return;
+            }
+
             // Ensure we're on the UI thread and have a render pass so width is known for accurate height measurement.
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
@@ -113,7 +126,7 @@ public class AnimatedCollapsePresenter : ContentControl
         }
 
         token.ThrowIfCancellationRequested();
-        _presenter.IsVisible = true;
+        _presenter.IsHitTestVisible = true;
 
         // Measure desired height at the current width.
         var width = _presenter.Bounds.Width;
@@ -162,8 +175,8 @@ public class AnimatedCollapsePresenter : ContentControl
 
         await animation.RunAsync(_presenter, token);
 
-        // Return to auto height after animation completes.
-        _presenter.Height = double.NaN;
+        // Keep a stable height to avoid a one-frame "collapse" flash after switching back to auto.
+        _presenter.Height = targetHeight;
         _presenter.Opacity = 1;
     }
 
@@ -220,7 +233,7 @@ public class AnimatedCollapsePresenter : ContentControl
 
         _presenter.Height = 0;
         _presenter.Opacity = 0;
-        _presenter.IsVisible = false;
+        _presenter.IsHitTestVisible = false;
     }
 }
 

@@ -3,6 +3,7 @@
 ## Current Outstanding Tasks
 - Inspect and improve current data saving/updating functionality; many save features unreliable.
 - Add feature to click-and-drag desktop highlight to create a new box (listed twice in To_Add).
+- Implement box window templates (dashboard picker + template info + selection persistence) (partially complete).
 - Start building themes, organized per-file.
 - Auto-start app at login but only launch boxes (not settings UI).
 - Work on adaptive sizing for icons, spacing, and text.
@@ -20,17 +21,20 @@
 2. Enhance settings save/load (remaining gaps) to ensure preferences persist, especially before more UI work.
 3. Adaptive sizing for icons/spacing/text to improve usability (related to current bug fixes).
 4. Auto-start behavior (boxes only) to improve startup experience.
-5. Standard boxes optimizations and drag/snap polish before expanding to new features.
-6. Click-drag box creation and hover effects for interaction quality.
-7. Multi-monitor support and desktop icon removal toggle for broader workflows.
-8. Pages in boxes and cascading sorting for organization depth.
-9. Theme building and other longer-term polish items.
+5. Finish box templates plumbing (apply `TemplateKey` to actual box-window layout/skin) while the UI work is fresh.
+6. Standard boxes optimizations and drag/snap polish before expanding to new features.
+7. Click-drag box creation and hover effects for interaction quality.
+8. Multi-monitor support and desktop icon removal toggle for broader workflows.
+9. Pages in boxes and cascading sorting for organization depth.
+10. Theme building and other longer-term polish items.
 
 ## Rationale
 - Stability (saving, settings persistence) is prerequisite for reliable UX and reduces regression risk while iterating.
 - Adaptive sizing and startup behavior directly affect everyday use and align with recent icon-size issues.
+- Box templates now have a working selection UX and persisted key; the next step is applying that key to real window styling/layout without regressing stability.
 - Interaction polish and multi-monitor support build on a stable core; theming and advanced organization can follow.
 
 ## Recent Updates
+- 2025-12-14 – Added “box window templates” as an outstanding task (partially complete) and slotted it into the priority order.
 - 2025-12-10 – Initialized task hierarchy from docs/To_Add.md and ordered by stability → UX → expansion.
 

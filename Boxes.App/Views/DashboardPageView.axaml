@@ -87,11 +87,19 @@
                                         </Grid>
                                     </Border>
 
-                                    <!-- Animated template section (part of the same card) -->
-                                    <controls:AnimatedCollapsePresenter Grid.Row="1"
-                                                                       IsExpanded="{Binding IsTemplatesExpanded}"
-                                                                       AnimationDuration="0:0:0.22"
-                                                                       ClipToBounds="True">
+                                    <!-- Template section (animated via MaxHeight; reliable under virtualization) -->
+                                    <Border Grid.Row="1"
+                                            ClipToBounds="True"
+                                            MaxHeight="{Binding IsTemplatesExpanded, Converter={StaticResource BoolToTemplateMaxHeight}}"
+                                            Opacity="{Binding IsTemplatesExpanded, Converter={StaticResource BoolToOpacity}}"
+                                            IsHitTestVisible="{Binding IsTemplatesExpanded}">
+                                        <Border.Transitions>
+                                            <Transitions>
+                                                <DoubleTransition Property="MaxHeight" Duration="0:0:0.38"/>
+                                                <DoubleTransition Property="Opacity" Duration="0:0:0.18"/>
+                                            </Transitions>
+                                        </Border.Transitions>
+
                                         <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Opacity="0.55" Padding="16,14,16,16">
                                             <StackPanel Spacing="12">
                                                 <StackPanel Spacing="2" HorizontalAlignment="Center">
@@ -121,8 +129,19 @@
                                                                     <Style Selector="Border:pointerover">
                                                                         <Setter Property="Background" Value="{StaticResource SurfaceElevatedBrush}"/>
                                                                         <Setter Property="BorderBrush" Value="{StaticResource AccentMutedBrush}"/>
+                                                                        <Setter Property="BoxShadow" Value="{StaticResource ShadowBase}"/>
+                                                                        <Setter Property="RenderTransform" Value="scale(1.02)"/>
                                                                     </Style>
                                                                 </Border.Styles>
+                                                                <Border.Transitions>
+                                                                    <Transitions>
+                                                                        <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                                                                        <BrushTransition Property="BorderBrush" Duration="0:0:0.12"/>
+                                                                        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.12"/>
+                                                                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12"/>
+                                                                    </Transitions>
+                                                                </Border.Transitions>
+                                                                <Border.RenderTransformOrigin>0.5,0.5</Border.RenderTransformOrigin>
                                                                 <Grid>
                                                                     <Border Background="{StaticResource AccentMutedBrush}"
                                                                             CornerRadius="10"
@@ -164,7 +183,7 @@
                                                 </ItemsControl>
                                             </StackPanel>
                                         </Border>
-                                    </controls:AnimatedCollapsePresenter>
+                                    </Border>
                                 </Grid>
                             </Border>
                         </DataTemplate>

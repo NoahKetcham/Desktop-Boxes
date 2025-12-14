@@ -26,6 +26,8 @@
       <ResourceDictionary>
           <conv:IntIsZeroToBoolConverter x:Key="IntIsZeroToBoolConverter" />
           <conv:StringEqualsToBoolConverter x:Key="StringEqualsToBoolConverter" />
+          <conv:BoolToDoubleConverter x:Key="BoolToTemplateMaxHeight" TrueValue="420" FalseValue="0" />
+          <conv:BoolToDoubleConverter x:Key="BoolToOpacity" TrueValue="1" FalseValue="0" />
       </ResourceDictionary>
   </Application.Resources>
 </Application>

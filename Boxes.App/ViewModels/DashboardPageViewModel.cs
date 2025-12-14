@@ -430,12 +430,6 @@ public partial class DashboardPageViewModel : ViewModelBase
 
         box.IsTemplatesExpanded = willExpand;
         SelectedBox = box;
-
-        if (willExpand)
-        {
-            // Ensure the sidebar is focused on the same box so that template info can "return" to Box Settings on click-out.
-            BoxSettingsHost?.LoadBox(box);
-        }
     }
 
     private async Task SelectTemplateForSelectedBoxAsync(BoxTemplateOptionViewModel? template)
