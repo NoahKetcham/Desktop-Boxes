@@ -770,7 +770,7 @@ public class BoxWindowManager
         });
     }
 
-    public async Task CloseAsync(Guid id)
+    public async Task CloseAsync(Guid id, bool persistState = true)
     {
         DesktopBoxWindow? target = null;
 
@@ -779,19 +779,36 @@ public class BoxWindowManager
             _windows.TryGetValue(id, out target);
         });
 
-        if (target is null)
+        // Also track taskbar window so we can close snapped instances on delete/shutdown
+        _taskbarWindows.TryGetValue(id, out var taskbarWindow);
+
+        if (target is null && taskbarWindow is null)
         {
             return;
         }
 
-        // save state before closing
-        await TrySaveWindowStateAsync(target.ViewModel.Model, target, target.ViewModel.CurrentPath).ConfigureAwait(false);
+        // save state before closing unless explicitly suppressed (e.g., after delete)
+        if (persistState && target is not null)
+        {
+            await TrySaveWindowStateAsync(target.ViewModel.Model, target, target.ViewModel.CurrentPath).ConfigureAwait(false);
+        }
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             if (_windows.Remove(id, out var w))
             {
                 w.Close();
+            }
+
+            if (_taskbarWindows.Remove(id, out var tw))
+            {
+                tw.Close();
+            }
+
+            if (!persistState)
+            {
+                // When explicitly not persisting, drop any cached state so a deleted box does not respawn
+                _windowStates.Remove(id);
             }
         });
     }
@@ -889,6 +906,14 @@ public class BoxWindowManager
         model.PositionX = double.IsNaN(state.X) ? null : state.X;
         model.PositionY = double.IsNaN(state.Y) ? null : state.Y;
         model.CurrentPath = currentPath;
+        var existing = await AppServices.BoxService.GetBoxAsync(model.Id).ConfigureAwait(false);
+        if (existing is null)
+        {
+            // The box was deleted; avoid recreating it by persisting stale window state
+            return;
+        }
+
+        // Persist window state to the box record
         var updated = await AppServices.BoxService.AddOrUpdateAsync(model).ConfigureAwait(false);
         AppServices.NotifyBoxUpdated(updated);
     }

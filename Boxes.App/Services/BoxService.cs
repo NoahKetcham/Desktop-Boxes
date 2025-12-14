@@ -136,6 +136,7 @@ public class BoxService
             {
                 existing.Name = box.Name;
                 existing.Description = box.Description;
+                existing.TemplateKey = box.TemplateKey;
                 existing.TargetPath = box.TargetPath;
                 existing.ItemCount = box.ItemCount;
                 existing.ShortcutIds = new List<Guid>(box.ShortcutIds);
@@ -150,6 +151,7 @@ public class BoxService
                 existing.ExpandedPositionX = box.ExpandedPositionX;
                 existing.ExpandedPositionY = box.ExpandedPositionY;
                 existing.WasSnapExpanded = box.WasSnapExpanded;
+                existing.ItemOrder = new Dictionary<Guid, List<Guid>>(box.ItemOrder.ToDictionary(kvp => kvp.Key, kvp => new List<Guid>(kvp.Value)));
             }
 
             await PersistAsync().ConfigureAwait(false);
@@ -209,6 +211,7 @@ public class BoxService
         Id = box.Id,
         Name = box.Name,
         Description = box.Description,
+        TemplateKey = box.TemplateKey,
         TargetPath = box.TargetPath,
         ItemCount = box.ItemCount,
         ShortcutIds = new List<Guid>(box.ShortcutIds),
@@ -222,7 +225,8 @@ public class BoxService
         ExpandedHeight = box.ExpandedHeight,
         ExpandedPositionX = box.ExpandedPositionX,
         ExpandedPositionY = box.ExpandedPositionY,
-        WasSnapExpanded = box.WasSnapExpanded
+        WasSnapExpanded = box.WasSnapExpanded,
+        ItemOrder = new Dictionary<Guid, List<Guid>>(box.ItemOrder.ToDictionary(kvp => kvp.Key, kvp => new List<Guid>(kvp.Value)))
     };
 }
 

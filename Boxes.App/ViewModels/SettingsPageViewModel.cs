@@ -37,6 +37,28 @@ public partial class SettingsPageViewModel : ViewModelBase
     [ObservableProperty]
     private int boxesTransparencyPercent = 100;
 
+    // Box Customization Settings
+    [ObservableProperty]
+    private int boxHeaderHeight = 40;
+
+    [ObservableProperty]
+    private bool showBoxHeader = true;
+
+    [ObservableProperty]
+    private int boxCornerRadius = 8;
+
+    [ObservableProperty]
+    private int boxIconSize = 48;
+
+    [ObservableProperty]
+    private bool showShortcutLabels = true;
+
+    [ObservableProperty]
+    private int boxContentPadding = 12;
+
+    [ObservableProperty]
+    private int boxContentVerticalPadding = 12;
+
     public IAsyncRelayCommand SaveCommand { get; }
     public IAsyncRelayCommand ResetDataCommand { get; }
     public IAsyncRelayCommand OpenAllWindowsCommand { get; }
@@ -113,11 +135,19 @@ public partial class SettingsPageViewModel : ViewModelBase
             RunAtStartup = RunAtStartup,
             OneDriveLinked = OneDriveLinked,
             GoogleDriveLinked = GoogleDriveLinked,
-                BoxesTransparencyPercent = BoxesTransparencyPercent,
-                AccentHex = $"#{SelectedAccentColor.R:X2}{SelectedAccentColor.G:X2}{SelectedAccentColor.B:X2}",
+            BoxesTransparencyPercent = BoxesTransparencyPercent,
+            AccentHex = $"#{SelectedAccentColor.R:X2}{SelectedAccentColor.G:X2}{SelectedAccentColor.B:X2}",
             BoxBackgroundColor = BoxBackgroundColorHex ?? "#1C2235",
             RecentAccentColors = RecentAccentColors.Select(c => $"#{c.R:X2}{c.G:X2}{c.B:X2}").ToList(),
-            RecentBoxBackgroundColors = RecentBoxBackgroundColors.Select(c => $"#{c.R:X2}{c.G:X2}{c.B:X2}").ToList()
+            RecentBoxBackgroundColors = RecentBoxBackgroundColors.Select(c => $"#{c.R:X2}{c.G:X2}{c.B:X2}").ToList(),
+            // Box Customization
+            BoxHeaderHeight = BoxHeaderHeight,
+            ShowBoxHeader = ShowBoxHeader,
+            BoxCornerRadius = BoxCornerRadius,
+            BoxIconSize = BoxIconSize,
+            ShowShortcutLabels = ShowShortcutLabels,
+            BoxContentPadding = BoxContentPadding,
+            BoxContentVerticalPadding = BoxContentVerticalPadding
         };
 
         await AppServices.SettingsService.SaveAsync(model);
@@ -176,6 +206,37 @@ public partial class SettingsPageViewModel : ViewModelBase
                 }
             }
         }
+
+        // Box Customization
+        BoxHeaderHeight = settings.BoxHeaderHeight;
+        ShowBoxHeader = settings.ShowBoxHeader;
+        BoxCornerRadius = settings.BoxCornerRadius;
+        BoxIconSize = settings.BoxIconSize;
+        ShowShortcutLabels = settings.ShowShortcutLabels;
+        BoxContentPadding = settings.BoxContentPadding;
+        BoxContentVerticalPadding = settings.BoxContentVerticalPadding;
+    }
+
+    // Auto-save box customization settings when they change
+    partial void OnBoxHeaderHeightChanged(int value) => _ = SaveBoxCustomizationAsync();
+    partial void OnShowBoxHeaderChanged(bool value) => _ = SaveBoxCustomizationAsync();
+    partial void OnBoxCornerRadiusChanged(int value) => _ = SaveBoxCustomizationAsync();
+    partial void OnBoxIconSizeChanged(int value) => _ = SaveBoxCustomizationAsync();
+    partial void OnShowShortcutLabelsChanged(bool value) => _ = SaveBoxCustomizationAsync();
+    partial void OnBoxContentPaddingChanged(int value) => _ = SaveBoxCustomizationAsync();
+    partial void OnBoxContentVerticalPaddingChanged(int value) => _ = SaveBoxCustomizationAsync();
+
+    private async Task SaveBoxCustomizationAsync()
+    {
+        var current = await AppServices.SettingsService.GetAsync();
+        current.BoxHeaderHeight = BoxHeaderHeight;
+        current.ShowBoxHeader = ShowBoxHeader;
+        current.BoxCornerRadius = BoxCornerRadius;
+        current.BoxIconSize = BoxIconSize;
+        current.ShowShortcutLabels = ShowShortcutLabels;
+        current.BoxContentPadding = BoxContentPadding;
+        current.BoxContentVerticalPadding = BoxContentVerticalPadding;
+        await AppServices.SettingsService.SaveAsync(current);
     }
 
     private async Task ResetDataAsync()

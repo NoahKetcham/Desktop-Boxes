@@ -127,11 +127,116 @@
                         <TextBlock Text="Integrations" FontWeight="SemiBold" FontSize="16"/>
                         <ToggleSwitch Content="OneDrive linked" IsChecked="{Binding OneDriveLinked, Mode=TwoWay}"/>
                         <ToggleSwitch Content="Google Drive linked" IsChecked="{Binding GoogleDriveLinked, Mode=TwoWay}"/>
-                        <Button Content="Create 'Show Boxes' Start Menu Shortcut" Command="{Binding CreateShowBoxesShortcutCommand}"/>
+                        <Button Content="Create 'Show Boxes' Start Menu Shortcut" Classes="btn-subtle" Command="{Binding CreateShowBoxesShortcutCommand}"/>
                         <StackPanel Orientation="Vertical" Spacing="8">
-                            <Button Content="Save" Classes="btn-subtle" Command="{Binding SaveCommand}" HorizontalAlignment="Stretch"/>
+                            <Button Content="Save" Classes="btn-primary" Command="{Binding SaveCommand}" HorizontalAlignment="Stretch"/>
                             <Button Content="Delete All Saved Data" Classes="btn-danger" Command="{Binding ResetDataCommand}" HorizontalAlignment="Stretch"/>
                         </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Box Customization -->
+                <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16">
+                    <StackPanel Spacing="14">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Box Customization" FontWeight="SemiBold" FontSize="16"/>
+                            <TextBlock Text="Customize the appearance of your box windows" Classes="subtitle" FontSize="12"/>
+                        </StackPanel>
+                        
+                        <!-- Header Toggle -->
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="Show Header Bar" FontWeight="Medium" FontSize="13"/>
+                                    <TextBlock Text="Toggle the header section visibility" FontSize="11" Opacity="0.6"/>
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowBoxHeader, Mode=TwoWay}" 
+                                              VerticalAlignment="Center" Margin="0"/>
+                            </Grid>
+                        </Border>
+                        
+                        <!-- Header Height Slider -->
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12"
+                                IsEnabled="{Binding ShowBoxHeader}">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="Header Height" FontWeight="Medium" FontSize="13"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding BoxHeaderHeight, StringFormat='{}{0}px'}" 
+                                               FontSize="12" Opacity="0.8" Classes="numeric"/>
+                                </Grid>
+                                <Slider Minimum="30" Maximum="60" Value="{Binding BoxHeaderHeight, Mode=TwoWay}" 
+                                        TickFrequency="5" IsSnapToTickEnabled="True"
+                                        ToolTip.Tip="Adjust the vertical size of the box header"/>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Corner Radius Slider -->
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="Corner Radius" FontWeight="Medium" FontSize="13"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding BoxCornerRadius, StringFormat='{}{0}px'}" 
+                                               FontSize="12" Opacity="0.8" Classes="numeric"/>
+                                </Grid>
+                                <Slider Minimum="0" Maximum="20" Value="{Binding BoxCornerRadius, Mode=TwoWay}" 
+                                        TickFrequency="2" IsSnapToTickEnabled="True"
+                                        ToolTip.Tip="Adjust how rounded the box corners appear"/>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Icon Size Slider -->
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="Icon Size" FontWeight="Medium" FontSize="13"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding BoxIconSize, StringFormat='{}{0}px'}" 
+                                               FontSize="12" Opacity="0.8" Classes="numeric"/>
+                                </Grid>
+                                <Slider Minimum="32" Maximum="64" Value="{Binding BoxIconSize, Mode=TwoWay}" 
+                                        TickFrequency="8" IsSnapToTickEnabled="True"
+                                        ToolTip.Tip="Size of shortcut icons inside boxes"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Horizontal Padding Slider -->
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="Horizontal Padding" FontWeight="Medium" FontSize="13"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding BoxContentPadding, StringFormat='{}{0}px'}" 
+                                               FontSize="12" Opacity="0.8" Classes="numeric"/>
+                                </Grid>
+                                <Slider Minimum="0" Maximum="32" Value="{Binding BoxContentPadding, Mode=TwoWay}" 
+                                        TickFrequency="2" IsSnapToTickEnabled="True"
+                                        ToolTip.Tip="Distance between box content and window border (left/right)"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Vertical Padding Slider -->
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="Vertical Padding" FontWeight="Medium" FontSize="13"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding BoxContentVerticalPadding, StringFormat='{}{0}px'}" 
+                                               FontSize="12" Opacity="0.8" Classes="numeric"/>
+                                </Grid>
+                                <Slider Minimum="0" Maximum="32" Value="{Binding BoxContentVerticalPadding, Mode=TwoWay}" 
+                                        TickFrequency="2" IsSnapToTickEnabled="True"
+                                        ToolTip.Tip="Distance between box content and window border (top/bottom)"/>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Show Labels Toggle -->
+                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="Show Shortcut Labels" FontWeight="Medium" FontSize="13"/>
+                                    <TextBlock Text="Display file names under icons" FontSize="11" Opacity="0.6"/>
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowShortcutLabels, Mode=TwoWay}" 
+                                              VerticalAlignment="Center" Margin="0"/>
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </Border>
 

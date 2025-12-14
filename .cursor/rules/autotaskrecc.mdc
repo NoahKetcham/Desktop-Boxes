@@ -1,0 +1,126 @@
+---
+alwaysApply: false
+---
+You are assisting inside a software project and must additionally maintain an internal
+task-planning system based on the file:
+
+    docs/To_Add.md
+
+This file contains a section labeled **TO-DO:** which tracks outstanding tasks or planned work.
+
+Your responsibilities extend beyond performing the user's requested task. You must also:
+
+1) Detect when a user request implies that a task from docs/To_Add.md may have been completed.
+2) Re-evaluate the remaining tasks.
+3) Build or update a ranked task hierarchy in:
+
+       docs/taskHierarchy.md
+
+====================================================================
+# WHEN TO CHECK docs/To_Add.md
+====================================================================
+
+After completing **any** user request that hints at progress toward a planned feature,
+refactor, bug fix, or architectural change, you MUST:
+
+• Read the TO-DO: section of docs/To_Add.md  
+• Determine whether any items are likely completed or partially completed  
+• Remove or mark those tasks as completed ONLY if they clearly match user actions  
+• Identify which remaining tasks are now most relevant, urgent, or logically next  
+
+These "completion signals" include:
+– Implementing a feature  
+– Adding a module, component, or API  
+– Refactoring or restructuring files  
+– Finishing part of a workflow  
+– Creating infrastructure or config needed for a future task  
+– Any prompt where the user says “done,” “that works,” “implemented,” “replaced,” etc.
+
+If there is **no evidence** of a completed or partially completed task,
+you may skip the taskHierarchy update.
+
+====================================================================
+# WHAT IS docs/taskHierarchy.md?
+====================================================================
+
+A dynamic document that you maintain describing:
+
+1) The current list of tasks from docs/To_Add.md (minus completed items)  
+2) A recommended ordering or hierarchy of what to work on next  
+3) Short reasoning for the order  
+4) Optional grouping into tiers (High / Medium / Low), or sequential milestones
+
+This document should:
+• Be readable and concise  
+• Show dependencies clearly  
+• Update automatically whenever tasks change  
+• Keep historical sections UNLESS the user asks to remove them  
+
+====================================================================
+# REQUIRED FORMAT FOR docs/taskHierarchy.md
+====================================================================
+
+The document must always follow this structure:
+
+# Task Hierarchy (Internal)
+
+## Current Outstanding Tasks
+A bullet list of all tasks still active in docs/To_Add.md.
+
+## Recommended Priority Order
+Ordered list (1, 2, 3…) or grouped tiers:
+– High Priority  
+– Medium Priority  
+– Low Priority  
+
+## Rationale
+1–3 sentences describing:
+– Why tasks are ordered this way  
+– Dependencies  
+– Architectural impact  
+– Urgency or logical workflow sequence  
+
+## Recent Updates
+Newest first.
+Format:
+– YYYY-MM-DD – Summary of change (e.g., “Completed: X; reprioritized Y → Z”)
+
+====================================================================
+# RULES FOR MODIFYING THE DOCUMENTS
+====================================================================
+
+### docs/To_Add.md
+• NEVER delete anything unless the user explicitly asks  
+• To mark a task complete:
+  – Add a sub-bullet: “(Completed YYYY-MM-DD)”  
+  – DO NOT remove history  
+
+### docs/taskHierarchy.md
+• ALWAYS update when tasks are probably completed  
+• ALWAYS reflect latest project architecture and dependencies  
+• Keep it clean, readable, and ordered  
+• Most recent updates go at the TOP of the “Recent Updates” section  
+
+====================================================================
+# WHEN TO APPLY THESE RULES
+====================================================================
+
+After **every** user request:
+1) Perform the coding or analysis task normally.
+2) Check whether this request implies progress toward items in docs/To_Add.md.
+3) If yes:
+    – Update docs/To_Add.md accordingly  
+    – Update docs/taskHierarchy.md  
+4) Include updated versions of BOTH documents in your output
+   whenever modifications occur.
+
+If no progress was made:
+– Skip updates, unless the user explicitly asks to modify the task lists.
+
+====================================================================
+# FINAL NOTE
+====================================================================
+
+These documents are INTERNAL and MUST be ignored by git.
+They should not be used as user-facing documentation.
+

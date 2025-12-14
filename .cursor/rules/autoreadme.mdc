@@ -1,0 +1,128 @@
+---
+alwaysApply: false
+---
+You are assisting inside a software project. In addition to completing the user’s request,
+you must maintain an internal documentation file that acts like an automatically-updated README.
+
+Your responsibilities ALWAYS include:
+1) Perform the requested coding task.
+2) Update the internal Auto-README file to reflect any meaningful project changes.
+
+====================================================================
+# AUTO-README GENERAL RULES
+====================================================================
+
+• The documentation file lives at:
+    docs/auto_readme.internal.md
+
+• This file is:
+    – INTERNAL ONLY
+    – Updated automatically by you
+    – Ignored by git
+    – NOT a substitute for user-facing docs unless the user explicitly requests changes.
+
+• The Auto-README must always stay accurate, clear, and cumulative.
+
+====================================================================
+# WHEN YOU MUST UPDATE THE AUTO-README
+====================================================================
+
+Update docs/auto_readme.internal.md whenever you do ANY of the following:
+
+• Add, remove, rename, or significantly modify:
+    – Files
+    – Folders
+    – Modules
+    – Components
+    – Routes
+    – APIs
+
+• Change any:
+    – Data models
+    – Schemas
+    – Interfaces
+    – Type definitions
+    – Database tables or structure
+
+• Introduce or update:
+    – Configurations
+    – Environment variables
+    – Build scripts
+    – Deployment workflows
+    – Important utilities or conventions
+
+• Implement notable business logic or architecture changes.
+
+If unsure whether it counts—**update it.**
+
+You may skip updating only for trivial changes (e.g., formatting, spelling).
+
+====================================================================
+# REQUIRED DOCUMENT STRUCTURE
+====================================================================
+
+The file must always include these sections in this order:
+
+# Project Auto-README (Internal)
+
+## Overview
+A concise description of the project’s purpose and major components.
+
+## Tech Stack
+Bullet points describing the technology stack used in the project.
+
+## Architecture & Key Modules
+Bullet points describing:
+– Main folders and what they contain  
+– Core modules/services/components and their responsibilities  
+
+## Data Models & Contracts
+Summaries of important schemas or types:
+– Name  
+– Purpose  
+– Most important fields/relationships  
+
+## APIs, Commands & Workflows
+Document:
+– REST/RPC/GraphQL endpoints  
+– CLI commands  
+– Critical workflows (data flow, user flow, background jobs)
+
+Each entry should be short (1–2 lines each).
+
+## Important Decisions & Rationale
+Newest first. Include:
+– What changed  
+– Why it changed  
+– Key tradeoffs  
+– Future considerations / TODOs  
+
+## Changelog (Most Recent First)
+Each entry should follow:
+– YYYY-MM-DD – Summary of change (affected files: file1, file2…)
+
+====================================================================
+# HOW TO APPLY THIS RULE
+====================================================================
+
+Whenever you modify the project:
+
+1) Complete the user’s request normally.
+2) THEN update docs/auto_readme.internal.md:
+    – Add new information to the correct sections.
+    – Update or correct outdated content.
+    – Append a new changelog entry at the TOP.
+3) Include the updated file content in your response.
+
+If the file does not exist yet:
+– Create it using the structure above and fill in all relevant details.
+
+====================================================================
+# EDITING RULES
+====================================================================
+
+• Do NOT delete sections.  
+• Do NOT remove historical context, decisions, or changelog entries.  
+• You MAY refine wording for clarity or correctness when appropriate.  
+• Always keep the document coherent, clean, and easy to scan.  
+

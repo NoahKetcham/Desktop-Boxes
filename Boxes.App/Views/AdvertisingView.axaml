@@ -8,21 +8,80 @@
         <vm:AdvertisingViewModel/>
     </Design.DataContext>
 
-    <Border Background="#1F2740" CornerRadius="16" Padding="24">
-        <StackPanel Spacing="16">
-            <StackPanel Spacing="4">
-                <TextBlock Text="{Binding Header}" FontWeight="Bold" FontSize="20"/>
-                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Opacity="0.8"/>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="20">
+            <!-- Welcome Header -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="{Binding Header}" FontWeight="Bold" FontSize="18"/>
+                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Classes="subtitle" LineHeight="20"/>
             </StackPanel>
-            <Button Content="{Binding ActionLabel}" HorizontalAlignment="Stretch"/>
-            <Border Background="#12162A" CornerRadius="12" Padding="16">
-                <StackPanel Spacing="8">
-                    <TextBlock Text="Boxes Pro" FontWeight="SemiBold" FontSize="18"/>
-                    <TextBlock Text="Automations, multi-device sync, AI categorization and more." TextWrapping="Wrap" Opacity="0.7"/>
+            
+            <!-- CTA Button -->
+            <Button Content="{Binding ActionLabel}" Classes="btn-primary" HorizontalAlignment="Stretch"
+                    ToolTip.Tip="Get started with Boxes"/>
+            
+            <!-- Pro Features Card -->
+            <Border Background="{StaticResource SurfaceElevatedBrush}" 
+                    CornerRadius="{StaticResource RadiusM}" 
+                    Padding="18"
+                    BorderBrush="{StaticResource AccentMutedBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="✨" FontSize="16"/>
+                        <TextBlock Text="Boxes Pro" FontWeight="SemiBold" FontSize="16"/>
+                    </StackPanel>
+                    <TextBlock Text="Unlock automations, multi-device sync, AI categorization and more." 
+                               TextWrapping="Wrap" Opacity="0.7" FontSize="13" LineHeight="18"/>
+                    <Button Content="Learn More" Classes="btn-subtle" HorizontalAlignment="Left" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+            
+            <!-- Quick Stats -->
+            <Border Background="{StaticResource SurfaceBrush}" 
+                    CornerRadius="{StaticResource RadiusS}" 
+                    Padding="16">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Quick Actions" FontWeight="Medium" FontSize="14"/>
+                    <StackPanel Spacing="8">
+                        <Border Background="{StaticResource SurfaceElevatedBrush}" 
+                                CornerRadius="6" Padding="12,10" Cursor="Hand">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="📦" FontSize="14"/>
+                                <TextBlock Text="Create new box" FontSize="12" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="{StaticResource SurfaceElevatedBrush}" 
+                                CornerRadius="6" Padding="12,10" Cursor="Hand">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="🔍" FontSize="14"/>
+                                <TextBlock Text="Scan desktop" FontSize="12" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="{StaticResource SurfaceElevatedBrush}" 
+                                CornerRadius="6" Padding="12,10" Cursor="Hand">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="🧹" FontSize="14"/>
+                                <TextBlock Text="Clean desktop" FontSize="12" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            
+            <!-- Keyboard Shortcuts -->
+            <Border Background="{StaticResource SurfaceBrush}" 
+                    CornerRadius="{StaticResource RadiusS}" 
+                    Padding="16">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="💡 Tips" FontWeight="Medium" FontSize="14"/>
+                    <TextBlock Text="• Right-click desktop for quick toggle" FontSize="11" Opacity="0.7"/>
+                    <TextBlock Text="• Drag files into boxes to organize" FontSize="11" Opacity="0.7"/>
+                    <TextBlock Text="• Double-click header to collapse" FontSize="11" Opacity="0.7"/>
                 </StackPanel>
             </Border>
         </StackPanel>
-    </Border>
+    </ScrollViewer>
 
 </UserControl>
 

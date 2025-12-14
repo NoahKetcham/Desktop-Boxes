@@ -1,0 +1,18 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:Boxes.App.Views.Controls">
+
+  <Style Selector="controls|AnimatedCollapsePresenter">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter"
+                          Content="{TemplateBinding Content}"
+                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                          ClipToBounds="True"/>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+
+</Styles>
+
+

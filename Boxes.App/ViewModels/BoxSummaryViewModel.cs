@@ -8,6 +8,20 @@ public class BoxSummaryViewModel : ViewModelBase
 {
     public Guid Id { get; private set; }
 
+    private bool _isTemplatesExpanded;
+    public bool IsTemplatesExpanded
+    {
+        get => _isTemplatesExpanded;
+        set => SetProperty(ref _isTemplatesExpanded, value);
+    }
+
+    private string? _templateKey;
+    public string? TemplateKey
+    {
+        get => _templateKey;
+        set => SetProperty(ref _templateKey, value);
+    }
+
     private string _name = string.Empty;
     public string Name
     {
@@ -40,6 +54,7 @@ public class BoxSummaryViewModel : ViewModelBase
             Description = model.Description,
             ItemCount = model.ItemCount,
             ShortcutIds = new List<Guid>(model.ShortcutIds),
+            TemplateKey = model.TemplateKey,
             _width = model.Width,
             _height = model.Height,
             _positionX = model.PositionX,
@@ -55,6 +70,7 @@ public class BoxSummaryViewModel : ViewModelBase
         Description = model.Description;
         ItemCount = model.ItemCount;
         ShortcutIds = new List<Guid>(model.ShortcutIds);
+        TemplateKey = model.TemplateKey;
         _width = model.Width;
         _height = model.Height;
         _positionX = model.PositionX;
@@ -71,6 +87,7 @@ public class BoxSummaryViewModel : ViewModelBase
             Description = Description,
             ItemCount = ItemCount,
             ShortcutIds = new List<Guid>(ShortcutIds),
+            TemplateKey = TemplateKey,
             Width = _width > 0 ? _width : 320,
             Height = _height > 0 ? _height : 240,
             PositionX = _positionX,

@@ -1,18 +1,14 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System;
 using Boxes.App.Models;
 using Boxes.App.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Avalonia.Controls;
-using Boxes.App.Views;
-using Boxes.App.ViewModels;
-using Boxes.App.Views.Dialogs;
-using System.Collections.Generic;
 
 namespace Boxes.App.ViewModels;
 
@@ -23,6 +19,7 @@ public partial class DashboardPageViewModel : ViewModelBase
     public ObservableCollection<DesktopFileViewModel> CurrentScannedItems { get; } = new();
     public ObservableCollection<DesktopFileViewModel> ScanNavigationStack { get; } = new();
     public ObservableCollection<DesktopBuildViewModel> DesktopBuilds { get; } = new();
+    public ObservableCollection<BoxTemplateOptionViewModel> AvailableTemplates { get; } = new();
 
     public string CurrentScanPath => ScanNavigationStack.Count == 0
         ? "Desktop"
@@ -39,6 +36,12 @@ public partial class DashboardPageViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool isCleaningDesktop;
+
+    /// <summary>
+    /// The sidebar viewmodel that displays box settings in the right panel on the Dashboard page.
+    /// Injected by MainWindowViewModel.
+    /// </summary>
+    public DashboardBoxSettingsViewModel? BoxSettingsHost { get; set; }
 
     public int ScannedFilesCount => ScannedFiles.Count;
 
@@ -60,6 +63,9 @@ public partial class DashboardPageViewModel : ViewModelBase
     public IAsyncRelayCommand SaveDesktopBuildCommand { get; }
     public IAsyncRelayCommand<DesktopBuildViewModel?> RestoreDesktopBuildCommand { get; }
     public IAsyncRelayCommand<DesktopBuildViewModel?> DeleteDesktopBuildCommand { get; }
+    public IRelayCommand<BoxSummaryViewModel?> ToggleTemplatesForBoxCommand { get; }
+    public IAsyncRelayCommand<BoxTemplateOptionViewModel?> SelectTemplateForSelectedBoxCommand { get; }
+    public IRelayCommand<BoxTemplateOptionViewModel?> ShowTemplateInfoCommand { get; }
 
     public DashboardPageViewModel()
     {
@@ -78,9 +84,13 @@ public partial class DashboardPageViewModel : ViewModelBase
         SaveDesktopBuildCommand = new AsyncRelayCommand(SaveDesktopBuildAsync);
         RestoreDesktopBuildCommand = new AsyncRelayCommand<DesktopBuildViewModel?>(RestoreDesktopBuildAsync);
         DeleteDesktopBuildCommand = new AsyncRelayCommand<DesktopBuildViewModel?>(DeleteDesktopBuildAsync);
+        ToggleTemplatesForBoxCommand = new RelayCommand<BoxSummaryViewModel?>(ToggleTemplatesForBox);
+        SelectTemplateForSelectedBoxCommand = new AsyncRelayCommand<BoxTemplateOptionViewModel?>(SelectTemplateForSelectedBoxAsync);
+        ShowTemplateInfoCommand = new RelayCommand<BoxTemplateOptionViewModel?>(ShowTemplateInfo);
 
         ScannedFiles.CollectionChanged += OnScannedFilesCollectionChanged;
 
+        SeedAvailableTemplates();
         _ = InitializeAsync();
         AppServices.BoxUpdated += OnBoxUpdated;
     }
@@ -272,7 +282,8 @@ public partial class DashboardPageViewModel : ViewModelBase
 
         var toRemove = SelectedBox;
         await AppServices.BoxService.DeleteAsync(toRemove.Id);
-        await AppServices.BoxWindowManager.CloseAsync(toRemove.Id);
+        await AppServices.WindowStateService.DeleteAsync(toRemove.Id);
+        await AppServices.BoxWindowManager.CloseAsync(toRemove.Id, persistState: false);
         Boxes.Remove(toRemove);
         SelectedBox = Boxes.FirstOrDefault();
     }
@@ -388,49 +399,92 @@ public partial class DashboardPageViewModel : ViewModelBase
         NavigateHomeCommand.NotifyCanExecuteChanged();
     }
 
-    private async Task ConfigureBoxSettingsAsync(BoxSummaryViewModel? box)
+    private Task ConfigureBoxSettingsAsync(BoxSummaryViewModel? box)
     {
-        box ??= SelectedBox;
+        // NOTE: The old shortcut-selection dialog (ShortcutSelectionDialog/ShortcutSelectionViewModel)
+        // is deprecated. Box settings are now displayed in the right-side panel sidebar.
+        // The old dialog may be reintroduced later for advanced shortcut management.
+
+        var target = box ?? SelectedBox;
+        if (target is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        BoxSettingsHost?.LoadBox(target);
+        return Task.CompletedTask;
+    }
+
+    private void ToggleTemplatesForBox(BoxSummaryViewModel? box)
+    {
         if (box is null)
         {
             return;
         }
 
-        var scannedFiles = await AppServices.ScannedFileService.GetScannedFilesAsync();
-        var windowState = await AppServices.WindowStateService.GetAsync(box.Id);
-        var isSnapped = windowState.Mode == WindowMode.Taskbar;
-        
-        var viewModel = new ShortcutSelectionViewModel(box.Id, box.Name, scannedFiles, box.ShortcutIds, isSnapped);
-        var dialog = new ShortcutSelectionDialog(viewModel);
-
-        dialog.SnapRequested += async (_, _) =>
+        var willExpand = !box.IsTemplatesExpanded;
+        foreach (var b in Boxes)
         {
-            await AppServices.BoxWindowManager.SnapToTaskbarAsync(box.Id).ConfigureAwait(false);
-        };
+            b.IsTemplatesExpanded = false;
+        }
 
-        dialog.UnsnapRequested += async (_, _) =>
-        {
-            await AppServices.BoxWindowManager.UnsnapFromTaskbarAsync(box.Id).ConfigureAwait(false);
-        };
+        box.IsTemplatesExpanded = willExpand;
+        SelectedBox = box;
+    }
 
-        var owner = AppServices.MainWindowOwner;
-        if (owner is null)
+    private async Task SelectTemplateForSelectedBoxAsync(BoxTemplateOptionViewModel? template)
+    {
+        if (template is null || SelectedBox is null)
         {
             return;
         }
 
-        var result = await dialog.ShowAsync(owner);
-        if (result is null)
+        // Fetch the latest persisted model so we don't accidentally overwrite other fields we don't surface in the summary VM.
+        var latest = await AppServices.BoxService.GetBoxAsync(SelectedBox.Id).ConfigureAwait(false);
+        if (latest is null)
+        {
+            latest = SelectedBox.ToModel();
+        }
+
+        latest.TemplateKey = template.Key;
+        var updated = await AppServices.BoxService.AddOrUpdateAsync(latest).ConfigureAwait(false);
+        await AppServices.BoxWindowManager.UpdateAsync(updated).ConfigureAwait(false);
+
+        SelectedBox.TemplateKey = template.Key;
+    }
+
+    private void ShowTemplateInfo(BoxTemplateOptionViewModel? template)
+    {
+        if (template is null || SelectedBox is null)
         {
             return;
         }
 
-        box.ShortcutIds = result.Select(s => s.Id).ToList();
-        box.ItemCount = box.ShortcutIds.Count;
+        // Make sure we have a current box loaded, then swap the sidebar into template-info mode.
+        BoxSettingsHost?.LoadBox(SelectedBox);
+        BoxSettingsHost?.ShowTemplateInfo(template);
+    }
 
-        var updated = await AppServices.BoxService.AddOrUpdateAsync(box.ToModel());
-        await AppServices.BoxWindowManager.UpdateAsync(updated);
-        box.UpdateFromModel(updated);
+    private void SeedAvailableTemplates()
+    {
+        AvailableTemplates.Clear();
+        AvailableTemplates.Add(new BoxTemplateOptionViewModel(
+            key: "minimal",
+            name: "Minimal",
+            shortDescription: "A clean, uncluttered look.",
+            longDescription: "Minimal template focuses on content with reduced chrome. Placeholder details for Task 2."));
+
+        AvailableTemplates.Add(new BoxTemplateOptionViewModel(
+            key: "compactGrid",
+            name: "Compact Grid",
+            shortDescription: "Smaller spacing, denser layout.",
+            longDescription: "Compact Grid packs more shortcuts into the same space. Placeholder details for Task 2."));
+
+        AvailableTemplates.Add(new BoxTemplateOptionViewModel(
+            key: "headerPlusBadges",
+            name: "Header + Badges",
+            shortDescription: "Emphasized header and metadata badges.",
+            longDescription: "Header + Badges highlights section header and adds more at-a-glance info. Placeholder details for Task 2."));
     }
 
     public async Task CreateShortcutsAsync()

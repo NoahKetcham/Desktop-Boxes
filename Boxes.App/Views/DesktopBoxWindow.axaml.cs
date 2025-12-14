@@ -37,6 +37,11 @@ public partial class DesktopBoxWindow : Window
         private double _savedWindowHeight = 240;
         private DispatcherTimer? _expandAnimationTimer;
         private Border? _snapIndicator;
+        private const string DragDataFormat = "application/x-boxes-shortcut-id";
+        private Point _dragStartPoint;
+        private DesktopFileViewModel? _draggedItem;
+        private bool _isDraggingItem;
+        private Control? _currentDropTarget;
 
     public DesktopBoxWindow()
     {
@@ -136,7 +141,7 @@ public partial class DesktopBoxWindow : Window
 
     private void OnSettingsChanged(object? sender, ApplicationSettings e)
     {
-        ApplyTransparency(e);
+        ApplyAllSettings(e);
     }
 
     private void ApplyTransparencyFromSettings()
@@ -145,15 +150,16 @@ public partial class DesktopBoxWindow : Window
         {
             if (t.Status == System.Threading.Tasks.TaskStatus.RanToCompletion && t.Result is { } s)
             {
-                ApplyTransparency(s);
+                ApplyAllSettings(s);
             }
         });
     }
 
-    private void ApplyTransparency(ApplicationSettings settings)
+    private void ApplyAllSettings(ApplicationSettings settings)
     {
         var opacity = Math.Clamp(settings.BoxesTransparencyPercent, 0, 100) / 100.0;
         var backgroundColorHex = settings.BoxBackgroundColor ?? "#1C2235";
+        
         Dispatcher.UIThread.Post(() =>
         {
             Color bgColor;
@@ -166,15 +172,53 @@ public partial class DesktopBoxWindow : Window
                 bgColor = Color.Parse("#1C2235");
             }
 
+            // Apply content padding (horizontal and vertical independently)
+            var contentPadding = Math.Clamp(settings.BoxContentPadding, 0, 64);
+            var verticalPadding = Math.Clamp(settings.BoxContentVerticalPadding, 0, 64);
+            if (_contentArea != null)
+            {
+                var currentPadding = _contentArea.Padding;
+                var vertical = verticalPadding > 0 ? verticalPadding : (currentPadding.Top > 0 ? currentPadding.Top : 12);
+                _contentArea.Padding = new Thickness(contentPadding, vertical, contentPadding, vertical);
+            }
+
+            // Apply background and transparency
             if (_rootGrid != null)
             {
                 _rootGrid.Background = new SolidColorBrush(bgColor, opacity);
+                _rootGrid.ClipToBounds = true;
             }
 
+            // Apply corner radius
+            var cornerRadius = Math.Clamp(settings.BoxCornerRadius, 0, 20);
+            if (_contentArea != null)
+            {
+                _contentArea.CornerRadius = new CornerRadius(0, 0, cornerRadius, cornerRadius);
+            }
+
+            // Apply header settings
             if (_headerBar != null)
             {
+                // Show/hide header
+                _headerBar.IsVisible = settings.ShowBoxHeader;
+                
+                // Apply header height
+                var headerHeight = Math.Clamp(settings.BoxHeaderHeight, 30, 60);
+                _headerBar.MinHeight = headerHeight;
+                _headerBar.Padding = new Thickness(10, (headerHeight - 26) / 2);
+                
+                // Apply header corner radius (only top corners when header is visible)
+                _headerBar.CornerRadius = settings.ShowBoxHeader 
+                    ? new CornerRadius(cornerRadius, cornerRadius, 0, 0)
+                    : new CornerRadius(0);
+                
+                // If header is hidden, content area gets full corner radius
+                if (_contentArea != null && !settings.ShowBoxHeader)
+                {
+                    _contentArea.CornerRadius = new CornerRadius(cornerRadius);
+                }
+
                 // Calculate relative luminance to determine if background is dark or light
-                // Relative luminance formula: L = 0.2126*R + 0.7152*G + 0.0722*B
                 var r = bgColor.R / 255.0;
                 var g = bgColor.G / 255.0;
                 var b = bgColor.B / 255.0;
@@ -201,7 +245,17 @@ public partial class DesktopBoxWindow : Window
                 }
                 _headerBar.Background = new SolidColorBrush(headerColor, opacity);
             }
+
+            // Apply icon size and label visibility to shortcut items
+            ApplyIconSettings(settings);
         });
+    }
+
+    private void ApplyIconSettings(ApplicationSettings settings)
+    {
+        if (_shortcutsItemsControl == null) return;
+
+        UpdateIconResources(settings.BoxIconSize, settings.ShowShortcutLabels);
     }
 
     private void Header_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -489,6 +543,114 @@ public partial class DesktopBoxWindow : Window
         }
     }
 
+    private void ShortcutTile_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && sender is Control control && control.DataContext is DesktopFileViewModel vm)
+        {
+            _dragStartPoint = e.GetPosition(this);
+            _draggedItem = vm;
+            _isDraggingItem = false;
+        }
+    }
+
+    private async void ShortcutTile_OnPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_draggedItem is null || _isDraggingItem == true)
+        {
+            return;
+        }
+
+        var point = e.GetPosition(this);
+        var delta = point - _dragStartPoint;
+
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && (Math.Abs(delta.X) + Math.Abs(delta.Y)) > 6)
+        {
+            _isDraggingItem = true;
+            var data = new DataObject();
+            data.Set(DragDataFormat, _draggedItem.Id.ToString());
+            await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
+            ClearDragVisuals();
+            _draggedItem = null;
+            _isDraggingItem = false;
+        }
+    }
+
+    private void ShortcutTile_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        _draggedItem = null;
+        _isDraggingItem = false;
+    }
+
+    private void Shortcuts_OnDragOver(object? sender, DragEventArgs e)
+    {
+        if (!e.Data.Contains(DragDataFormat))
+        {
+            e.DragEffects = DragDropEffects.None;
+            return;
+        }
+
+        e.DragEffects = DragDropEffects.Move;
+        e.Handled = true;
+
+        var targetControl = e.Source as Control;
+        SetDropTargetHighlight(targetControl);
+    }
+
+    private async void Shortcuts_OnDrop(object? sender, DragEventArgs e)
+    {
+        if (!e.Data.Contains(DragDataFormat))
+        {
+            return;
+        }
+
+        var draggedText = e.Data.Get(DragDataFormat) as string;
+        if (!Guid.TryParse(draggedText, out var draggedId))
+        {
+            ClearDragVisuals();
+            return;
+        }
+
+        var targetVm = (e.Source as Control)?.DataContext as DesktopFileViewModel;
+        var dropBeforeId = targetVm?.Id == draggedId ? (Guid?)null : targetVm?.Id;
+
+        await ViewModel.ReorderCurrentItemsAsync(draggedId, dropBeforeId);
+
+        ClearDragVisuals();
+        e.Handled = true;
+    }
+
+    private void Shortcuts_OnDragLeave(object? sender, DragEventArgs e)
+    {
+        ClearDragVisuals();
+    }
+
+    private void SetDropTargetHighlight(Control? control)
+    {
+        if (_currentDropTarget is Control previous)
+        {
+            previous.Classes.Set("drop-target", false);
+        }
+
+        var border = control?.FindAncestorOfType<Border>() ?? control as Border;
+        if (border != null && border.Classes.Contains("shortcut-item"))
+        {
+            border.Classes.Set("drop-target", true);
+            _currentDropTarget = border;
+            return;
+        }
+
+        _currentDropTarget = null;
+    }
+
+    private void ClearDragVisuals()
+    {
+        if (_currentDropTarget is Control border)
+        {
+            border.Classes.Set("drop-target", false);
+        }
+        _currentDropTarget = null;
+    }
+
     private void Content_OnDragEnter(object? sender, DragEventArgs e)
     {
         ViewModel.HandleDragEvent(e);
@@ -693,6 +855,7 @@ public partial class DesktopBoxWindow : Window
             return;
 
         var metrics = DesktopIconMetricsService.GetDesktopIconMetrics();
+        UpdateIconResources(metrics.IconSize, showLabels: true, itemWidthOverride: metrics.HorizontalSpacing, itemHeightOverride: metrics.VerticalSpacing);
         
         // Apply metrics immediately and also on Loaded event to ensure it takes effect
         void ApplyMetrics()
@@ -720,30 +883,35 @@ public partial class DesktopBoxWindow : Window
         {
             ApplyMetrics();
         };
-        
-        // Subscribe to LayoutUpdated as a fallback to catch any timing issues
-        _shortcutsItemsControl.LayoutUpdated += (s, e) =>
-        {
-            var wrapPanel = _shortcutsItemsControl.GetVisualDescendants()
-                .OfType<WrapPanel>()
-                .FirstOrDefault();
-            
-            if (wrapPanel != null && (wrapPanel.ItemWidth != metrics.HorizontalSpacing || wrapPanel.ItemHeight != metrics.VerticalSpacing))
-            {
-                wrapPanel.ItemWidth = metrics.HorizontalSpacing;
-                wrapPanel.ItemHeight = metrics.VerticalSpacing;
-            }
-        };
-        
-        // Store metrics in resources for potential future use
+    }
+
+    private void UpdateIconResources(int iconSize, bool showLabels, int? itemWidthOverride = null, int? itemHeightOverride = null)
+    {
         if (Resources == null)
         {
             Resources = new ResourceDictionary();
         }
-        
-        Resources["IconSize"] = metrics.IconSize;
-        Resources["HorizontalSpacing"] = metrics.HorizontalSpacing;
-        Resources["VerticalSpacing"] = metrics.VerticalSpacing;
+
+        var clampedSize = Math.Clamp(iconSize, 32, 64);
+        var itemWidth = itemWidthOverride ?? clampedSize + 30;
+        var itemHeight = itemHeightOverride ?? (showLabels ? clampedSize + 49 : clampedSize + 16);
+        var labelWidth = clampedSize + 20;
+
+        Resources["IconSize"] = (double)clampedSize;
+        Resources["IconItemWidth"] = (double)itemWidth;
+        Resources["IconItemHeight"] = (double)itemHeight;
+        Resources["IconLabelMaxWidth"] = (double)labelWidth;
+        Resources["ShowShortcutLabels"] = showLabels;
+
+        if (_shortcutsItemsControl?.GetVisualDescendants().OfType<WrapPanel>().FirstOrDefault() is { } wrapPanel)
+        {
+            wrapPanel.ItemWidth = itemWidth;
+            wrapPanel.ItemHeight = itemHeight;
+        }
+
+        _shortcutsItemsControl?.InvalidateMeasure();
+        _shortcutsItemsControl?.InvalidateArrange();
+        _shortcutsItemsControl?.InvalidateVisual();
     }
 
     protected override void OnClosed(EventArgs e)

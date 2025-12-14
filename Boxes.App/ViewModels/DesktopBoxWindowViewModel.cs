@@ -76,6 +76,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
     private DesktopBoxWindow? _view;
     private CancellationTokenSource? _pendingLoadCts;
     private bool _suspendStateSync;
+    private static readonly Guid RootOrderKey = Guid.Empty;
 
     public DesktopBoxWindowViewModel(DesktopBox model)
     {
@@ -259,6 +260,38 @@ public class DesktopBoxWindowViewModel : ViewModelBase
     {
         CancelPendingLoad();
         ApplyShortcuts(shortcuts, resetNavigation: false);
+    }
+
+    /// <summary>
+    /// Reorder items within the current folder, persist order map, and refresh UI.
+    /// </summary>
+    public async Task ReorderCurrentItemsAsync(Guid draggedId, Guid? dropBeforeId)
+    {
+        var parentId = NavigationStack.LastOrDefault()?.Id;
+        var orderKey = GetOrderKey(parentId);
+        var currentIds = CurrentItems.Select(i => i.Id);
+        var order = GetOrCreateOrder(orderKey, currentIds);
+
+        if (!order.Remove(draggedId))
+        {
+            return;
+        }
+
+        var targetIndex = dropBeforeId.HasValue ? order.IndexOf(dropBeforeId.Value) : order.Count;
+        if (targetIndex < 0 || targetIndex > order.Count)
+        {
+            targetIndex = order.Count;
+        }
+
+        order.Insert(targetIndex, draggedId);
+        Model.ItemOrder[orderKey] = order;
+
+        ApplyOrderToCollections(parentId, order);
+        Model.CurrentPath = SerializedPath;
+        SyncWindowState();
+
+        var updated = await AppServices.BoxService.AddOrUpdateAsync(Model).ConfigureAwait(false);
+        Update(updated);
     }
 
     public void EnterFolder(DesktopFileViewModel? folder)
@@ -446,10 +479,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
 
     private void ApplyShortcuts(IEnumerable<ScannedFile> shortcuts, bool resetNavigation)
     {
-        var ordered = ShortcutCatalog.GetAllShortcutsDeduped(shortcuts)
-            .OrderBy(s => s.ItemType != ScannedItemType.Folder)
-            .ThenBy(s => s.FileName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var ordered = OrderShortcutsWithStoredOrder(shortcuts);
 
         LogDuplicateWarnings(ordered);
 
@@ -557,6 +587,102 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         UpdateCurrentItems(parentId);
         Model.CurrentPath = SerializedPath;
         SyncWindowState();
+    }
+
+    private List<ScannedFile> OrderShortcutsWithStoredOrder(IEnumerable<ScannedFile> shortcuts)
+    {
+        var deduped = ShortcutCatalog.GetAllShortcutsDeduped(shortcuts).ToList();
+        var grouped = deduped.GroupBy(s => GetOrderKey(s.ParentId));
+        var result = new List<ScannedFile>();
+
+        foreach (var group in grouped)
+        {
+            var orderedGroup = OrderGroupWithFallback(group.Key, group.ToList());
+            result.AddRange(orderedGroup);
+        }
+
+        return result;
+    }
+
+    private List<ScannedFile> OrderGroupWithFallback(Guid orderKey, List<ScannedFile> group)
+    {
+        var order = GetOrCreateOrder(orderKey, group.Select(g => g.Id));
+        var lookup = group.ToDictionary(g => g.Id);
+        var ordered = new List<ScannedFile>();
+
+        foreach (var id in order)
+        {
+            if (lookup.TryGetValue(id, out var file))
+            {
+                ordered.Add(file);
+            }
+        }
+
+        if (ordered.Count == group.Count)
+        {
+            return ordered;
+        }
+
+        var remaining = group
+            .Where(g => !order.Contains(g.Id))
+            .OrderBy(g => g.ItemType != ScannedItemType.Folder)
+            .ThenBy(g => g.FileName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var item in remaining)
+        {
+            order.Add(item.Id);
+            ordered.Add(item);
+        }
+
+        Model.ItemOrder[orderKey] = order;
+        return ordered;
+    }
+
+    private List<Guid> GetOrCreateOrder(Guid orderKey, IEnumerable<Guid> currentIds)
+    {
+        if (!Model.ItemOrder.TryGetValue(orderKey, out var order) || order is null)
+        {
+            order = new List<Guid>();
+        }
+
+        var currentSet = new HashSet<Guid>(currentIds);
+        order = order.Where(currentSet.Contains).Distinct().ToList();
+
+        foreach (var id in currentSet)
+        {
+            if (!order.Contains(id))
+            {
+                order.Add(id);
+            }
+        }
+
+        Model.ItemOrder[orderKey] = order;
+        return order;
+    }
+
+    private Guid GetOrderKey(Guid? parentId) => parentId ?? RootOrderKey;
+
+    private void ApplyOrderToCollections(Guid? parentId, List<Guid> order)
+    {
+        var parentItems = Shortcuts.Where(s => s.ParentId == parentId).ToList();
+        var orderedItems = parentItems
+            .OrderBy(i => order.IndexOf(i.Id) is int idx && idx >= 0 ? idx : int.MaxValue)
+            .ThenBy(i => i.ItemType != ScannedItemType.Folder)
+            .ThenBy(i => i.FileName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var item in parentItems)
+        {
+            Shortcuts.Remove(item);
+        }
+
+        foreach (var item in orderedItems)
+        {
+            Shortcuts.Add(item);
+        }
+
+        UpdateCurrentItems(parentId);
     }
 
     private void SyncWindowState()

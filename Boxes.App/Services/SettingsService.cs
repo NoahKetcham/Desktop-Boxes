@@ -123,7 +123,15 @@ public class SettingsService
         AccentHex = settings.AccentHex,
         BoxBackgroundColor = settings.BoxBackgroundColor,
         RecentAccentColors = settings.RecentAccentColors != null ? new List<string>(settings.RecentAccentColors) : new List<string>(),
-        RecentBoxBackgroundColors = settings.RecentBoxBackgroundColors != null ? new List<string>(settings.RecentBoxBackgroundColors) : new List<string>()
+        RecentBoxBackgroundColors = settings.RecentBoxBackgroundColors != null ? new List<string>(settings.RecentBoxBackgroundColors) : new List<string>(),
+        // Box Customization
+        BoxHeaderHeight = settings.BoxHeaderHeight,
+        ShowBoxHeader = settings.ShowBoxHeader,
+        BoxCornerRadius = settings.BoxCornerRadius,
+        BoxIconSize = settings.BoxIconSize,
+        ShowShortcutLabels = settings.ShowShortcutLabels,
+        BoxContentPadding = settings.BoxContentPadding,
+        BoxContentVerticalPadding = settings.BoxContentVerticalPadding
     };
 
     private void RaiseChanged()

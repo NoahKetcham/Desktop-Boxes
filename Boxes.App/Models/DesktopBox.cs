@@ -8,6 +8,7 @@ public class DesktopBox
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string? TemplateKey { get; set; }
     public string TargetPath { get; set; } = string.Empty;
     public int ItemCount { get; set; }
     public List<Guid> ShortcutIds { get; set; } = new();
@@ -22,5 +23,10 @@ public class DesktopBox
     public double? ExpandedPositionX { get; set; }
     public double? ExpandedPositionY { get; set; }
     public bool WasSnapExpanded { get; set; }
+
+    /// <summary>
+    /// Stores item display order per parent folder. Root is keyed by Guid.Empty.
+    /// </summary>
+    public Dictionary<Guid, List<Guid>> ItemOrder { get; set; } = new();
 }
 
