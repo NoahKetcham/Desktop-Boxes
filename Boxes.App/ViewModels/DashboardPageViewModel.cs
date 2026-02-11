@@ -150,21 +150,13 @@ public partial class DashboardPageViewModel : ViewModelBase
             IsCleaningDesktop = true;
             if (!IsDesktopClean)
             {
-                var movedItems = await AppServices.DesktopCleanupService.CleanAsync();
-                if (movedItems.Count > 0)
-                {
-                    await AppServices.ScannedFileService.MarkFilesAsArchivedAsync(movedItems.Select(item => (item.OriginalPath, item.ArchiveLocation)));
-                    IsDesktopClean = true;
-                }
+                await AppServices.DesktopCleanupService.CleanAsync();
+                IsDesktopClean = true;
             }
             else
             {
-                var restored = await AppServices.DesktopCleanupService.RestoreAsync();
-                if (restored)
-                {
-                    await AppServices.ScannedFileService.MarkFilesAsRestoredAsync();
-                    IsDesktopClean = false;
-                }
+                await AppServices.DesktopCleanupService.RestoreAsync();
+                IsDesktopClean = false;
             }
 
             await ScanDesktopAsync();
@@ -178,11 +170,6 @@ public partial class DashboardPageViewModel : ViewModelBase
         {
             IsCleaningDesktop = false;
         }
-    }
-
-    private async Task MarkFilesAsRestoredAsync()
-    {
-        await AppServices.ScannedFileService.MarkFilesAsRestoredAsync();
     }
 
     private async Task LoadAsync()
