@@ -1,0 +1,69 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style>
+    <Style.Resources>
+      <!-- Glass Theme - Frosted glass effect with transparency -->
+      
+      <!-- Core colors - Frosted glass palette -->
+      <SolidColorBrush x:Key="AccentBrush" Color="#FF6DB3FF"/>
+      <SolidColorBrush x:Key="AccentMutedBrush" Color="#806DB3FF"/>
+      <SolidColorBrush x:Key="SurfaceBrush" Color="#CC1A1C20"/>
+      <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#E61A1C20"/>
+      <SolidColorBrush x:Key="BorderBrush" Color="#40FFFFFF"/>
+      
+      <!-- Glass-specific surfaces -->
+      <SolidColorBrush x:Key="GlassSurfaceBrush" Color="#20000000"/>
+      <SolidColorBrush x:Key="GlassHighlightBrush" Color="#30FFFFFF"/>
+      <SolidColorBrush x:Key="GlassOverlayBrush" Color="#10FFFFFF"/>
+      
+      <!-- Frosted glass background with blur effect -->
+      <SolidColorBrush x:Key="GlassBackgroundBrush" Color="#CC0D1117"/>
+      <SolidColorBrush x:Key="GlassCardBrush" Color="#1AFFFFFF"/>
+      <SolidColorBrush x:Key="GlassCardHoverBrush" Color="#25FFFFFF"/>
+      
+      <!-- Text colors -->
+      <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFFFFFFF"/>
+      <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B3FFFFFF"/>
+      <SolidColorBrush x:Key="TextTertiaryBrush" Color="#80FFFFFF"/>
+      
+      <!-- Interactive states -->
+      <SolidColorBrush x:Key="InteractiveHoverBrush" Color="#20FFFFFF"/>
+      <SolidColorBrush x:Key="InteractivePressedBrush" Color="#30FFFFFF"/>
+      <SolidColorBrush x:Key="InteractiveFocusBrush" Color="#406DB3FF"/>
+      
+      <!-- Glow effects -->
+      <SolidColorBrush x:Key="GlowAccentBrush" Color="#406DB3FF"/>
+      <SolidColorBrush x:Key="GlowHighlightBrush" Color="#20FFFFFF"/>
+      
+      <!-- Spacing scale -->
+      <x:Int32 x:Key="Space4">4</x:Int32>
+      <x:Int32 x:Key="Space8">8</x:Int32>
+      <x:Int32 x:Key="Space12">12</x:Int32>
+      <x:Int32 x:Key="Space16">16</x:Int32>
+      <x:Int32 x:Key="Space20">20</x:Int32>
+      <x:Int32 x:Key="Space24">24</x:Int32>
+
+      <!-- Corner radii - Rounded for glass effect -->
+      <CornerRadius x:Key="RadiusXS">4</CornerRadius>
+      <CornerRadius x:Key="RadiusS">8</CornerRadius>
+      <CornerRadius x:Key="RadiusM">12</CornerRadius>
+      <CornerRadius x:Key="RadiusL">20</CornerRadius>
+      <CornerRadius x:Key="RadiusXL">28</CornerRadius>
+
+      <!-- Borders -->
+      <Thickness x:Key="BorderThin">1</Thickness>
+      <Thickness x:Key="BorderThick">2</Thickness>
+      <Thickness x:Key="BorderGlow">1</Thickness>
+
+      <!-- Shadows - Soft glass shadows -->
+      <BoxShadows x:Key="ShadowBase">0 2 12 0 #40000000</BoxShadows>
+      <BoxShadows x:Key="ShadowRaised">0 4 20 0 #60000000</BoxShadows>
+      <BoxShadows x:Key="ShadowFloating">0 8 32 0 #80000000</BoxShadows>
+      <BoxShadows x:Key="ShadowGlow">0 0 20 0 #406DB3FF</BoxShadows>
+      
+      <!-- Glass effect shadow combinations -->
+      <BoxShadows x:Key="ShadowGlass">0 2 8 0 #20000000, 0 0 1 0 #10FFFFFF</BoxShadows>
+      <BoxShadows x:Key="ShadowGlassElevated">0 8 24 0 #40000000, 0 0 2 0 #20FFFFFF</BoxShadows>
+    </Style.Resources>
+  </Style>
+</Styles>

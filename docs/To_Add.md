@@ -38,17 +38,19 @@ Sizing the box reveals a secondary background image.  would be cool to reveal a 
 
 
 # TO-DO:
-- inscpect and improve upon current data saving/updating functionality.
-    - many save features are not working as expected.
+- inspect and improve upon current data saving/updating functionality.
+    - (Completed 2026-02-14 - Added atomic file writes, retry logic, backup on corruption, and comprehensive error handling to SettingsService and BoxService)
 - Add feature to click and drag desktop (highlighted area) to create a new box the shape of highlighted area.
 - Implement box window templates (dashboard picker + template info + selection persistence).
     - (Partially completed 2025-12-14 – Added Dashboard template picker UI, template info panel, and persisted `TemplateKey` placeholder; documented the expander animation approach in `docs/thatSauce/TemplateExpanderAnimation.md`.)
 - start building themes, well organized each theme in its own file probably.
+    - (Completed 2026-02-14 - Added GlassTheme.axaml and AcetateTheme.axaml with complete color palettes, spacing, shadows, and corner radii)
 - Auto start the app when the computer starts up, only boxes windows should start not settings ui.
     - Currently both boxes and settings ui start when the computer starts up.
 - Work on adaptive sizing for icons, sizing, spacing and text.
 - Enhance settings save and load functionality.
--    - (Completed 2025-12-05 – Added sidebar box settings with auto-save for name/description, click-out deselect, and inline delete replacing popup.)
+    - (Completed 2025-12-05 – Added sidebar box settings with auto-save for name/description, click-out deselect, and inline delete replacing popup.)
+    - (Completed 2026-02-14 - Full rewrite with retry logic, atomic writes, and corruption recovery)
 - Add feature to click and drag desktop (highlighted area) to create a new box the shape of highlighted area.
 - Focus on standard boxes optimizations and improvements before taskbar boxes.
 - Add multi-monitor support.

@@ -22,6 +22,7 @@ public class BoxService
 
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly List<DesktopBox> _boxes = new();
+    private bool _initialized;
 
     public BoxService(string rootDirectory)
     {
@@ -34,9 +35,12 @@ public class BoxService
         await _gate.WaitAsync().ConfigureAwait(false);
         try
         {
+            if (_initialized) return;
+
             if (!File.Exists(_storagePath))
             {
                 await PersistAsync().ConfigureAwait(false);
+                _initialized = true;
                 return;
             }
 
@@ -45,6 +49,7 @@ public class BoxService
             {
                 _boxes.Clear();
                 await PersistAsync().ConfigureAwait(false);
+                _initialized = true;
                 return;
             }
 
@@ -64,12 +69,18 @@ public class BoxService
                 try
                 {
                     File.Copy(_storagePath, backupPath, true);
+                    Console.WriteLine($"[BoxService] Detected invalid boxes.json. Backup saved to {backupPath}");
                 }
                 catch
                 {
                     backupPath = null;
                 }
 
+                data = new List<DesktopBox>();
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine($"[BoxService] Error reading boxes: {ex.Message}");
                 data = new List<DesktopBox>();
             }
 
@@ -83,11 +94,9 @@ public class BoxService
             if (hadCorruption)
             {
                 await PersistAsync().ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(backupPath))
-                {
-                    Console.WriteLine($"[Boxes] Detected invalid boxes.json. Backup saved to {backupPath} and a fresh file was generated.");
-                }
             }
+
+            _initialized = true;
         }
         finally
         {
@@ -100,6 +109,10 @@ public class BoxService
         await _gate.WaitAsync().ConfigureAwait(false);
         try
         {
+            if (!_initialized)
+            {
+                await InitializeAsync().ConfigureAwait(false);
+            }
             return _boxes.Select(Clone).ToList();
         }
         finally
@@ -113,6 +126,10 @@ public class BoxService
         await _gate.WaitAsync().ConfigureAwait(false);
         try
         {
+            if (!_initialized)
+            {
+                await InitializeAsync().ConfigureAwait(false);
+            }
             var box = _boxes.FirstOrDefault(b => b.Id == id);
             return box != null ? Clone(box) : null;
         }
@@ -127,6 +144,11 @@ public class BoxService
         await _gate.WaitAsync().ConfigureAwait(false);
         try
         {
+            if (!_initialized)
+            {
+                await InitializeAsync().ConfigureAwait(false);
+            }
+
             var existing = _boxes.FirstOrDefault(b => b.Id == box.Id);
             if (existing == null)
             {
@@ -154,7 +176,7 @@ public class BoxService
                 existing.ItemOrder = new Dictionary<Guid, List<Guid>>(box.ItemOrder.ToDictionary(kvp => kvp.Key, kvp => new List<Guid>(kvp.Value)));
             }
 
-            await PersistAsync().ConfigureAwait(false);
+            await PersistWithRetryAsync().ConfigureAwait(false);
             return Clone(box);
         }
         finally
@@ -163,16 +185,43 @@ public class BoxService
         }
     }
 
+    private async Task PersistWithRetryAsync(int maxRetries = 3)
+    {
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                await PersistAsync().ConfigureAwait(false);
+                return;
+            }
+            catch (IOException ex) when (attempt < maxRetries)
+            {
+                Console.WriteLine($"[BoxService] Persist attempt {attempt} failed: {ex.Message}");
+                await Task.Delay(100 * attempt).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[BoxService] Persist failed: {ex.Message}");
+                break;
+            }
+        }
+    }
+
     public async Task DeleteAsync(Guid id)
     {
         await _gate.WaitAsync().ConfigureAwait(false);
         try
         {
+            if (!_initialized)
+            {
+                await InitializeAsync().ConfigureAwait(false);
+            }
+
             var index = _boxes.FindIndex(b => b.Id == id);
             if (index >= 0)
             {
                 _boxes.RemoveAt(index);
-                await PersistAsync().ConfigureAwait(false);
+                await PersistWithRetryAsync().ConfigureAwait(false);
             }
         }
         finally
@@ -186,7 +235,23 @@ public class BoxService
         await _gate.WaitAsync().ConfigureAwait(false);
         try
         {
+            // Backup existing file before resetting
+            if (File.Exists(_storagePath))
+            {
+                var directory = Path.GetDirectoryName(_storagePath) ?? AppContext.BaseDirectory;
+                var backupPath = Path.Combine(directory, $"boxes.backup_{DateTimeOffset.UtcNow:yyyyMMddHHmmss}.json");
+                try
+                {
+                    File.Copy(_storagePath, backupPath, true);
+                }
+                catch
+                {
+                    // Ignore backup failures
+                }
+            }
+
             _boxes.Clear();
+            
             if (File.Exists(_storagePath))
             {
                 File.Delete(_storagePath);
@@ -202,8 +267,27 @@ public class BoxService
 
     private async Task PersistAsync()
     {
-        await using var stream = File.Create(_storagePath);
-        await JsonSerializer.SerializeAsync(stream, _boxes, _serializerOptions).ConfigureAwait(false);
+        // Ensure directory exists
+        var directory = Path.GetDirectoryName(_storagePath);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        // Write to temp file first, then atomic rename
+        var tempPath = _storagePath + ".tmp";
+        
+        await using (var stream = File.Create(tempPath))
+        {
+            await JsonSerializer.SerializeAsync(stream, _boxes, _serializerOptions).ConfigureAwait(false);
+        }
+
+        // Atomic replace
+        if (File.Exists(_storagePath))
+        {
+            File.Delete(_storagePath);
+        }
+        File.Move(tempPath, _storagePath);
     }
 
     private static DesktopBox Clone(DesktopBox box) => new()
@@ -229,4 +313,3 @@ public class BoxService
         ItemOrder = new Dictionary<Guid, List<Guid>>(box.ItemOrder.ToDictionary(kvp => kvp.Key, kvp => new List<Guid>(kvp.Value)))
     };
 }
-
