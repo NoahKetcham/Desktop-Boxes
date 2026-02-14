@@ -538,9 +538,14 @@ public class ScannedFileService
 
     private static void ProcessFile(FileInfo file, Guid? parentId, Guid? rootId, Dictionary<string, ScannedFile> existingByPath, List<ScannedFile> flattened)
     {
-        var fullPath = file.FullName;
+        var fullPath = NormalizePath(file.FullName);
+        if (fullPath is null)
+        {
+            return;
+        }
+
         existingByPath.TryGetValue(fullPath, out var existingEntry);
-                var id = existingEntry?.Id ?? Guid.NewGuid();
+        var id = existingEntry?.Id ?? Guid.NewGuid();
 
         var fileEntry = existingEntry ?? new ScannedFile
         {
@@ -550,6 +555,7 @@ public class ScannedFileService
             ItemType = ScannedItemType.File
         };
 
+        fileEntry.FilePath = fullPath;
         fileEntry.FileName = file.Name;
         fileEntry.ParentId = parentId;
         fileEntry.ItemType = ScannedItemType.File;
