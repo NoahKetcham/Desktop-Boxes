@@ -1,5 +1,32 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Main card container -->
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{StaticResource SurfaceElevatedBrush}"/>
+    <Setter Property="CornerRadius" Value="16"/>
+    <Setter Property="Padding" Value="24"/>
+    <Setter Property="BorderBrush" Value="#2A2D33"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Margin" Value="0,0,0,16"/>
+    <Setter Property="BoxShadow" Value="0 2 12 0 #40000000"/>
+  </Style>
+
+  <!-- Setting row inside a card -->
+  <Style Selector="Border.setting-row">
+    <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+    <Setter Property="CornerRadius" Value="8"/>
+    <Setter Property="Padding" Value="16,12"/>
+    <Setter Property="Margin" Value="0,0,0,8"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12"/>
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.setting-row:pointerover">
+    <Setter Property="Background" Value="#181A1E"/>
+  </Style>
+
   <!-- Card-like row container -->
   <Style Selector="Border.card-row">
     <Setter Property="Background" Value="{StaticResource SurfaceElevatedBrush}"/>

@@ -13,6 +13,12 @@
     <Setter Property="Opacity" Value="0.75"/>
   </Style>
 
+  <!-- Setting description text -->
+  <Style Selector="TextBlock.setting-description">
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Opacity" Value="0.6"/>
+  </Style>
+
   <!-- Numbers/counters with monospaced/tabular figures -->
   <Style Selector="TextBlock.numeric">
     <Setter Property="FontFamily" Value="Consolas, Menlo, Monaco, 'Courier New', monospace"/>

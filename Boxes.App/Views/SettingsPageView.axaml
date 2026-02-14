@@ -9,283 +9,435 @@
         <vm:SettingsPageViewModel/>
     </Design.DataContext>
 
-    <Grid RowDefinitions="Auto,*">
-        <StackPanel Spacing="4" Grid.Row="0">
-            <TextBlock Text="{Binding Title}" Classes="title"/>
-            <TextBlock Text="{Binding Description}" Classes="subtitle"/>
-        </StackPanel>
+    <Grid ColumnDefinitions="220,*">
+        <!-- Sidebar Navigation -->
+        <Border Grid.Column="0" Background="{StaticResource SurfaceBrush}" Padding="16">
+            <StackPanel Spacing="8">
+                <TextBlock Text="Settings" FontWeight="Bold" FontSize="18" Margin="0,0,0,16"/>
+                
+                <!-- Search -->
+                <TextBox x:Name="SearchBox" 
+                         Watermark="Search settings..."
+                         Text="{Binding SearchText, Mode=TwoWay}"
+                         Margin="0,0,0,16"/>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <Border HorizontalAlignment="Center" MaxWidth="1000" Padding="16">
-            <StackPanel Spacing="12">
-                <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="Appearance" FontWeight="SemiBold" FontSize="16"/>
-                        <ComboBox SelectedItem="{Binding ThemePreference, Mode=TwoWay}">
-                            <ComboBoxItem Content="System"/>
-                            <ComboBoxItem Content="Light"/>
-                            <ComboBoxItem Content="Dark"/>
-                        </ComboBox>
+                <!-- Navigation Items -->
+                <Button Classes="nav-item" Classes.active="{Binding SelectedCategory, Converter={x:Static StringConverters.IsNotNullOrEmpty}, ConverterParameter=appearance}"
+                        Command="{Binding SelectCategoryCommand}" CommandParameter="appearance">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="🎨" FontSize="16"/>
+                        <TextBlock Text="Appearance"/>
                     </StackPanel>
-                </Border>
+                </Button>
 
-                <!-- Accent color selector -->
-                <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="Accent color" FontWeight="SemiBold" FontSize="16"/>
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                            <Border Grid.Column="0" Width="28" Height="28" CornerRadius="6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="{StaticResource BorderThin}">
-                                <Border.Background>
-                                    <SolidColorBrush Color="{Binding SelectedAccentColor}"/>
-                                </Border.Background>
-                            </Border>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                <ItemsControl ItemsSource="{Binding RecentAccentColors}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal" Spacing="6"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Width="24" Height="24" CornerRadius="4" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Cursor="Hand">
-                                                <Border.Background>
-                                                    <SolidColorBrush Color="{Binding}"/>
-                                                </Border.Background>
-                                                <Border.Styles>
-                                                    <Style Selector="Border:pointerover">
-                                                        <Setter Property="Opacity" Value="0.8"/>
-                                                    </Style>
-                                                </Border.Styles>
-                                                <Button Command="{Binding $parent[UserControl].DataContext.SelectRecentAccentColorCommand}" CommandParameter="{Binding}" Background="Transparent" BorderThickness="0" Padding="0" Width="24" Height="24"/>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                                <Button x:Name="AccentColorPickerButton" Content="Pick Color" Classes="btn-subtle" Command="{Binding OpenAccentColorPickerPopupCommand}"/>
-                                <Button Content="Reset" Classes="btn-subtle" Command="{Binding ResetAccentCommand}"/>
-                            </StackPanel>
-                        </Grid>
+                <Button Classes="nav-item"
+                        Command="{Binding SelectCategoryCommand}" CommandParameter="behavior">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="⚡" FontSize="16"/>
+                        <TextBlock Text="Behavior"/>
                     </StackPanel>
-                </Border>
+                </Button>
 
-                <!-- Box background color selector -->
-                <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="Box background color" FontWeight="SemiBold" FontSize="16"/>
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                            <Border Grid.Column="0" Width="28" Height="28" CornerRadius="6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="{StaticResource BorderThin}">
-                                <Border.Background>
-                                    <SolidColorBrush Color="{Binding SelectedBoxBackgroundColor}"/>
-                                </Border.Background>
-                            </Border>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                <ItemsControl ItemsSource="{Binding RecentBoxBackgroundColors}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal" Spacing="6"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Width="24" Height="24" CornerRadius="4" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Cursor="Hand">
-                                                <Border.Background>
-                                                    <SolidColorBrush Color="{Binding}"/>
-                                                </Border.Background>
-                                                <Border.Styles>
-                                                    <Style Selector="Border:pointerover">
-                                                        <Setter Property="Opacity" Value="0.8"/>
-                                                    </Style>
-                                                </Border.Styles>
-                                                <Button Command="{Binding $parent[UserControl].DataContext.SelectRecentBoxBackgroundColorCommand}" CommandParameter="{Binding}" Background="Transparent" BorderThickness="0" Padding="0" Width="24" Height="24"/>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                                <Button x:Name="ColorPickerButton" Content="Pick Color" Classes="btn-subtle" Command="{Binding OpenColorPickerPopupCommand}"/>
-                                <Button Content="Reset" Classes="btn-subtle" Command="{Binding ResetBoxBackgroundColorCommand}"/>
-                            </StackPanel>
-                        </Grid>
+                <Button Classes="nav-item"
+                        Command="{Binding SelectCategoryCommand}" CommandParameter="customization">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="📦" FontSize="16"/>
+                        <TextBlock Text="Box Customization"/>
                     </StackPanel>
-                </Border>
+                </Button>
 
-                <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="Behavior" FontWeight="SemiBold" FontSize="16"/>
-                        <ToggleSwitch Content="Auto snap new boxes" IsChecked="{Binding AutoSnapEnabled, Mode=TwoWay}"/>
-                        <ToggleSwitch Content="Show box outlines" IsChecked="{Binding ShowBoxOutlines, Mode=TwoWay}"/>
-                        <ToggleSwitch Content="Run Desktop Boxes at Windows startup" IsChecked="{Binding RunAtStartup, Mode=TwoWay}"/>
+                <Button Classes="nav-item"
+                        Command="{Binding SelectCategoryCommand}" CommandParameter="integrations">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="🔗" FontSize="16"/>
+                        <TextBlock Text="Integrations"/>
                     </StackPanel>
-                </Border>
+                </Button>
 
-                <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="Integrations" FontWeight="SemiBold" FontSize="16"/>
-                        <ToggleSwitch Content="OneDrive linked" IsChecked="{Binding OneDriveLinked, Mode=TwoWay}"/>
-                        <ToggleSwitch Content="Google Drive linked" IsChecked="{Binding GoogleDriveLinked, Mode=TwoWay}"/>
-                        <Button Content="Create 'Show Boxes' Start Menu Shortcut" Classes="btn-subtle" Command="{Binding CreateShowBoxesShortcutCommand}"/>
-                        <StackPanel Orientation="Vertical" Spacing="8">
-                            <Button Content="Save" Classes="btn-primary" Command="{Binding SaveCommand}" HorizontalAlignment="Stretch"/>
-                            <Button Content="Delete All Saved Data" Classes="btn-danger" Command="{Binding ResetDataCommand}" HorizontalAlignment="Stretch"/>
-                        </StackPanel>
+                <Button Classes="nav-item"
+                        Command="{Binding SelectCategoryCommand}" CommandParameter="developer">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="🔧" FontSize="16"/>
+                        <TextBlock Text="Developer"/>
                     </StackPanel>
-                </Border>
+                </Button>
 
-                <!-- Box Customization -->
-                <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16">
-                    <StackPanel Spacing="14">
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="Box Customization" FontWeight="SemiBold" FontSize="16"/>
-                            <TextBlock Text="Customize the appearance of your box windows" Classes="subtitle" FontSize="12"/>
-                        </StackPanel>
-                        
-                        <!-- Header Toggle -->
-                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Spacing="2">
-                                    <TextBlock Text="Show Header Bar" FontWeight="Medium" FontSize="13"/>
-                                    <TextBlock Text="Toggle the header section visibility" FontSize="11" Opacity="0.6"/>
-                                </StackPanel>
-                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowBoxHeader, Mode=TwoWay}" 
-                                              VerticalAlignment="Center" Margin="0"/>
-                            </Grid>
-                        </Border>
-                        
-                        <!-- Header Height Slider -->
-                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12"
-                                IsEnabled="{Binding ShowBoxHeader}">
-                            <StackPanel Spacing="8">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="Header Height" FontWeight="Medium" FontSize="13"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding BoxHeaderHeight, StringFormat='{}{0}px'}" 
-                                               FontSize="12" Opacity="0.8" Classes="numeric"/>
-                                </Grid>
-                                <Slider Minimum="30" Maximum="60" Value="{Binding BoxHeaderHeight, Mode=TwoWay}" 
-                                        TickFrequency="5" IsSnapToTickEnabled="True"
-                                        ToolTip.Tip="Adjust the vertical size of the box header"/>
-                            </StackPanel>
-                        </Border>
-                        
-                        <!-- Corner Radius Slider -->
-                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12">
-                            <StackPanel Spacing="8">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="Corner Radius" FontWeight="Medium" FontSize="13"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding BoxCornerRadius, StringFormat='{}{0}px'}" 
-                                               FontSize="12" Opacity="0.8" Classes="numeric"/>
-                                </Grid>
-                                <Slider Minimum="0" Maximum="20" Value="{Binding BoxCornerRadius, Mode=TwoWay}" 
-                                        TickFrequency="2" IsSnapToTickEnabled="True"
-                                        ToolTip.Tip="Adjust how rounded the box corners appear"/>
-                            </StackPanel>
-                        </Border>
-                        
-                        <!-- Icon Size Slider -->
-                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12">
-                            <StackPanel Spacing="8">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="Icon Size" FontWeight="Medium" FontSize="13"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding BoxIconSize, StringFormat='{}{0}px'}" 
-                                               FontSize="12" Opacity="0.8" Classes="numeric"/>
-                                </Grid>
-                                <Slider Minimum="32" Maximum="64" Value="{Binding BoxIconSize, Mode=TwoWay}" 
-                                        TickFrequency="8" IsSnapToTickEnabled="True"
-                                        ToolTip.Tip="Size of shortcut icons inside boxes"/>
-                            </StackPanel>
-                        </Border>
+                <Separator Margin="0,16,0,16"/>
 
-                        <!-- Horizontal Padding Slider -->
-                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12">
-                            <StackPanel Spacing="8">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="Horizontal Padding" FontWeight="Medium" FontSize="13"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding BoxContentPadding, StringFormat='{}{0}px'}" 
-                                               FontSize="12" Opacity="0.8" Classes="numeric"/>
-                                </Grid>
-                                <Slider Minimum="0" Maximum="32" Value="{Binding BoxContentPadding, Mode=TwoWay}" 
-                                        TickFrequency="2" IsSnapToTickEnabled="True"
-                                        ToolTip.Tip="Distance between box content and window border (left/right)"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Vertical Padding Slider -->
-                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12">
-                            <StackPanel Spacing="8">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="Vertical Padding" FontWeight="Medium" FontSize="13"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding BoxContentVerticalPadding, StringFormat='{}{0}px'}" 
-                                               FontSize="12" Opacity="0.8" Classes="numeric"/>
-                                </Grid>
-                                <Slider Minimum="0" Maximum="32" Value="{Binding BoxContentVerticalPadding, Mode=TwoWay}" 
-                                        TickFrequency="2" IsSnapToTickEnabled="True"
-                                        ToolTip.Tip="Distance between box content and window border (top/bottom)"/>
-                            </StackPanel>
-                        </Border>
-                        
-                        <!-- Show Labels Toggle -->
-                        <Border Background="{StaticResource SurfaceBrush}" CornerRadius="{StaticResource RadiusS}" Padding="12">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Spacing="2">
-                                    <TextBlock Text="Show Shortcut Labels" FontWeight="Medium" FontSize="13"/>
-                                    <TextBlock Text="Display file names under icons" FontSize="11" Opacity="0.6"/>
-                                </StackPanel>
-                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowShortcutLabels, Mode=TwoWay}" 
-                                              VerticalAlignment="Center" Margin="0"/>
-                            </Grid>
-                        </Border>
+                <!-- Quick Actions -->
+                <Button Classes="btn-subtle" Command="{Binding SaveCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="💾"/>
+                        <TextBlock Text="Save All"/>
                     </StackPanel>
-                </Border>
+                </Button>
 
-                <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="Developer Settings" FontWeight="SemiBold" FontSize="16"/>
-                        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                            <TextBlock Text="Boxes Transparency" VerticalAlignment="Center" Width="160"/>
-                            <Slider Minimum="0" Maximum="100" Value="{Binding BoxesTransparencyPercent, Mode=TwoWay}" TickFrequency="10" IsSnapToTickEnabled="False" Width="200"/>
-                            <TextBlock Text="{Binding BoxesTransparencyPercent, StringFormat='{}{0}%'}" VerticalAlignment="Center" Width="50"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Content="Open All Windows" Classes="btn-subtle" Command="{Binding OpenAllWindowsCommand}"/>
-                            <Button Content="Close All Windows" Classes="btn-subtle" Command="{Binding CloseAllWindowsCommand}"/>
-                        </StackPanel>
+                <Button Classes="btn-danger" Command="{Binding ResetDataCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="🗑️"/>
+                        <TextBlock Text="Reset All Data"/>
                     </StackPanel>
-                </Border>
+                </Button>
             </StackPanel>
-            </Border>
+        </Border>
+
+        <!-- Main Content Area -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="24">
+            <StackPanel Spacing="16" MaxWidth="800">
+                
+                <!-- Header -->
+                <StackPanel Spacing="4" Margin="0,0,0,8">
+                    <TextBlock Text="{Binding Title}" Classes="title" FontSize="24"/>
+                    <TextBlock Text="{Binding Description}" Classes="subtitle"/>
+                </StackPanel>
+
+                <!-- APPEARANCE SECTION -->
+                <Border Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=appearance, FallbackValue=True}">
+                    <StackPanel Spacing="16">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="🎨" FontSize="20"/>
+                            <TextBlock Text="Appearance" FontWeight="SemiBold" FontSize="18"/>
+                            <Button Classes="btn-subtle" Command="{Binding ResetCategoryCommand}" CommandParameter="appearance" 
+                                    HorizontalAlignment="Right" Margin="20,0,0,0">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="↩" FontSize="12"/>
+                                    <TextBlock Text="Reset"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Theme -->
+                        <Border Classes="setting-row">
+                            <Grid ColumnDefinitions="*,200">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Theme" FontWeight="Medium"/>
+                                    <TextBlock Text="Choose your preferred color scheme" Classes="setting-description"/>
+                                </StackPanel>
+                                <ComboBox Grid.Column="1" SelectedItem="{Binding ThemePreference, Mode=TwoWay}" 
+                                         HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="System"/>
+                                    <ComboBoxItem Content="Light"/>
+                                    <ComboBoxItem Content="Dark"/>
+                                </ComboBox>
+                            </Grid>
+                        </Border>
+
+                        <!-- Accent Color -->
+                        <Border Classes="setting-row">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Accent Color" FontWeight="Medium"/>
+                                    <TextBlock Text="Primary highlight color for the app" Classes="setting-description"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                                    <Border Width="32" Height="32" CornerRadius="6" 
+                                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="2">
+                                        <Border.Background>
+                                            <SolidColorBrush Color="{Binding SelectedAccentColor}"/>
+                                        </Border.Background>
+                                    </Border>
+                                    <Button Classes="btn-subtle" Command="{Binding OpenAccentColorPickerPopupCommand}" Content="Change"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Box Background Color -->
+                        <Border Classes="setting-row">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Box Background" FontWeight="Medium"/>
+                                    <TextBlock Text="Default background color for boxes" Classes="setting-description"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                                    <Border Width="32" Height="32" CornerRadius="6"
+                                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="2">
+                                        <Border.Background>
+                                            <SolidColorBrush Color="{Binding SelectedBoxBackgroundColor}"/>
+                                        </Border.Background>
+                                    </Border>
+                                    <Button Classes="btn-subtle" Command="{Binding OpenColorPickerPopupCommand}" Content="Change"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Transparency -->
+                        <Border Classes="setting-row">
+                            <Grid ColumnDefinitions="*,150,50">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Box Transparency" FontWeight="Medium"/>
+                                    <TextBlock Text="Adjust window transparency level" Classes="setting-description"/>
+                                </StackPanel>
+                                <Slider Grid.Column="1" Minimum="20" Maximum="100" 
+                                        Value="{Binding BoxesTransparencyPercent, Mode=TwoWay}"
+                                        TickFrequency="10" IsSnapToTickEnabled="True"/>
+                                <TextBlock Grid.Column="2" Text="{Binding BoxesTransparencyPercent, StringFormat='{}{0}%'}" 
+                                           VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- BEHAVIOR SECTION -->
+                <Border Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=behavior, FallbackValue=True}">
+                    <StackPanel Spacing="16">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="⚡" FontSize="20"/>
+                            <TextBlock Text="Behavior" FontWeight="SemiBold" FontSize="18"/>
+                            <Button Classes="btn-subtle" Command="{Binding ResetCategoryCommand}" CommandParameter="behavior" 
+                                    HorizontalAlignment="Right" Margin="20,0,0,0">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="↩" FontSize="12"/>
+                                    <TextBlock Text="Reset"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <Border Classes="setting-row">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Auto Snap" FontWeight="Medium"/>
+                                    <TextBlock Text="Automatically snap new boxes to screen edges" Classes="setting-description"/>
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoSnapEnabled, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Classes="setting-row">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Show Box Outlines" FontWeight="Medium"/>
+                                    <TextBlock Text="Display border around boxes" Classes="setting-description"/>
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowBoxOutlines, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Classes="setting-row">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Run at Startup" FontWeight="Medium"/>
+                                    <TextBlock Text="Launch Desktop Boxes when Windows starts" Classes="setting-description"/>
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding RunAtStartup, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- BOX CUSTOMIZATION SECTION -->
+                <Border Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=customization, FallbackValue=True}">
+                    <StackPanel Spacing="16">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="📦" FontSize="20"/>
+                            <TextBlock Text="Box Customization" FontWeight="SemiBold" FontSize="18"/>
+                            <Button Classes="btn-subtle" Command="{Binding ResetCategoryCommand}" CommandParameter="customization" 
+                                    HorizontalAlignment="Right" Margin="20,0,0,0">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="↩" FontSize="12"/>
+                                    <TextBlock Text="Reset"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Show Header -->
+                        <Border Classes="setting-row">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Show Header Bar" FontWeight="Medium"/>
+                                    <TextBlock Text="Display header with box name and controls" Classes="setting-description"/>
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowBoxHeader, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Header Height -->
+                        <Border Classes="setting-row" IsEnabled="{Binding ShowBoxHeader}">
+                            <Grid ColumnDefinitions="*,120,50">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Header Height" FontWeight="Medium"/>
+                                    <TextBlock Text="Vertical size of the header bar" Classes="setting-description"/>
+                                </StackPanel>
+                                <Slider Grid.Column="1" Minimum="30" Maximum="60" 
+                                        Value="{Binding BoxHeaderHeight, Mode=TwoWay}"
+                                        TickFrequency="5" IsSnapToTickEnabled="True"/>
+                                <TextBlock Grid.Column="2" Text="{Binding BoxHeaderHeight, StringFormat='{}{0}px'}" 
+                                           VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Corner Radius -->
+                        <Border Classes="setting-row">
+                            <Grid ColumnDefinitions="*,120,50">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Corner Radius" FontWeight="Medium"/>
+                                    <TextBlock Text="Roundedness of box corners" Classes="setting-description"/>
+                                </StackPanel>
+                                <Slider Grid.Column="1" Minimum="0" Maximum="24" 
+                                        Value="{Binding BoxCornerRadius, Mode=TwoWay}"
+                                        TickFrequency="2" IsSnapToTickEnabled="True"/>
+                                <TextBlock Grid.Column="2" Text="{Binding BoxCornerRadius, StringFormat='{}{0}px'}" 
+                                           VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Icon Size -->
+                        <Border Classes="setting-row">
+                            <Grid ColumnDefinitions="*,120,50">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Icon Size" FontWeight="Medium"/>
+                                    <TextBlock Text="Size of shortcut icons inside boxes" Classes="setting-description"/>
+                                </StackPanel>
+                                <Slider Grid.Column="1" Minimum="32" Maximum="72" 
+                                        Value="{Binding BoxIconSize, Mode=TwoWay}"
+                                        TickFrequency="8" IsSnapToTickEnabled="True"/>
+                                <TextBlock Grid.Column="2" Text="{Binding BoxIconSize, StringFormat='{}{0}px'}" 
+                                           VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Show Labels -->
+                        <Border Classes="setting-row">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Show Shortcut Labels" FontWeight="Medium"/>
+                                    <TextBlock Text="Display file names under icons" Classes="setting-description"/>
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowShortcutLabels, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Horizontal Padding -->
+                        <Border Classes="setting-row">
+                            <Grid ColumnDefinitions="*,120,50">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Horizontal Padding" FontWeight="Medium"/>
+                                    <TextBlock Text="Space between content and sides" Classes="setting-description"/>
+                                </StackPanel>
+                                <Slider Grid.Column="1" Minimum="0" Maximum="32" 
+                                        Value="{Binding BoxContentPadding, Mode=TwoWay}"
+                                        TickFrequency="4" IsSnapToTickEnabled="True"/>
+                                <TextBlock Grid.Column="2" Text="{Binding BoxContentPadding, StringFormat='{}{0}px'}" 
+                                           VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Vertical Padding -->
+                        <Border Classes="setting-row">
+                            <Grid ColumnDefinitions="*,120,50">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Vertical Padding" FontWeight="Medium"/>
+                                    <TextBlock Text="Space between content and top/bottom" Classes="setting-description"/>
+                                </StackPanel>
+                                <Slider Grid.Column="1" Minimum="0" Maximum="32" 
+                                        Value="{Binding BoxContentVerticalPadding, Mode=TwoWay}"
+                                        TickFrequency="4" IsSnapToTickEnabled="True"/>
+                                <TextBlock Grid.Column="2" Text="{Binding BoxContentVerticalPadding, StringFormat='{}{0}px'}" 
+                                           VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- INTEGRATIONS SECTION -->
+                <Border Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=integrations, FallbackValue=True}">
+                    <StackPanel Spacing="16">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="🔗" FontSize="20"/>
+                            <TextBlock Text="Integrations" FontWeight="SemiBold" FontSize="18"/>
+                        </StackPanel>
+
+                        <Border Classes="setting-row">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="OneDrive" FontWeight="Medium"/>
+                                    <TextBlock Text="Link your OneDrive account" Classes="setting-description"/>
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding OneDriveLinked, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Classes="setting-row">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Google Drive" FontWeight="Medium"/>
+                                    <TextBlock Text="Link your Google Drive account" Classes="setting-description"/>
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding GoogleDriveLinked, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Classes="setting-row">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Start Menu Shortcut" FontWeight="Medium"/>
+                                <TextBlock Text="Create a shortcut to quickly show/hide boxes" Classes="setting-description"/>
+                                <Button Classes="btn-subtle" Command="{Binding CreateShowBoxesShortcutCommand}" 
+                                        Content="Create Shortcut" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- DEVELOPER SECTION -->
+                <Border Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=developer, FallbackValue=True}">
+                    <StackPanel Spacing="16">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="🔧" FontSize="20"/>
+                            <TextBlock Text="Developer Tools" FontWeight="SemiBold" FontSize="18"/>
+                        </StackPanel>
+
+                        <Border Classes="setting-row">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Window Management" FontWeight="Medium"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Classes="btn-subtle" Command="{Binding OpenAllWindowsCommand}" Content="Open All Windows"/>
+                                    <Button Classes="btn-subtle" Command="{Binding CloseAllWindowsCommand}" Content="Close All Windows"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="setting-row">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Data Management" FontWeight="Medium"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Classes="btn-primary" Command="{Binding SaveCommand}" Content="Save Settings"/>
+                                    <Button Classes="btn-danger" Command="{Binding ResetDataCommand}" Content="Delete All Data"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
         </ScrollViewer>
-
-        <!-- Color picker popup -->
-        <Popup x:Name="ColorPickerPopup" IsOpen="{Binding IsColorPickerPopupOpen}" Placement="Bottom" HorizontalOffset="0" VerticalOffset="4">
-            <Border Background="{StaticResource SurfaceElevatedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16" MinWidth="300">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="Select Box Background Color" FontWeight="SemiBold" FontSize="14"/>
-                    <controls:ColorPicker Color="{Binding SelectedBoxBackgroundColor, Mode=TwoWay}" />
-                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                        <Button Content="Cancel" Classes="btn-subtle" Command="{Binding CloseColorPickerPopupCommand}"/>
-                        <Button Content="Apply" Classes="btn-primary" Command="{Binding ApplyBoxBackgroundColorCommand}"/>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-        </Popup>
-
-        <!-- Accent color picker popup -->
-        <Popup x:Name="AccentColorPickerPopup" IsOpen="{Binding IsAccentColorPickerPopupOpen}" Placement="Bottom" HorizontalOffset="0" VerticalOffset="4">
-            <Border Background="{StaticResource SurfaceElevatedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16" MinWidth="300">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="Select Accent Color" FontWeight="SemiBold" FontSize="14"/>
-                    <controls:ColorPicker Color="{Binding SelectedAccentColor, Mode=TwoWay}" />
-                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                        <Button Content="Cancel" Classes="btn-subtle" Command="{Binding CloseAccentColorPickerPopupCommand}"/>
-                        <Button Content="Apply" Classes="btn-primary" Command="{Binding ApplyAccentColorCommand}"/>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-        </Popup>
     </Grid>
 
-</UserControl>
+    <!-- Color Picker Popups -->
+    <Popup x:Name="ColorPickerPopup" IsOpen="{Binding IsColorPickerPopupOpen}" Placement="Bottom" HorizontalOffset="0" VerticalOffset="4">
+        <Border Background="{StaticResource SurfaceElevatedBrush}" BorderBrush="{StaticResource BorderBrush}" 
+                BorderThickness="1" CornerRadius="12" Padding="20" MinWidth="320">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Select Box Background Color" FontWeight="SemiBold" FontSize="16"/>
+                <controls:ColorPicker Color="{Binding SelectedBoxBackgroundColor, Mode=TwoWay}"/>
+                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                    <Button Classes="btn-subtle" Command="{Binding CloseColorPickerPopupCommand}" Content="Cancel"/>
+                    <Button Classes="btn-primary" Command="{Binding ApplyBoxBackgroundColorCommand}" Content="Apply"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Popup>
 
+    <Popup x:Name="AccentColorPickerPopup" IsOpen="{Binding IsAccentColorPickerPopupOpen}" Placement="Bottom" HorizontalOffset="0" VerticalOffset="4">
+        <Border Background="{StaticResource SurfaceElevatedBrush}" BorderBrush="{StaticResource BorderBrush}" 
+                BorderThickness="1" CornerRadius="12" Padding="20" MinWidth="320">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Select Accent Color" FontWeight="SemiBold" FontSize="16"/>
+                <controls:ColorPicker Color="{Binding SelectedAccentColor, Mode=TwoWay}"/>
+                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                    <Button Classes="btn-subtle" Command="{Binding CloseAccentColorPickerPopupCommand}" Content="Cancel"/>
+                    <Button Classes="btn-primary" Command="{Binding ApplyAccentColorCommand}" Content="Apply"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Popup>
+
+</UserControl>
