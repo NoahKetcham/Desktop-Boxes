@@ -1,13 +1,12 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Boxes.App.ViewModels.Widgets"
-        xmlns:md="https://github.com/whistyun/Markdown.Avalonia"
-        x:Class="Boxes.App.Views.Widgets.NotepadWindow"
+        x:Class="Boxes.App.Views.Widgets.NotepadEditorWindow"
         x:DataType="vm:NotepadWindowViewModel"
-        Width="600"
-        Height="400"
-        MinWidth="320"
-        MinHeight="240"
+        Width="400"
+        Height="300"
+        MinWidth="280"
+        MinHeight="200"
         CanResize="True"
         CanMinimize="False"
         CanMaximize="False"
@@ -28,6 +27,11 @@
             <Setter Property="Padding" Value="4"/>
             <Setter Property="Opacity" Value="0.7"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.1"/>
+                </Transitions>
+            </Setter>
         </Style>
         <Style Selector="Button.header-btn:pointerover">
             <Setter Property="Opacity" Value="1"/>
@@ -46,43 +50,31 @@
                 CornerRadius="8,8,0,0"
                 PointerPressed="Header_PointerPressed" PointerMoved="Header_PointerMoved" PointerReleased="Header_PointerReleased">
             <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-                <TextBlock Grid.Column="0" Text="Notepad" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="0" Text="Edit Notepad" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 <Button Grid.Column="1" Classes="header-btn" Width="26" Height="26"
-                        Command="{Binding CloseCommand}"
-                        ToolTip.Tip="Close">
+                        Command="{Binding CloseEditorCommand}"
+                        ToolTip.Tip="Close"
+                        PointerPressed="Button_OnPointerPressed">
                     <TextBlock Text="✕" FontSize="12" HorizontalAlignment="Center"/>
                 </Button>
             </Grid>
         </Border>
 
-        <!-- Content Area: Split Editor | Preview -->
+        <!-- Content Area: Editor -->
         <Border x:Name="ContentArea" Grid.Row="1" Padding="12" CornerRadius="0,0,8,8">
-            <Grid ColumnDefinitions="*,4,*">
-                <!-- Editor (left) -->
-                <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                              Margin="0,0,6,0">
-                    <TextBox Text="{Binding MarkdownText, Mode=TwoWay}"
-                             AcceptsReturn="True"
-                             TextWrapping="Wrap"
-                             Background="Transparent"
-                             BorderThickness="0"
-                             Padding="8"
-                             FontFamily="Consolas, Courier New, monospace"
-                             FontSize="13"
-                             Foreground="#E0E0E0"
-                             Watermark="Type markdown here..."
-                             MinHeight="200"/>
-                </ScrollViewer>
-
-                <!-- Splitter -->
-                <GridSplitter Grid.Column="1" Width="4" Background="#3A3F5A" ResizeDirection="Columns"
-                              HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
-
-                <!-- Preview (right) -->
-                <Border Grid.Column="2" Background="#161A28" CornerRadius="4" Padding="12" Margin="6,0,0,0">
-                    <md:MarkdownScrollViewer Markdown="{Binding MarkdownText}"/>
-                </Border>
-            </Grid>
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <TextBox Text="{Binding MarkdownText, Mode=TwoWay}"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="8"
+                         FontFamily="Consolas, Courier New, monospace"
+                         FontSize="13"
+                         Foreground="#E0E0E0"
+                         Watermark="Type markdown here..."
+                         MinHeight="200"/>
+            </ScrollViewer>
         </Border>
 
         <!-- Resize Handles -->

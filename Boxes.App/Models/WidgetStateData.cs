@@ -14,4 +14,14 @@ public class WidgetStateData
     /// Splitter position as a fraction (0.0–1.0) for widgets with split views (e.g. notepad editor/preview).
     /// </summary>
     public double SplitterPosition { get; set; } = 0.5;
+
+    /// <summary>
+    /// Whether the content area is collapsed (preview window only).
+    /// </summary>
+    public bool IsCollapsed { get; set; }
+
+    /// <summary>
+    /// Height when expanded, used for collapse animation (preview window only).
+    /// </summary>
+    public double ExpandedHeight { get; set; } = 240;
 }

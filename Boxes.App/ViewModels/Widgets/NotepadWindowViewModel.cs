@@ -16,16 +16,19 @@ public partial class NotepadWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _markdownText = string.Empty;
 
-    [ObservableProperty]
-    private double _splitterPosition = 0.5;
-
     public IRelayCommand CloseCommand { get; }
+    public IRelayCommand CloseEditorCommand { get; }
+    public IRelayCommand OpenEditCommand { get; }
 
     public event EventHandler? RequestClose;
+    public event EventHandler? RequestCloseEditor;
+    public event EventHandler? RequestOpenEditor;
 
     public NotepadWindowViewModel()
     {
         CloseCommand = new RelayCommand(OnClose);
+        CloseEditorCommand = new RelayCommand(OnCloseEditor);
+        OpenEditCommand = new RelayCommand(OnOpenEdit);
         _ = LoadContentAsync();
     }
 
@@ -62,6 +65,16 @@ public partial class NotepadWindowViewModel : ViewModelBase
     private void OnClose()
     {
         RequestClose?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnCloseEditor()
+    {
+        RequestCloseEditor?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnOpenEdit()
+    {
+        RequestOpenEditor?.Invoke(this, EventArgs.Empty);
     }
 
     public void SaveImmediately()

@@ -1,0 +1,94 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Boxes.App.ViewModels.Widgets"
+        xmlns:md="https://github.com/whistyun/Markdown.Avalonia"
+        x:Class="Boxes.App.Views.Widgets.NotepadPreviewWindow"
+        x:DataType="vm:NotepadWindowViewModel"
+        Width="600"
+        Height="400"
+        MinWidth="320"
+        MinHeight="40"
+        CanResize="True"
+        CanMinimize="False"
+        CanMaximize="False"
+        ShowActivated="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="Manual"
+        SystemDecorations="BorderOnly"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent">
+
+    <Window.Styles>
+        <Style Selector="Button.header-btn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.1"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.header-btn:pointerover">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Background" Value="#20FFFFFF"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid x:Name="RootGrid" Background="#1C2235" ClipToBounds="True">
+        <!-- Snap indicator line - shown when within snap range -->
+        <Border x:Name="SnapIndicator"
+                Height="2"
+                Background="{StaticResource AccentBrush}"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top"
+                IsVisible="False"
+                ZIndex="999"/>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header Bar -->
+        <Border x:Name="HeaderBar" Grid.Row="0" Background="#232B46" Padding="10,8" MinHeight="40"
+                CornerRadius="8,8,0,0"
+                PointerPressed="Header_PointerPressed" PointerMoved="Header_PointerMoved" PointerReleased="Header_PointerReleased">
+            <Grid ColumnDefinitions="*,Auto,Auto" VerticalAlignment="Center">
+                <TextBlock Grid.Column="0" Text="Notepad" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <Button Grid.Column="1" Classes="header-btn" Width="26" Height="26"
+                        Command="{Binding OpenEditCommand}"
+                        ToolTip.Tip="Edit"
+                        PointerPressed="Button_OnPointerPressed">
+                    <TextBlock Text="✎" FontSize="12" HorizontalAlignment="Center"/>
+                </Button>
+                <Button Grid.Column="2" Classes="header-btn" Width="26" Height="26"
+                        Command="{Binding CloseCommand}"
+                        ToolTip.Tip="Close"
+                        PointerPressed="Button_OnPointerPressed">
+                    <TextBlock Text="✕" FontSize="12" HorizontalAlignment="Center"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Content Area: Preview Only -->
+        <Border x:Name="ContentArea" Grid.Row="1" Padding="12" CornerRadius="0,0,8,8">
+            <Border x:Name="PreviewInnerBorder" CornerRadius="4" Padding="12">
+                <md:MarkdownScrollViewer Markdown="{Binding MarkdownText}"/>
+            </Border>
+        </Border>
+
+        <!-- Resize Handles -->
+        <Border Tag="Right" HorizontalAlignment="Right" VerticalAlignment="Stretch" Width="6" Background="Transparent"
+                Cursor="SizeWestEast" PointerPressed="ResizeHandle_OnPointerPressed"/>
+        <Border Tag="Bottom" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" Height="6" Background="Transparent"
+                Cursor="SizeNorthSouth" PointerPressed="ResizeHandle_OnPointerPressed"/>
+        <Border Tag="BottomRight" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="12" Height="12" Background="Transparent"
+                Cursor="SizeAll" PointerPressed="ResizeHandle_OnPointerPressed"/>
+    </Grid>
+</Window>
