@@ -197,13 +197,24 @@ public partial class DashboardPageViewModel : ViewModelBase
 
     private async Task CreateNewBoxAsync()
     {
-        var model = await DialogService.ShowNewBoxDialogAsync().ConfigureAwait(false);
-        if (model is null)
+        var result = await DialogService.ShowNewBoxDialogAsync().ConfigureAwait(false);
+        if (result is null)
         {
             return;
         }
 
-        var persisted = await AppServices.BoxService.AddOrUpdateAsync(model);
+        if (result.Type == CreateItemType.Notepad)
+        {
+            await AppServices.WidgetWindowManager.ShowNotepadAsync().ConfigureAwait(false);
+            return;
+        }
+
+        if (result.Box is null)
+        {
+            return;
+        }
+
+        var persisted = await AppServices.BoxService.AddOrUpdateAsync(result.Box);
         await AppServices.BoxWindowManager.ShowAsync(persisted);
         var viewModel = BoxSummaryViewModel.FromModel(persisted);
         Boxes.Add(viewModel);

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using Avalonia;
 using Avalonia.Threading;
@@ -8,6 +8,11 @@ namespace Boxes.App;
 
 sealed class Program
 {
+    /// <summary>
+    /// Command to run when app starts (e.g. opennotepad when launched via context menu with no existing instance).
+    /// </summary>
+    public static string? PendingCommand { get; set; }
+
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
     // yet and stuff might break.
@@ -16,7 +21,7 @@ sealed class Program
     {
         if (args.Length >= 2 && args[0] == "--boxes-command")
         {
-            RunCommandMode(args[1]);
+            RunCommandMode(args[1], args);
             return;
         }
 
@@ -26,7 +31,7 @@ sealed class Program
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
-    private static void RunCommandMode(string command)
+    private static void RunCommandMode(string command, string[] args)
     {
         // Use a different AppUserModelID for special commands to avoid taskbar grouping
         if (string.Equals(command, "showburst", StringComparison.OrdinalIgnoreCase))
@@ -42,6 +47,14 @@ sealed class Program
 
         if (DesktopIntegrationService.SendCommandAsync(command).GetAwaiter().GetResult())
         {
+            return;
+        }
+
+        // For opennotepad, start full app so notepad can be shown
+        if (string.Equals(command, "opennotepad", StringComparison.OrdinalIgnoreCase))
+        {
+            PendingCommand = "opennotepad";
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
             return;
         }
 

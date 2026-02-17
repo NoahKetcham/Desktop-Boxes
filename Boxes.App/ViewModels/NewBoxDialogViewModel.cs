@@ -9,6 +9,22 @@ public partial class NewBoxDialogViewModel : ViewModelBase
 {
     private Window? _window;
 
+    private CreateItemType _selectedType = CreateItemType.Box;
+    public CreateItemType SelectedType
+    {
+        get => _selectedType;
+        set
+        {
+            if (SetProperty(ref _selectedType, value))
+            {
+                UpdateCanCreate();
+                OnPropertyChanged(nameof(CreateButtonText));
+                OnPropertyChanged(nameof(CreateButtonToolTip));
+                OnPropertyChanged(nameof(IsBoxSelected));
+            }
+        }
+    }
+
     private string _name = string.Empty;
     public string Name
     {
@@ -42,6 +58,10 @@ public partial class NewBoxDialogViewModel : ViewModelBase
         get => _canCreate;
         private set => SetProperty(ref _canCreate, value);
     }
+
+    public string CreateButtonText => SelectedType == CreateItemType.Notepad ? "Open Notepad" : "Create Box";
+    public string CreateButtonToolTip => SelectedType == CreateItemType.Notepad ? "Open the notepad widget" : "Create the new box";
+    public bool IsBoxSelected => SelectedType == CreateItemType.Box;
 
     public IAsyncRelayCommand BrowseCommand { get; }
     public IRelayCommand CancelCommand { get; }
@@ -85,6 +105,12 @@ public partial class NewBoxDialogViewModel : ViewModelBase
 
     private void Create()
     {
+        if (SelectedType == CreateItemType.Notepad)
+        {
+            _window?.Close(new CreateItemResult { Type = CreateItemType.Notepad });
+            return;
+        }
+
         var box = new DesktopBox
         {
             Name = Name.Trim(),
@@ -92,12 +118,12 @@ public partial class NewBoxDialogViewModel : ViewModelBase
             TargetPath = TargetPath.Trim()
         };
 
-        _window?.Close(box);
+        _window?.Close(new CreateItemResult { Type = CreateItemType.Box, Box = box });
     }
 
     private void UpdateCanCreate()
     {
-        var newValue = !string.IsNullOrWhiteSpace(Name);
+        var newValue = SelectedType == CreateItemType.Notepad || !string.IsNullOrWhiteSpace(Name);
         if (CanCreate != newValue)
         {
             CanCreate = newValue;

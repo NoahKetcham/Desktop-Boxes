@@ -2,6 +2,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:vm="using:Boxes.App.ViewModels"
+        xmlns:models="using:Boxes.App.Models"
+        xmlns:conv="using:Avalonia.Controls.Converters"
         x:Class="Boxes.App.Views.Dialogs.NewBoxWindow"
         x:DataType="vm:NewBoxDialogViewModel"
         Width="440"
@@ -9,6 +11,10 @@
         Title="Create Box"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
+
+    <Window.Resources>
+        <conv:EnumToBoolConverter x:Key="EnumToBoolConverter"/>
+    </Window.Resources>
 
     <Window.DataContext>
         <vm:NewBoxDialogViewModel/>
@@ -22,20 +28,29 @@
             </StackPanel>
 
             <StackPanel Grid.Row="1" Spacing="16">
-                <StackPanel Spacing="6">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Type" FontSize="13" FontWeight="Medium" Opacity="0.9"/>
+                    <StackPanel Orientation="Horizontal" Spacing="20">
+                        <RadioButton Content="Box" GroupName="CreateType"
+                                     IsChecked="{Binding SelectedType, Converter={StaticResource EnumToBoolConverter}, ConverterParameter={x:Static models:CreateItemType.Box}, Mode=TwoWay}"/>
+                        <RadioButton Content="Notepad" GroupName="CreateType"
+                                     IsChecked="{Binding SelectedType, Converter={StaticResource EnumToBoolConverter}, ConverterParameter={x:Static models:CreateItemType.Notepad}, Mode=TwoWay}"/>
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Spacing="6" IsVisible="{Binding IsBoxSelected}">
                     <TextBlock Text="Name" FontSize="13" FontWeight="Medium" Opacity="0.9"/>
                     <TextBox Watermark="Enter box name" Text="{Binding Name, Mode=TwoWay}"
                              ToolTip.Tip="Give your box a memorable name"
                              AutomationProperties.Name="Box name"/>
                 </StackPanel>
-                <StackPanel Spacing="6">
+                <StackPanel Spacing="6" IsVisible="{Binding IsBoxSelected}">
                     <TextBlock Text="Description (optional)" FontSize="13" FontWeight="Medium" Opacity="0.9"/>
                     <TextBox Watermark="What will this box contain?" Text="{Binding Description, Mode=TwoWay}" 
                              AcceptsReturn="True" Height="70" TextWrapping="Wrap"
                              ToolTip.Tip="Describe the purpose of this box"
                              AutomationProperties.Name="Box description"/>
                 </StackPanel>
-                <StackPanel Spacing="6">
+                <StackPanel Spacing="6" IsVisible="{Binding IsBoxSelected}">
                     <TextBlock Text="Target folder (optional)" FontSize="13" FontWeight="Medium" Opacity="0.9"/>
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                         <TextBox Watermark="Link to a folder on your computer" Text="{Binding TargetPath, Mode=TwoWay}"
@@ -50,8 +65,8 @@
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
                 <Button Content="Cancel" Classes="btn-subtle" Command="{Binding CancelCommand}"
                         ToolTip.Tip="Cancel and close" AutomationProperties.Name="Cancel"/>
-                <Button Content="Create Box" Classes="btn-primary" Command="{Binding CreateCommand}" IsEnabled="{Binding CanCreate}"
-                        ToolTip.Tip="Create the new box" AutomationProperties.Name="Create box"/>
+                <Button Content="{Binding CreateButtonText}" Classes="btn-primary" Command="{Binding CreateCommand}" IsEnabled="{Binding CanCreate}"
+                        ToolTip.Tip="{Binding CreateButtonToolTip}" AutomationProperties.Name="Create"/>
             </StackPanel>
         </Grid>
     </Border>

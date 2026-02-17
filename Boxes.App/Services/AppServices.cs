@@ -13,6 +13,9 @@ public static class AppServices
     public static BoxService BoxService { get; private set; } = null!;
     public static SettingsService SettingsService { get; private set; } = null!;
     public static BoxWindowManager BoxWindowManager { get; } = new();
+    public static WidgetWindowManager WidgetWindowManager { get; } = new();
+    public static WidgetStateService WidgetStateService { get; private set; } = null!;
+    public static NotepadService NotepadService { get; private set; } = null!;
     public static ScannedFileService ScannedFileService { get; private set; } = null!;
     public static DesktopCleanupService DesktopCleanupService { get; private set; } = null!;
     public static ShellIconService ShellIconService { get; private set; } = null!;
@@ -69,6 +72,10 @@ public static class AppServices
 
             BoxService = new BoxService(rootDirectory);
             BoxService.InitializeAsync().GetAwaiter().GetResult();
+
+            WidgetStateService = new WidgetStateService(rootDirectory);
+            WidgetStateService.InitializeAsync().GetAwaiter().GetResult();
+            NotepadService = new NotepadService(rootDirectory);
 
             ScannedFileService = new ScannedFileService(rootDirectory);
             DesktopCleanupService = new DesktopCleanupService();

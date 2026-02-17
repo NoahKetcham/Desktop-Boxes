@@ -42,6 +42,16 @@ public partial class App : Application
             _desktopIntegrationCts = new CancellationTokenSource();
             DesktopIntegrationService.StartCommandListener(HandleDesktopCommandAsync, _desktopIntegrationCts.Token);
             desktop.Exit += OnDesktopExit;
+
+            var pendingCommand = Program.PendingCommand;
+            Program.PendingCommand = null;
+            if (string.Equals(pendingCommand, "opennotepad", StringComparison.OrdinalIgnoreCase))
+            {
+                Dispatcher.UIThread.Post(async () =>
+                {
+                    await AppServices.WidgetWindowManager.ShowNotepadAsync();
+                });
+            }
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -78,6 +88,13 @@ public partial class App : Application
             Dispatcher.UIThread.Post(async () =>
             {
                 await AppServices.BoxWindowManager.ToggleBurstAsync(TimeSpan.FromSeconds(5));
+            });
+        }
+        else if (string.Equals(command, "opennotepad", StringComparison.OrdinalIgnoreCase))
+        {
+            Dispatcher.UIThread.Post(async () =>
+            {
+                await AppServices.WidgetWindowManager.ShowNotepadAsync();
             });
         }
 

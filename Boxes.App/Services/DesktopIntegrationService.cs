@@ -61,6 +61,19 @@ public static class DesktopIntegrationService
 
             var command = $"\"{exePath}\" --boxes-command toggle";
             commandKey.SetValue(null, command, RegistryValueKind.String);
+
+            // Open Notepad widget
+            using var openNotepadKey = shellKey.CreateSubKey("OpenNotepad");
+            if (openNotepadKey is not null)
+            {
+                openNotepadKey.SetValue("MUIVerb", "Open Notepad", RegistryValueKind.String);
+                openNotepadKey.SetValue("Icon", exePath, RegistryValueKind.String);
+                using var openNotepadCmd = openNotepadKey.CreateSubKey("command");
+                if (openNotepadCmd is not null)
+                {
+                    openNotepadCmd.SetValue(null, $"\"{exePath}\" --boxes-command opennotepad", RegistryValueKind.String);
+                }
+            }
         }
         catch (Exception ex)
         {
