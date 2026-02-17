@@ -42,6 +42,7 @@
     <Grid x:Name="RootGrid" Background="#1C2235" ClipToBounds="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -60,10 +61,51 @@
             </Grid>
         </Border>
 
+        <!-- Toolbar -->
+        <Border Grid.Row="1" Background="#1E2433" Padding="6,4" BorderThickness="0,0,0,1" BorderBrush="#2A3142">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+                <Button Classes="header-btn" Padding="6,4" ToolTip.Tip="Markdown formatting">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="▼" FontSize="10" VerticalAlignment="Center" Opacity="0.8"/>
+                        <TextBlock Text="Markdown" FontSize="12" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <Button.Flyout>
+                        <MenuFlyout Placement="Bottom">
+                            <MenuItem Header="Bold" Click="MarkdownBold_OnClick"/>
+                            <MenuItem Header="Italic" Click="MarkdownItalic_OnClick"/>
+                            <MenuItem Header="Strikethrough" Click="MarkdownStrikethrough_OnClick"/>
+                            <MenuItem Header="-"/>
+                            <MenuItem Header="Link" Click="MarkdownLink_OnClick"/>
+                            <MenuItem Header="Code" Click="MarkdownCode_OnClick"/>
+                            <MenuItem Header="Code block" Click="MarkdownCodeBlock_OnClick"/>
+                            <MenuItem Header="-"/>
+                            <MenuItem Header="Heading 1" Click="MarkdownHeading1_OnClick"/>
+                            <MenuItem Header="Heading 2" Click="MarkdownHeading2_OnClick"/>
+                            <MenuItem Header="Heading 3" Click="MarkdownHeading3_OnClick"/>
+                            <MenuItem Header="-"/>
+                            <MenuItem Header="Bullet list" Click="MarkdownBullet_OnClick"/>
+                            <MenuItem Header="Numbered list" Click="MarkdownNumbered_OnClick"/>
+                            <MenuItem Header="Blockquote" Click="MarkdownBlockquote_OnClick"/>
+                            <MenuItem Header="-"/>
+                            <MenuItem Header="Horizontal rule" Click="MarkdownHr_OnClick"/>
+                            <MenuItem Header="-"/>
+                            <MenuItem Header="Highlight" Click="MarkdownHighlight_OnClick"/>
+                            <MenuItem Header="Color (red)" Click="MarkdownColorRed_OnClick"/>
+                            <MenuItem Header="Color (green)" Click="MarkdownColorGreen_OnClick"/>
+                            <MenuItem Header="Color (blue)" Click="MarkdownColorBlue_OnClick"/>
+                            <MenuItem Header="Color (orange)" Click="MarkdownColorOrange_OnClick"/>
+                            <MenuItem Header="Color (yellow)" Click="MarkdownColorYellow_OnClick"/>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+            </StackPanel>
+        </Border>
+
         <!-- Content Area: Editor -->
-        <Border x:Name="ContentArea" Grid.Row="1" Padding="12" CornerRadius="0,0,8,8">
+        <Border x:Name="ContentArea" Grid.Row="2" Padding="12" CornerRadius="0,0,8,8">
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                <TextBox Text="{Binding MarkdownText, Mode=TwoWay}"
+                <TextBox x:Name="EditorTextBox"
+                         Text="{Binding MarkdownText, Mode=TwoWay}"
                          AcceptsReturn="True"
                          TextWrapping="Wrap"
                          Background="Transparent"
