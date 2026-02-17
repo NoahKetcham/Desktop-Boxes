@@ -9,7 +9,8 @@
         <vm:SettingsPageViewModel/>
     </Design.DataContext>
 
-    <Grid ColumnDefinitions="220,*">
+    <Grid>
+        <Grid ColumnDefinitions="220,*">
         <!-- Sidebar Navigation -->
         <Border Grid.Column="0" Background="{StaticResource SurfaceBrush}" Padding="16">
             <StackPanel Spacing="8">
@@ -409,10 +410,10 @@
 
             </StackPanel>
         </ScrollViewer>
-    </Grid>
+        </Grid>
 
-    <!-- Color Picker Popups -->
-    <Popup x:Name="ColorPickerPopup" IsOpen="{Binding IsColorPickerPopupOpen}" Placement="Bottom" HorizontalOffset="0" VerticalOffset="4">
+        <!-- Color Picker Popups -->
+        <Popup x:Name="ColorPickerPopup" IsOpen="{Binding IsColorPickerPopupOpen}" Placement="Bottom" HorizontalOffset="0" VerticalOffset="4">
         <Border Background="{StaticResource SurfaceElevatedBrush}" BorderBrush="{StaticResource BorderBrush}" 
                 BorderThickness="1" CornerRadius="12" Padding="20" MinWidth="320">
             <StackPanel Spacing="16">
@@ -424,9 +425,9 @@
                 </StackPanel>
             </StackPanel>
         </Border>
-    </Popup>
+        </Popup>
 
-    <Popup x:Name="AccentColorPickerPopup" IsOpen="{Binding IsAccentColorPickerPopupOpen}" Placement="Bottom" HorizontalOffset="0" VerticalOffset="4">
+        <Popup x:Name="AccentColorPickerPopup" IsOpen="{Binding IsAccentColorPickerPopupOpen}" Placement="Bottom" HorizontalOffset="0" VerticalOffset="4">
         <Border Background="{StaticResource SurfaceElevatedBrush}" BorderBrush="{StaticResource BorderBrush}" 
                 BorderThickness="1" CornerRadius="12" Padding="20" MinWidth="320">
             <StackPanel Spacing="16">
@@ -438,6 +439,7 @@
                 </StackPanel>
             </StackPanel>
         </Border>
-    </Popup>
+        </Popup>
 
+    </Grid>
 </UserControl>

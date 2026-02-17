@@ -17,10 +17,8 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
-LicenseFile=LICENSE
 OutputDir=installer
 OutputBaseFilename=DesktopBoxes-Setup-{#MyAppVersion}
-SetupIconFile=Boxes.App\Assets\app.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -33,7 +31,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 6.1; Check: not IsAdminInstallMode
 
 [Files]
-Source: "bin\Release\net9.0\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\Boxes.App\bin\Release\net9.0\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
