@@ -20,7 +20,7 @@ namespace Boxes.App.Views;
 public partial class DesktopBoxWindow : Window
 {
         private PixelPoint _lastKnownPosition;
-    private ItemsControl? _shortcutsItemsControl;
+    private readonly ItemsControl? _shortcutsItemsControl;
         private bool _headerDragging;
         private PixelPoint _dragStartWindow;
         private PixelPoint _dragStartScreenPosition;
@@ -28,15 +28,15 @@ public partial class DesktopBoxWindow : Window
         private bool _suppressPositionSync;
         private bool _isDraggingWindow;
         private int _snapCheckCounter;
-        private Border? _contentArea;
-        private Grid? _rootGrid;
-        private Border? _headerBar;
-        private RowDefinition? _contentRow;
+        private readonly Border? _contentArea;
+        private readonly Grid? _rootGrid;
+        private readonly Border? _headerBar;
+        private readonly RowDefinition? _contentRow;
         private bool _isContentExpanded = true;
         private double _savedContentHeight = 240;
         private double _savedWindowHeight = 240;
         private DispatcherTimer? _expandAnimationTimer;
-        private Border? _snapIndicator;
+        private readonly Border? _snapIndicator;
         private const string DragDataFormat = "application/x-boxes-shortcut-id";
         private Point _dragStartPoint;
         private DesktopFileViewModel? _draggedItem;
@@ -785,8 +785,7 @@ public partial class DesktopBoxWindow : Window
             Interval = TimeSpan.FromMilliseconds(1000.0 / 60.0) // 60 FPS
         };
 
-        EventHandler? tick = null;
-        tick = (_, __) =>
+        void Tick(object? s, EventArgs e)
         {
             var progress = Math.Min(1.0, sw.Elapsed.TotalMilliseconds / duration.TotalMilliseconds);
             // Use ease-out cubic for smooth animation
@@ -817,7 +816,7 @@ public partial class DesktopBoxWindow : Window
 
             if (progress >= 1.0)
             {
-                _expandAnimationTimer.Tick -= tick!;
+                _expandAnimationTimer!.Tick -= Tick;
                 _expandAnimationTimer.Stop();
                 _expandAnimationTimer = null;
                 
@@ -842,9 +841,9 @@ public partial class DesktopBoxWindow : Window
                 
                 sw.Stop();
             }
-        };
+        }
 
-        _expandAnimationTimer.Tick += tick;
+        _expandAnimationTimer.Tick += Tick;
         _isContentExpanded = !expand; // Set immediately to prevent double-toggles
         _expandAnimationTimer.Start();
     }
@@ -887,10 +886,7 @@ public partial class DesktopBoxWindow : Window
 
     private void UpdateIconResources(int iconSize, bool showLabels, int? itemWidthOverride = null, int? itemHeightOverride = null)
     {
-        if (Resources == null)
-        {
-            Resources = new ResourceDictionary();
-        }
+        Resources ??= new ResourceDictionary();
 
         var clampedSize = Math.Clamp(iconSize, 32, 64);
         var itemWidth = itemWidthOverride ?? clampedSize + 30;

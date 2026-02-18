@@ -83,6 +83,37 @@ public class WidgetStateService
         }
     }
 
+    public async Task MigrateLegacyNotepadStateAsync(Guid notepadId)
+    {
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (!_initialized)
+            {
+                await InitializeAsync().ConfigureAwait(false);
+            }
+            var previewKey = $"notepadPreview-{notepadId:N}";
+            var editorKey = $"notepadEditor-{notepadId:N}";
+            if (!_cache.ContainsKey(previewKey) && _cache.TryGetValue("notepadPreview", out var previewState))
+            {
+                _cache[previewKey] = previewState;
+            }
+            if (!_cache.ContainsKey(editorKey) && _cache.TryGetValue("notepadEditor", out var editorState))
+            {
+                _cache[editorKey] = editorState;
+            }
+            if (!_cache.ContainsKey(previewKey) && _cache.TryGetValue("notepad", out var legacyState))
+            {
+                _cache[previewKey] = legacyState;
+            }
+            await PersistAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task SaveAsync(string widgetId, WidgetStateData state)
     {
         await _gate.WaitAsync().ConfigureAwait(false);

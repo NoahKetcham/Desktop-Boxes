@@ -60,7 +60,7 @@
                 CornerRadius="8,8,0,0"
                 PointerPressed="Header_PointerPressed" PointerMoved="Header_PointerMoved" PointerReleased="Header_PointerReleased">
             <Grid ColumnDefinitions="*,Auto,Auto" VerticalAlignment="Center">
-                <TextBlock Grid.Column="0" Text="Notepad" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 <Button Grid.Column="1" Classes="header-btn" Width="26" Height="26"
                         Command="{Binding OpenEditCommand}"
                         ToolTip.Tip="Edit"

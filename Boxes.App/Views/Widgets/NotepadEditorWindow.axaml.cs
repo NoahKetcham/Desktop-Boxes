@@ -79,6 +79,29 @@ public partial class NotepadEditorWindow : Window
                 rootGrid.ClipToBounds = true;
             }
 
+            var r = bgColor.R / 255.0;
+            var g = bgColor.G / 255.0;
+            var b = bgColor.B / 255.0;
+            var luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+            Color headerStyleColor;
+            if (luminance < 0.5)
+            {
+                headerStyleColor = Color.FromRgb(
+                    (byte)Math.Min(255, bgColor.R + (255 - bgColor.R) * 0.1),
+                    (byte)Math.Min(255, bgColor.G + (255 - bgColor.G) * 0.1),
+                    (byte)Math.Min(255, bgColor.B + (255 - bgColor.B) * 0.1)
+                );
+            }
+            else
+            {
+                headerStyleColor = Color.FromRgb(
+                    (byte)(bgColor.R * 0.8),
+                    (byte)(bgColor.G * 0.8),
+                    (byte)(bgColor.B * 0.8)
+                );
+            }
+
             var headerBar = this.FindControl<Border>("HeaderBar");
             if (headerBar != null)
             {
@@ -95,29 +118,14 @@ public partial class NotepadEditorWindow : Window
                     contentArea.CornerRadius = new CornerRadius(cornerRadius);
                 }
 
-                var r = bgColor.R / 255.0;
-                var g = bgColor.G / 255.0;
-                var b = bgColor.B / 255.0;
-                var luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                headerBar.Background = new SolidColorBrush(headerStyleColor, opacity);
+            }
 
-                Color headerColor;
-                if (luminance < 0.5)
-                {
-                    headerColor = Color.FromRgb(
-                        (byte)Math.Min(255, bgColor.R + (255 - bgColor.R) * 0.1),
-                        (byte)Math.Min(255, bgColor.G + (255 - bgColor.G) * 0.1),
-                        (byte)Math.Min(255, bgColor.B + (255 - bgColor.B) * 0.1)
-                    );
-                }
-                else
-                {
-                    headerColor = Color.FromRgb(
-                        (byte)(bgColor.R * 0.8),
-                        (byte)(bgColor.G * 0.8),
-                        (byte)(bgColor.B * 0.8)
-                    );
-                }
-                headerBar.Background = new SolidColorBrush(headerColor, opacity);
+            var toolbarBar = this.FindControl<Border>("ToolbarBar");
+            if (toolbarBar != null)
+            {
+                toolbarBar.Background = new SolidColorBrush(headerStyleColor, opacity);
+                toolbarBar.BorderBrush = new SolidColorBrush(headerStyleColor, opacity);
             }
         });
     }

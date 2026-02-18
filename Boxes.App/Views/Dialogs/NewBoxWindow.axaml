@@ -43,6 +43,12 @@
                              ToolTip.Tip="Give your box a memorable name"
                              AutomationProperties.Name="Box name"/>
                 </StackPanel>
+                <StackPanel Spacing="6" IsVisible="{Binding IsNotepadSelected}">
+                    <TextBlock Text="Name" FontSize="13" FontWeight="Medium" Opacity="0.9"/>
+                    <TextBox Watermark="Enter notepad name" Text="{Binding Name, Mode=TwoWay}"
+                             ToolTip.Tip="Give your notepad a memorable name"
+                             AutomationProperties.Name="Notepad name"/>
+                </StackPanel>
                 <StackPanel Spacing="6" IsVisible="{Binding IsBoxSelected}">
                     <TextBlock Text="Description (optional)" FontSize="13" FontWeight="Medium" Opacity="0.9"/>
                     <TextBox Watermark="What will this box contain?" Text="{Binding Description, Mode=TwoWay}" 

@@ -13,6 +13,9 @@ public partial class NotepadWindowViewModel : ViewModelBase
 
     private DispatcherTimer? _saveDebounceTimer;
 
+    public Guid NotepadId { get; }
+    public string Name { get; }
+
     [ObservableProperty]
     private string _markdownText = string.Empty;
 
@@ -24,8 +27,10 @@ public partial class NotepadWindowViewModel : ViewModelBase
     public event EventHandler? RequestCloseEditor;
     public event EventHandler? RequestOpenEditor;
 
-    public NotepadWindowViewModel()
+    public NotepadWindowViewModel(Guid notepadId, string name)
     {
+        NotepadId = notepadId;
+        Name = name;
         CloseCommand = new RelayCommand(OnClose);
         CloseEditorCommand = new RelayCommand(OnCloseEditor);
         OpenEditCommand = new RelayCommand(OnOpenEdit);
@@ -48,14 +53,14 @@ public partial class NotepadWindowViewModel : ViewModelBase
         {
             _saveDebounceTimer?.Stop();
             _saveDebounceTimer = null;
-            await AppServices.NotepadService.SaveContentAsync(MarkdownText).ConfigureAwait(false);
+            await AppServices.NotepadService.SaveContentAsync(NotepadId, MarkdownText).ConfigureAwait(false);
         };
         _saveDebounceTimer.Start();
     }
 
     private async Task LoadContentAsync()
     {
-        var content = await AppServices.NotepadService.GetContentAsync().ConfigureAwait(false);
+        var content = await AppServices.NotepadService.GetContentAsync(NotepadId).ConfigureAwait(false);
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             MarkdownText = content;
@@ -81,6 +86,6 @@ public partial class NotepadWindowViewModel : ViewModelBase
     {
         _saveDebounceTimer?.Stop();
         _saveDebounceTimer = null;
-        _ = AppServices.NotepadService.SaveContentAsync(MarkdownText);
+        _ = AppServices.NotepadService.SaveContentAsync(NotepadId, MarkdownText);
     }
 }

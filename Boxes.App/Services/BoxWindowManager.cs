@@ -12,7 +12,6 @@ using Boxes.App.Views;
 using System.IO;
 using Avalonia.Controls;
 using Avalonia.Platform;
-using Boxes.App.Extensions;
 
 namespace Boxes.App.Services;
 

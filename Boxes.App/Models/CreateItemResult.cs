@@ -10,4 +10,5 @@ public class CreateItemResult
 {
     public CreateItemType Type { get; set; }
     public DesktopBox? Box { get; set; }
+    public Notepad? Notepad { get; set; }
 }

@@ -6,24 +6,28 @@ namespace Boxes.App.Services;
 
 public class NotepadService
 {
-    private readonly string _storagePath;
+    private readonly string _rootDirectory;
 
     public NotepadService(string rootDirectory)
     {
         Directory.CreateDirectory(rootDirectory);
-        _storagePath = Path.Combine(rootDirectory, "notepad.md");
+        _rootDirectory = rootDirectory;
     }
 
-    public async Task<string> GetContentAsync()
+    private string GetContentPath(Guid notepadId) =>
+        Path.Combine(_rootDirectory, $"notepad-{notepadId:N}.md");
+
+    public async Task<string> GetContentAsync(Guid notepadId)
     {
-        if (!File.Exists(_storagePath))
+        var path = GetContentPath(notepadId);
+        if (!File.Exists(path))
         {
             return string.Empty;
         }
 
         try
         {
-            return await File.ReadAllTextAsync(_storagePath).ConfigureAwait(false);
+            return await File.ReadAllTextAsync(path).ConfigureAwait(false);
         }
         catch (IOException)
         {
@@ -31,17 +35,18 @@ public class NotepadService
         }
     }
 
-    public async Task SaveContentAsync(string content)
+    public async Task SaveContentAsync(Guid notepadId, string content)
     {
+        var path = GetContentPath(notepadId);
         try
         {
-            var tempPath = _storagePath + ".tmp";
+            var tempPath = path + ".tmp";
             await File.WriteAllTextAsync(tempPath, content ?? string.Empty).ConfigureAwait(false);
-            if (File.Exists(_storagePath))
+            if (File.Exists(path))
             {
-                File.Delete(_storagePath);
+                File.Delete(path);
             }
-            File.Move(tempPath, _storagePath);
+            File.Move(tempPath, path);
         }
         catch (Exception ex)
         {

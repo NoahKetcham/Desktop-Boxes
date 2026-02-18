@@ -26,15 +26,35 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        AppServices.Initialize();
+        // #region agent log
+        Program.DebugLog("App.axaml.cs:OnFrameworkInitializationCompleted:entry", "OnFrameworkInitializationCompleted entered", "H1");
+        // #endregion
+
+        // Run initialization off the UI thread to avoid deadlock when blocking on async service init
+        // (GetAwaiter().GetResult() on UI thread can deadlock with async code under debugger/STA)
+        Task.Run(() => AppServices.Initialize()).GetAwaiter().GetResult();
+
+        // #region agent log
+        Program.DebugLog("App.axaml.cs:OnFrameworkInitializationCompleted:afterInit", "AppServices.Initialize() completed", "H1");
+        // #endregion
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             DisableAvaloniaDataAnnotationValidation();
+
+            // #region agent log
+            Program.DebugLog("App.axaml.cs:OnFrameworkInitializationCompleted:creatingWindow", "About to create MainWindow", "H3");
+            // #endregion
+
             desktop.MainWindow = new MainWindow
             {
                 DataContext = new MainWindowViewModel(),
             };
+
+            // #region agent log
+            Program.DebugLog("App.axaml.cs:OnFrameworkInitializationCompleted:windowCreated", "MainWindow created successfully", "H3");
+            // #endregion
+
             AppServices.MainWindowOwner = desktop.MainWindow;
             DialogService.Initialize(desktop.MainWindow);
 
@@ -49,7 +69,11 @@ public partial class App : Application
             {
                 Dispatcher.UIThread.Post(async () =>
                 {
-                    await AppServices.WidgetWindowManager.ShowNotepadAsync();
+                    var notepads = await AppServices.NotepadCatalogService.GetNotepadsAsync();
+                    if (notepads.Count > 0)
+                    {
+                        await AppServices.WidgetWindowManager.ShowNotepadAsync(notepads[0]);
+                    }
                 });
             }
         }
@@ -94,7 +118,11 @@ public partial class App : Application
         {
             Dispatcher.UIThread.Post(async () =>
             {
-                await AppServices.WidgetWindowManager.ShowNotepadAsync();
+                var notepads = await AppServices.NotepadCatalogService.GetNotepadsAsync();
+                if (notepads.Count > 0)
+                {
+                    await AppServices.WidgetWindowManager.ShowNotepadAsync(notepads[0]);
+                }
             });
         }
 

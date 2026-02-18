@@ -13,6 +13,11 @@ public partial class ShortcutSelectionDialog : Window
 {
     public ShortcutSelectionViewModel ViewModel { get; }
 
+    public ShortcutSelectionDialog()
+        : this(new ShortcutSelectionViewModel(Guid.Empty, "", Array.Empty<ScannedFile>(), Array.Empty<Guid>()))
+    {
+    }
+
     public ShortcutSelectionDialog(ShortcutSelectionViewModel viewModel)
     {
         InitializeComponent();

@@ -55,7 +55,7 @@ public class SettingsService
                     _cache = settings;
                 }
             }
-            catch (JsonException ex)
+            catch (JsonException)
             {
                 hadCorruption = true;
                 var directory = Path.GetDirectoryName(_storagePath) ?? AppContext.BaseDirectory;

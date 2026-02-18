@@ -11,16 +11,17 @@ namespace Boxes.App.Services;
 
 public class WidgetWindowManager
 {
-    private const string NotepadPreviewKey = "notepadPreview";
-    private const string NotepadEditorKey = "notepadEditor";
+    private static string PreviewKey(Guid id) => $"notepadPreview-{id:N}";
+    private static string EditorKey(Guid id) => $"notepadEditor-{id:N}";
 
-    private readonly Dictionary<string, NotepadPreviewWindow> _previewWindows = new();
-    private readonly Dictionary<string, NotepadEditorWindow> _editorWindows = new();
-    private NotepadWindowViewModel? _notepadVm;
+    private readonly Dictionary<Guid, NotepadPreviewWindow> _previewWindows = new();
+    private readonly Dictionary<Guid, NotepadEditorWindow> _editorWindows = new();
+    private readonly Dictionary<Guid, NotepadWindowViewModel> _viewModels = new();
 
-    public async Task ShowNotepadAsync()
+    public async Task ShowNotepadAsync(Notepad notepad)
     {
-        if (_previewWindows.TryGetValue(NotepadPreviewKey, out var existing))
+        var id = notepad.Id;
+        if (_previewWindows.TryGetValue(id, out var existing))
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -30,7 +31,12 @@ public class WidgetWindowManager
             return;
         }
 
-        var state = await AppServices.WidgetStateService.GetAsync(NotepadPreviewKey).ConfigureAwait(false);
+        await AppServices.WidgetStateService.MigrateLegacyNotepadStateAsync(id).ConfigureAwait(false);
+        var state = await AppServices.WidgetStateService.GetAsync(PreviewKey(id)).ConfigureAwait(false);
+        if (state is null)
+        {
+            state = await AppServices.WidgetStateService.GetAsync("notepadPreview").ConfigureAwait(false);
+        }
         if (state is null)
         {
             state = await AppServices.WidgetStateService.GetAsync("notepad").ConfigureAwait(false);
@@ -38,8 +44,8 @@ public class WidgetWindowManager
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            var vm = new NotepadWindowViewModel();
-            _notepadVm = vm;
+            var vm = new NotepadWindowViewModel(notepad.Id, notepad.Name);
+            _viewModels[id] = vm;
 
             var window = new NotepadPreviewWindow
             {
@@ -64,7 +70,7 @@ public class WidgetWindowManager
             }
 
             EventHandler? closeHandler = null;
-            closeHandler = (_, _) => ClosePreviewAndEditor(window, vm);
+            closeHandler = (_, _) => ClosePreviewAndEditor(window, vm, id);
             vm.RequestClose += closeHandler;
 
             vm.RequestOpenEditor += OnRequestOpenEditor;
@@ -75,15 +81,12 @@ public class WidgetWindowManager
                 vm.RequestClose -= closeHandler;
                 vm.RequestOpenEditor -= OnRequestOpenEditor;
                 vm.RequestCloseEditor -= OnRequestCloseEditor;
-                if (_notepadVm == vm)
-                {
-                    _notepadVm = null;
-                }
+                _viewModels.Remove(id);
                 vm.SaveImmediately();
-                if (_editorWindows.TryGetValue(NotepadEditorKey, out var editor))
+                if (_editorWindows.TryGetValue(id, out var editor))
                 {
                     editor.Close();
-                    _editorWindows.Remove(NotepadEditorKey);
+                    _editorWindows.Remove(id);
                 }
                 var w = window;
                 var (isCollapsed, expandedHeight) = w.GetCollapseState();
@@ -96,20 +99,31 @@ public class WidgetWindowManager
                     IsCollapsed = isCollapsed,
                     ExpandedHeight = expandedHeight
                 };
-                await AppServices.WidgetStateService.SaveAsync(NotepadPreviewKey, stateToSave).ConfigureAwait(false);
-                _previewWindows.Remove(NotepadPreviewKey);
+                await AppServices.WidgetStateService.SaveAsync(PreviewKey(id), stateToSave).ConfigureAwait(false);
+                _previewWindows.Remove(id);
             };
 
-            _previewWindows[NotepadPreviewKey] = window;
+            _previewWindows[id] = window;
             window.Show();
             window.Activate();
         });
     }
 
-    private void ClosePreviewAndEditor(NotepadPreviewWindow preview, NotepadWindowViewModel vm)
+    public async Task CloseNotepadAsync(Guid id)
+    {
+        if (!_previewWindows.TryGetValue(id, out var preview))
+            return;
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            preview.Close();
+        });
+    }
+
+    private void ClosePreviewAndEditor(NotepadPreviewWindow preview, NotepadWindowViewModel vm, Guid id)
     {
         preview.Close();
-        if (_editorWindows.TryGetValue(NotepadEditorKey, out var editor))
+        if (_editorWindows.TryGetValue(id, out var editor))
         {
             editor.Close();
         }
@@ -117,26 +131,32 @@ public class WidgetWindowManager
 
     private void OnRequestOpenEditor(object? sender, EventArgs e)
     {
-        _ = ShowNotepadEditorAsync();
+        if (sender is NotepadWindowViewModel vm)
+        {
+            _ = ShowNotepadEditorAsync(vm.NotepadId);
+        }
     }
 
     private void OnRequestCloseEditor(object? sender, EventArgs e)
     {
-        Dispatcher.UIThread.Post(() =>
+        if (sender is NotepadWindowViewModel vm)
         {
-            if (_editorWindows.TryGetValue(NotepadEditorKey, out var editor))
+            Dispatcher.UIThread.Post(() =>
             {
-                editor.Close();
-            }
-        });
+                if (_editorWindows.TryGetValue(vm.NotepadId, out var editor))
+                {
+                    editor.Close();
+                }
+            });
+        }
     }
 
-    private async Task ShowNotepadEditorAsync()
+    private async Task ShowNotepadEditorAsync(Guid notepadId)
     {
-        if (_notepadVm is null)
+        if (!_viewModels.TryGetValue(notepadId, out var vm))
             return;
 
-        if (_editorWindows.TryGetValue(NotepadEditorKey, out var existing))
+        if (_editorWindows.TryGetValue(notepadId, out var existing))
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -146,38 +166,36 @@ public class WidgetWindowManager
             return;
         }
 
-        var state = await AppServices.WidgetStateService.GetAsync(NotepadEditorKey).ConfigureAwait(false);
+        var state = await AppServices.WidgetStateService.GetAsync(EditorKey(notepadId)).ConfigureAwait(false);
+        if (state is null)
+        {
+            state = await AppServices.WidgetStateService.GetAsync("notepadEditor").ConfigureAwait(false);
+        }
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            if (_notepadVm is null)
+            if (!_viewModels.TryGetValue(notepadId, out var vm2))
                 return;
+
+            const int editorHeight = 380;
+            const int editorWidth = 600;
 
             var window = new NotepadEditorWindow
             {
-                DataContext = _notepadVm,
-                Width = 400,
-                Height = 300
+                DataContext = vm2,
+                Width = state is not null && state.Width > 0 ? state.Width : editorWidth,
+                Height = state is not null && state.Height > 0 ? state.Height : editorHeight
             };
 
-            if (state is not null && state.Width > 0 && state.Height > 0 && !double.IsNaN(state.X) && !double.IsNaN(state.Y))
-            {
-                window.Width = state.Width;
-                window.Height = state.Height;
-                window.Position = new PixelPoint((int)state.X, (int)state.Y);
-            }
-            else
-            {
-                var working = window.Screens?.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
-                const int margin = 16;
-                var x = working.Right - (int)window.Width - margin;
-                var y = working.Bottom - (int)window.Height - margin;
-                window.Position = new PixelPoint(Math.Max(working.X, x), Math.Max(working.Y, y));
-            }
+            var working = window.Screens?.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
+            const int margin = 16;
+            var x = working.X + (working.Width - (int)window.Width) / 2;
+            var y = working.Bottom - (int)window.Height - margin;
+            window.Position = new PixelPoint(Math.Max(working.X, x), Math.Max(working.Y, y));
 
             window.Closed += async (_, _) =>
             {
-                _notepadVm.SaveImmediately();
+                vm2.SaveImmediately();
                 var w = window;
                 var stateToSave = new WidgetStateData
                 {
@@ -186,11 +204,11 @@ public class WidgetWindowManager
                     X = w.Position.X,
                     Y = w.Position.Y
                 };
-                await AppServices.WidgetStateService.SaveAsync(NotepadEditorKey, stateToSave).ConfigureAwait(false);
-                _editorWindows.Remove(NotepadEditorKey);
+                await AppServices.WidgetStateService.SaveAsync(EditorKey(notepadId), stateToSave).ConfigureAwait(false);
+                _editorWindows.Remove(notepadId);
             };
 
-            _editorWindows[NotepadEditorKey] = window;
+            _editorWindows[notepadId] = window;
             window.Show();
             window.Activate();
         });
