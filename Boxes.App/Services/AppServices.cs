@@ -1,6 +1,12 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
+using Boxes.App.ViewModels;
+using Boxes.App.Views;
 
 namespace Boxes.App.Services;
 
@@ -15,6 +21,8 @@ public static class AppServices
     public static ScannedFileService ScannedFileService { get; private set; } = null!;
     public static DesktopCleanupService DesktopCleanupService { get; private set; } = null!;
     public static Window? MainWindowOwner { get; set; }
+
+    private static MainWindowViewModel? _mainWindowViewModel;
 
     public static void Initialize()
     {
@@ -45,6 +53,68 @@ public static class AppServices
 
             _initialized = true;
         }
+    }
+
+    public static Window CreateMainWindow()
+    {
+        var window = new MainWindow
+        {
+            DataContext = GetOrCreateMainWindowViewModel()
+        };
+
+        window.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(MainWindowOwner, window))
+            {
+                MainWindowOwner = null;
+            }
+        };
+
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.MainWindow = window;
+        }
+
+        MainWindowOwner = window;
+        DialogService.Initialize(window);
+
+        return window;
+    }
+
+    public static async Task OpenSettingsWindowAsync()
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var window = MainWindowOwner ?? CreateMainWindow();
+
+            if (window.WindowState == WindowState.Minimized)
+            {
+                window.WindowState = WindowState.Normal;
+            }
+
+            if (window.DataContext is MainWindowViewModel vm)
+            {
+                vm.NavigateToSettings();
+            }
+
+            if (!window.IsVisible)
+            {
+                window.Show();
+            }
+
+            window.Activate();
+        });
+    }
+
+    private static MainWindowViewModel GetOrCreateMainWindowViewModel()
+    {
+        if (MainWindowOwner?.DataContext is MainWindowViewModel vmFromWindow)
+        {
+            _mainWindowViewModel = vmFromWindow;
+        }
+
+        _mainWindowViewModel ??= new MainWindowViewModel();
+        return _mainWindowViewModel;
     }
 }
 

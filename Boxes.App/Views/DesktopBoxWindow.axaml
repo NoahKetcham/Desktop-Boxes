@@ -11,6 +11,10 @@
         ShowActivated="True"
         SystemDecorations="BorderOnly">
 
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Ctrl+OemComma" Command="{Binding OpenSettingsCommand}"/>
+    </Window.KeyBindings>
+
     <Grid Background="#1C2235" ClipToBounds="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>

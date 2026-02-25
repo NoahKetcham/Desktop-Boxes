@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Boxes.App.Models;
+using Boxes.App.Services;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Boxes.App.ViewModels;
@@ -16,6 +17,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
     public ObservableCollection<DesktopFileViewModel> Shortcuts { get; } = new();
 
     public IRelayCommand<DesktopFileViewModel?> LaunchShortcutCommand { get; }
+    public IAsyncRelayCommand OpenSettingsCommand { get; }
 
     public string Name
     {
@@ -51,6 +53,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         Model = model;
         CloseCommand = new RelayCommand(() => RequestClose?.Invoke(this, EventArgs.Empty));
         LaunchShortcutCommand = new RelayCommand<DesktopFileViewModel?>(LaunchShortcut);
+        OpenSettingsCommand = new AsyncRelayCommand(AppServices.OpenSettingsWindowAsync);
     }
 
     public void Update(DesktopBox model)

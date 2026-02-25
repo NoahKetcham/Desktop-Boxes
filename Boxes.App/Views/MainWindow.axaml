@@ -14,6 +14,10 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Ctrl+OemComma" Command="{Binding OpenSettingsCommand}"/>
+    </Window.KeyBindings>
+
     <Window.Resources>
         <SolidColorBrush x:Key="NavBackgroundBrush" Color="#202233"/>
         <SolidColorBrush x:Key="ContentBackgroundBrush" Color="#0F111B"/>
