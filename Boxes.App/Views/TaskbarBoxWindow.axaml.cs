@@ -50,6 +50,7 @@ public partial class TaskbarBoxWindow : Window
     private double _snapIndicatorOpacity = 1.0;
     private bool _hookSubscribed;
     private bool _mouseDownOnThisWindow;
+    private DispatcherTimer? _debouncedSaveTimer;
     private static readonly object _logSync = new();
     private static readonly string _logFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Boxes", "TaskbarSnap.log");
 
@@ -192,6 +193,8 @@ public partial class TaskbarBoxWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _debouncedSaveTimer?.Stop();
+        _debouncedSaveTimer = null;
         base.OnClosed(e);
         AppServices.SettingsService.SettingsChanged -= OnSettingsChanged;
         try
@@ -398,13 +401,32 @@ public partial class TaskbarBoxWindow : Window
             EvaluateAndApplySnap();
         }
 
-        // Persist size when in expanded state
+        // Persist size/position when in expanded state (debounced to avoid excessive writes during resize)
         if (ViewModel.IsExpanded)
         {
-            _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarExpandedHeightAsync(ViewModel.Model.Id, Height);
-            _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarWidthAsync(ViewModel.Model.Id, Width);
-            _ = Boxes.App.Services.AppServices.BoxWindowManager.SaveTaskbarWindowXAsync(ViewModel.Model.Id, Position.X);
+            ScheduleDebouncedTaskbarSave();
         }
+    }
+
+    private void ScheduleDebouncedTaskbarSave()
+    {
+        _debouncedSaveTimer?.Stop();
+        _debouncedSaveTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(400)
+        };
+        _debouncedSaveTimer.Tick += (_, _) =>
+        {
+            _debouncedSaveTimer?.Stop();
+            _debouncedSaveTimer = null;
+            if (ViewModel.IsExpanded)
+            {
+                _ = AppServices.BoxWindowManager.SaveTaskbarExpandedHeightAsync(ViewModel.Model.Id, Height);
+                _ = AppServices.BoxWindowManager.SaveTaskbarWidthAsync(ViewModel.Model.Id, Width);
+                _ = AppServices.BoxWindowManager.SaveTaskbarWindowXAsync(ViewModel.Model.Id, Position.X);
+            }
+        };
+        _debouncedSaveTimer.Start();
     }
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)

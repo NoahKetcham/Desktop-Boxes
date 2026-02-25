@@ -73,6 +73,9 @@ public class DesktopBoxWindowViewModel : ViewModelBase
     public event EventHandler? RequestSnapToTaskbar;
     public event EventHandler? RequestUnsnapFromTaskbar;
 
+    /// <summary>Triggers a state save (used for debounced auto-save on move/resize).</summary>
+    public void RequestSave() => RequestStateSave?.Invoke(this, EventArgs.Empty);
+
     private DesktopBoxWindow? _view;
     private CancellationTokenSource? _pendingLoadCts;
     private bool _suspendStateSync;

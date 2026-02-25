@@ -24,5 +24,11 @@ public class ApplicationSettings
     public bool ShowShortcutLabels { get; set; } = true;
     public int BoxContentPadding { get; set; } = 12;
     public int BoxContentVerticalPadding { get; set; } = 12;
+
+    // Main window (editor) position and size persistence
+    public double? MainWindowPositionX { get; set; }
+    public double? MainWindowPositionY { get; set; }
+    public double? MainWindowWidth { get; set; }
+    public double? MainWindowHeight { get; set; }
 }
 

@@ -236,7 +236,11 @@ public class SettingsService
         BoxIconSize = settings.BoxIconSize,
         ShowShortcutLabels = settings.ShowShortcutLabels,
         BoxContentPadding = settings.BoxContentPadding,
-        BoxContentVerticalPadding = settings.BoxContentVerticalPadding
+        BoxContentVerticalPadding = settings.BoxContentVerticalPadding,
+        MainWindowPositionX = settings.MainWindowPositionX,
+        MainWindowPositionY = settings.MainWindowPositionY,
+        MainWindowWidth = settings.MainWindowWidth,
+        MainWindowHeight = settings.MainWindowHeight
     };
 
     private void RaiseChanged()

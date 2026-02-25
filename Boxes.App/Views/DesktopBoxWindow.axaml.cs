@@ -36,6 +36,7 @@ public partial class DesktopBoxWindow : Window
         private double _savedContentHeight = 240;
         private double _savedWindowHeight = 240;
         private DispatcherTimer? _expandAnimationTimer;
+        private DispatcherTimer? _debouncedSaveTimer;
         private Border? _snapIndicator;
         private const string DragDataFormat = "application/x-boxes-shortcut-id";
         private Point _dragStartPoint;
@@ -48,6 +49,7 @@ public partial class DesktopBoxWindow : Window
         InitializeComponent();
         Opened += DesktopBoxWindow_Opened;
         PositionChanged += DesktopBoxWindow_PositionChanged;
+        SizeChanged += DesktopBoxWindow_SizeChanged;
         Activated += (_, __) => { if (!AppServices.BoxWindowManager.IsBurstActive) this.SetAlwaysBelowApps(); };
         PointerEntered += (_, __) => AppServices.BoxWindowManager.NotifyHover();
         AddHandler(InputElement.PointerMovedEvent, OnPointerHoverActivity, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
@@ -126,6 +128,28 @@ public partial class DesktopBoxWindow : Window
         }
 
         _lastKnownPosition = e.Point;
+        ScheduleDebouncedSave();
+    }
+
+    private void DesktopBoxWindow_SizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        ScheduleDebouncedSave();
+    }
+
+    private void ScheduleDebouncedSave()
+    {
+        _debouncedSaveTimer?.Stop();
+        _debouncedSaveTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(400)
+        };
+        _debouncedSaveTimer.Tick += (_, _) =>
+        {
+            _debouncedSaveTimer?.Stop();
+            _debouncedSaveTimer = null;
+            ViewModel.RequestSave();
+        };
+        _debouncedSaveTimer.Start();
     }
 
     private async void DesktopBoxWindow_Opened(object? sender, EventArgs e)
@@ -918,6 +942,8 @@ public partial class DesktopBoxWindow : Window
     {
         _expandAnimationTimer?.Stop();
         _expandAnimationTimer = null;
+        _debouncedSaveTimer?.Stop();
+        _debouncedSaveTimer = null;
         base.OnClosed(e);
         AppServices.SettingsService.SettingsChanged -= OnSettingsChanged;
     }
