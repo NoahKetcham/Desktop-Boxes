@@ -71,7 +71,7 @@ public static class AppServices
             BoxService.InitializeAsync().GetAwaiter().GetResult();
 
             ScannedFileService = new ScannedFileService(rootDirectory);
-            DesktopCleanupService = new DesktopCleanupService(rootDirectory);
+            DesktopCleanupService = new DesktopCleanupService();
             WindowStateService = new WindowStateService(rootDirectory);
             WindowStateService.InitializeAsync().GetAwaiter().GetResult();
             DesktopBuildService = new DesktopBuildService(rootDirectory);

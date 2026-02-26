@@ -397,65 +397,6 @@ public class ScannedFileService
         }
     }
 
-    public async Task MarkFilesAsArchivedAsync(IEnumerable<(string OriginalPath, string ArchiveLocation)> archivedItems)
-    {
-        var archiveList = archivedItems.ToList();
-        var pathLookup = archiveList.ToDictionary(item => item.OriginalPath, item => item.ArchiveLocation, StringComparer.OrdinalIgnoreCase);
-
-        await _gate.WaitAsync();
-        try
-        {
-            var files = await LoadScannedFilesAsync();
-            foreach (var file in files)
-            {
-                if (pathLookup.TryGetValue(file.FilePath, out var archiveLocation))
-                {
-                    file.IsArchived = true;
-                    file.ArchivedContentPath = archiveLocation;
-                    continue;
-                }
-
-                // If the item resides within a directory that was archived, map it to the archived location
-                foreach (var (originalPath, location) in archiveList)
-                {
-                    if (IsDescendantOf(file.FilePath, originalPath))
-                    {
-                        var relative = file.FilePath.Substring(originalPath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                        file.IsArchived = true;
-                        file.ArchivedContentPath = Path.Combine(location, relative);
-                        break;
-                    }
-                }
-            }
-
-            await SaveScannedFilesAsync(files);
-        }
-        finally
-        {
-            _gate.Release();
-        }
-    }
-
-    public async Task MarkFilesAsRestoredAsync()
-    {
-        await _gate.WaitAsync();
-        try
-        {
-            var files = await LoadScannedFilesAsync();
-            foreach (var file in files)
-            {
-                file.IsArchived = false;
-                file.ArchivedContentPath = null;
-            }
-
-            await SaveScannedFilesAsync(files);
-        }
-        finally
-        {
-            _gate.Release();
-        }
-    }
-
     public async Task<string?> GetShortcutArchivePathAsync(Guid id)
     {
         await _gate.WaitAsync();
@@ -618,21 +559,6 @@ public class ScannedFileService
 
         flattened.Add(fileEntry);
         existingByPath.Remove(fullPath);
-    }
-
-    private static bool IsDescendantOf(string path, string potentialParent)
-    {
-        if (path.Equals(potentialParent, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (!potentialParent.EndsWith(Path.DirectorySeparatorChar) && !potentialParent.EndsWith(Path.AltDirectorySeparatorChar))
-        {
-            potentialParent += Path.DirectorySeparatorChar;
-        }
-
-        return path.StartsWith(potentialParent, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? NormalizePath(string? path)

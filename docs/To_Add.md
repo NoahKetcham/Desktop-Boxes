@@ -33,6 +33,10 @@
     - Music player
     - Automated tasks
 
+### Revealing background effects
+Sizing the box reveals a secondary background image.  would be cool to reveal a cook bg over a black or mundane bg.
+
+
 # TO-DO:
 - inscpect and improve upon current data saving/updating functionality.
     - many save features are not working as expected.
@@ -53,6 +57,7 @@
 - Add hover effects to the boxes.
 - Add drag and drop reorganization and cascading sortingwithin boxes.
 - Complete snap trigger features.
+- remove icons from desktop when dragged into a box. - toggleable setting.
 
 
 # NOTES:
