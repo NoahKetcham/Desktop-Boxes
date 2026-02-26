@@ -12,7 +12,6 @@ using Boxes.App.Views;
 using System.IO;
 using Avalonia.Controls;
 using Avalonia.Platform;
-using Boxes.App.Extensions;
 
 namespace Boxes.App.Services;
 
@@ -972,6 +971,15 @@ public class BoxWindowManager
     /// </summary>
     public (int? SnapTargetY, DesktopBoxWindow? TargetWindow) GetSnapTargetY(DesktopBoxWindow currentWindow, int proposedTopY)
     {
+        return GetSnapTargetY((Window)currentWindow, proposedTopY);
+    }
+
+    /// <summary>
+    /// Finds a snap target Y position for any window when dragging near floating box windows.
+    /// Used by NotepadPreviewWindow and other widgets that can snap to boxes.
+    /// </summary>
+    public (int? SnapTargetY, DesktopBoxWindow? TargetWindow) GetSnapTargetY(Window currentWindow, int proposedTopY)
+    {
         if (!Dispatcher.UIThread.CheckAccess())
         {
             return Dispatcher.UIThread.InvokeAsync(() => GetSnapTargetY(currentWindow, proposedTopY)).GetAwaiter().GetResult();
@@ -979,10 +987,10 @@ public class BoxWindowManager
 
         const int snapThreshold = 10; // pixels
         var primaryWorkingArea = GetPrimaryWorkingArea(currentWindow);
-        
-        // Get all other windows on primary monitor
+
+        // Get all other windows on primary monitor (exclude currentWindow when it's a box)
         var candidates = _windows.Values
-            .Where(w => w != currentWindow && !w.ViewModel.IsSnappedToTaskbar)
+            .Where(w => !ReferenceEquals(w, currentWindow) && !w.ViewModel.IsSnappedToTaskbar)
             .Select(w => new { Window = w, TopY = w.Position.Y })
             .Where(c => 
             {

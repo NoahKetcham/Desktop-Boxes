@@ -13,6 +13,11 @@ public static class AppServices
     public static BoxService BoxService { get; private set; } = null!;
     public static SettingsService SettingsService { get; private set; } = null!;
     public static BoxWindowManager BoxWindowManager { get; } = new();
+    public static WidgetWindowManager WidgetWindowManager { get; } = new();
+    public static WidgetStateService WidgetStateService { get; private set; } = null!;
+    public static NotepadService NotepadService { get; private set; } = null!;
+    public static NotepadCatalogService NotepadCatalogService { get; private set; } = null!;
+    public static NoteHubService NoteHubService { get; private set; } = null!;
     public static ScannedFileService ScannedFileService { get; private set; } = null!;
     public static DesktopCleanupService DesktopCleanupService { get; private set; } = null!;
     public static ShellIconService ShellIconService { get; private set; } = null!;
@@ -40,6 +45,10 @@ public static class AppServices
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var rootDirectory = Path.Combine(appData, "Boxes");
             Directory.CreateDirectory(rootDirectory);
+
+            // #region agent log
+            Program.DebugLog("AppServices.cs:Initialize:start", "Starting service init", "H1", new { rootDirectory });
+            // #endregion
 
             SettingsService = new SettingsService(rootDirectory);
             SettingsService.InitializeAsync().GetAwaiter().GetResult();
@@ -70,6 +79,27 @@ public static class AppServices
             BoxService = new BoxService(rootDirectory);
             BoxService.InitializeAsync().GetAwaiter().GetResult();
 
+            WidgetStateService = new WidgetStateService(rootDirectory);
+            WidgetStateService.InitializeAsync().GetAwaiter().GetResult();
+            NotepadService = new NotepadService(rootDirectory);
+            NotepadCatalogService = new NotepadCatalogService(rootDirectory);
+            // #region agent log
+            Program.DebugLog("AppServices.cs:Initialize:beforeNotepadCatalog", "About to init NotepadCatalogService", "H2");
+            // #endregion
+            NotepadCatalogService.InitializeAsync().GetAwaiter().GetResult();
+            // #region agent log
+            Program.DebugLog("AppServices.cs:Initialize:afterNotepadCatalog", "NotepadCatalogService initialized", "H2");
+            // #endregion
+
+            var appSettings = SettingsService.GetAsync().GetAwaiter().GetResult();
+            var noteHubRoot = appSettings.NoteHubDirectoryPath;
+            if (string.IsNullOrWhiteSpace(noteHubRoot))
+            {
+                noteHubRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "NoteHub");
+            }
+            Directory.CreateDirectory(noteHubRoot);
+            NoteHubService = new NoteHubService(noteHubRoot);
+
             ScannedFileService = new ScannedFileService(rootDirectory);
             DesktopCleanupService = new DesktopCleanupService();
             WindowStateService = new WindowStateService(rootDirectory);
@@ -79,6 +109,9 @@ public static class AppServices
             ShellIconService = new ShellIconService();
             DataMaintenanceService = new DataMaintenanceService(rootDirectory);
             _initialized = true;
+            // #region agent log
+            Program.DebugLog("AppServices.cs:Initialize:complete", "All services initialized", "H1");
+            // #endregion
         }
     }
 

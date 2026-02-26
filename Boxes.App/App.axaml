@@ -18,6 +18,7 @@
        <StyleInclude Source="avares://Boxes.App/Styles/Buttons.axaml"/>
        <StyleInclude Source="avares://Boxes.App/Styles/Cards.axaml"/>
        <StyleInclude Source="avares://Boxes.App/Styles/Badges.axaml"/>
+       <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
        <StyleInclude Source="avares://Boxes.App/Styles/ScrollBar.axaml"/>
        <StyleInclude Source="avares://Boxes.App/Styles/AnimatedCollapsePresenter.axaml"/>
    </Application.Styles>

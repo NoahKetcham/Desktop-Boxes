@@ -1,40 +1,75 @@
 # Task Hierarchy (Internal)
 
 ## Current Outstanding Tasks
-- Inspect and improve current data saving/updating functionality; many save features unreliable.
-- Add feature to click-and-drag desktop highlight to create a new box (listed twice in To_Add).
-- Implement box window templates (dashboard picker + template info + selection persistence) (partially complete).
-- Start building themes, organized per-file.
-- Auto-start app at login but only launch boxes (not settings UI).
-- Work on adaptive sizing for icons, spacing, and text.
-- Enhance settings save/load functionality (partial work noted, still needs follow-through).
-- Focus on standard boxes optimizations/improvements before taskbar boxes.
-- Add multi-monitor support.
-- Add setting to remove real desktop icons when dragged into a box.
-- Add pages to boxes.
-- Add hover effects to boxes.
-- Add drag-and-drop reorganization and cascading sorting within boxes.
-- Complete snap trigger features.
+
+From docs/To_Add.md TO-DO:
+- Add feature to click and drag desktop (highlighted area) to create a new box the shape of highlighted area.
+  - Currently both boxes and settings ui start when the computer starts up.
+- Add Pages to the boxes.
+- Add hover effects to the boxes.
+- Add drag and drop reorganization and cascading sorting within boxes.
+- Center desktop box title text.
+- Remove snap to taskbar feature.
+- Add a keyboard shortcut to launch settings ui if closed.
+- Improve settings UI scaling and layout.
+  - Ensure elements are not cut off when window is resized.
+  - Remove ugly highlight bg in dashboard.
+  - Use same color/opacity settings in settings as in boxes???
+- Add debouncing to the desktop box window collapse animation (same time as animation length).
+- Menu button in desktop box window should open the box settings ui and various other options.
+  - Migrate close button to menu button.
+  - Add a keyboard shortcut to launch settings ui if closed.
+  - Menu button should exist in one place for all boxes and not dependent on header bar. If header is hidden the menu button should still be visible.
+- Build in feature to store layouts and modes with ability to easily switch between them.
+  - game mode, work mode, etc.
+- Brainstorm widgets and addons.
+- Polish NoteHub UI.
+
+From docs/To_Add.md TO-DO LATER:
+- AI Integrations
+  - AI organizer
+  - AI note optimization
+
+---
 
 ## Recommended Priority Order
-1. Fix data saving/updating reliability to stabilize all other features.
-2. Enhance settings save/load (remaining gaps) to ensure preferences persist, especially before more UI work.
-3. Adaptive sizing for icons/spacing/text to improve usability (related to current bug fixes).
-4. Auto-start behavior (boxes only) to improve startup experience.
-5. Finish box templates plumbing (apply `TemplateKey` to actual box-window layout/skin) while the UI work is fresh.
-6. Standard boxes optimizations and drag/snap polish before expanding to new features.
-7. Click-drag box creation and hover effects for interaction quality.
-8. Multi-monitor support and desktop icon removal toggle for broader workflows.
-9. Pages in boxes and cascading sorting for organization depth.
-10. Theme building and other longer-term polish items.
+
+### High Priority
+1. Improve settings UI scaling and layout (elements cut off, highlight bg, color/opacity consistency)
+2. Menu button refactor (unified placement, migrate close button, keyboard shortcut)
+3. Add keyboard shortcut to launch settings ui if closed
+4. Center desktop box title text
+
+### Medium Priority
+5. Add debouncing to desktop box window collapse animation
+6. Remove snap to taskbar feature
+7. Add hover effects to the boxes
+8. Polish NoteHub UI
+9. Add drag and drop reorganization and cascading sorting within boxes
+
+### Low Priority
+10. Add Pages to the boxes
+11. Add feature to click and drag desktop to create new box (and fix startup: boxes vs settings ui)
+12. Build in feature to store layouts and modes (game mode, work mode, etc.)
+13. Brainstorm widgets and addons
+
+### Later
+14. AI Integrations (AI organizer, AI note optimization)
+
+---
 
 ## Rationale
-- Stability (saving, settings persistence) is prerequisite for reliable UX and reduces regression risk while iterating.
-- Adaptive sizing and startup behavior directly affect everyday use and align with recent icon-size issues.
-- Box templates now have a working selection UX and persisted key; the next step is applying that key to real window styling/layout without regressing stability.
-- Interaction polish and multi-monitor support build on a stable core; theming and advanced organization can follow.
+
+**High priority** focuses on UX polish and core navigation: the settings UI issues affect usability immediately; the menu button consolidation improves consistency and accessibility (keyboard shortcut). Centering title text is a quick visual fix.
+
+**Medium priority** covers animation polish, removing unwanted behavior (snap to taskbar), and incremental feature improvements (hover effects, NoteHub polish, drag-and-drop). These build on stable core behavior.
+
+**Low priority** items are larger features (Pages, drag-to-create boxes, layout/mode switching) that may require architectural changes. The startup behavior note (boxes vs settings ui) is grouped with the drag-to-create task as it relates to desktop interaction.
+
+**Later** items (AI integrations) are explicitly deferred per To_Add.md.
+
+---
 
 ## Recent Updates
-- 2025-12-14 – Added “box window templates” as an outstanding task (partially complete) and slotted it into the priority order.
-- 2025-12-10 – Initialized task hierarchy from docs/To_Add.md and ordered by stability → UX → expansion.
 
+- 2025-02-25 – Initial task hierarchy created from docs/To_Add.md TO-DO and TO-DO LATER sections.

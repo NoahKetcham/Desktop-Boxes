@@ -1,0 +1,99 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Boxes.App.ViewModels.Widgets"
+             x:Class="Boxes.App.Views.Controls.NotepadEditorPanel"
+             x:DataType="vm:NotepadWindowViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Button.header-btn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.1"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.header-btn:pointerover">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Background" Value="#20FFFFFF"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Border x:Name="RootBorder" Background="#1C2235" CornerRadius="12,12,0,0" BoxShadow="0 -4 24 0 #40000000">
+        <Grid RowDefinitions="Auto,Auto,*">
+            <!-- Header Bar -->
+            <Border x:Name="HeaderBar" Grid.Row="0" Background="#232B46" Padding="12,10" CornerRadius="12,12,0,0">
+                <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                    <TextBlock Grid.Column="0" Text="{Binding Name, StringFormat='Edit {0}'}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Classes="header-btn" Width="28" Height="28"
+                            Command="{Binding CloseEditorCommand}"
+                            ToolTip.Tip="Close editor">
+                        <TextBlock Text="✕" FontSize="12" HorizontalAlignment="Center"/>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Toolbar -->
+            <Border x:Name="ToolbarBar" Grid.Row="1" Background="#1E2433" Padding="8,6" BorderThickness="0,0,0,1" BorderBrush="#2A3142">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Button Classes="header-btn" Padding="6,4" ToolTip.Tip="Markdown formatting">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="▼" FontSize="10" VerticalAlignment="Center" Opacity="0.8"/>
+                            <TextBlock Text="Markdown" FontSize="12" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="Top">
+                                <MenuItem Header="Bold" Click="MarkdownBold_OnClick"/>
+                                <MenuItem Header="Italic" Click="MarkdownItalic_OnClick"/>
+                                <MenuItem Header="Strikethrough" Click="MarkdownStrikethrough_OnClick"/>
+                                <MenuItem Header="-"/>
+                                <MenuItem Header="Link" Click="MarkdownLink_OnClick"/>
+                                <MenuItem Header="Code" Click="MarkdownCode_OnClick"/>
+                                <MenuItem Header="Code block" Click="MarkdownCodeBlock_OnClick"/>
+                                <MenuItem Header="-"/>
+                                <MenuItem Header="Heading 1" Click="MarkdownHeading1_OnClick"/>
+                                <MenuItem Header="Heading 2" Click="MarkdownHeading2_OnClick"/>
+                                <MenuItem Header="Heading 3" Click="MarkdownHeading3_OnClick"/>
+                                <MenuItem Header="-"/>
+                                <MenuItem Header="Bullet list" Click="MarkdownBullet_OnClick"/>
+                                <MenuItem Header="Numbered list" Click="MarkdownNumbered_OnClick"/>
+                                <MenuItem Header="Blockquote" Click="MarkdownBlockquote_OnClick"/>
+                                <MenuItem Header="-"/>
+                                <MenuItem Header="Horizontal rule" Click="MarkdownHr_OnClick"/>
+                                <MenuItem Header="-"/>
+                                <MenuItem Header="Highlight" Click="MarkdownHighlight_OnClick"/>
+                                <MenuItem Header="Color (red)" Click="MarkdownColorRed_OnClick"/>
+                                <MenuItem Header="Color (green)" Click="MarkdownColorGreen_OnClick"/>
+                                <MenuItem Header="Color (blue)" Click="MarkdownColorBlue_OnClick"/>
+                                <MenuItem Header="Color (orange)" Click="MarkdownColorOrange_OnClick"/>
+                                <MenuItem Header="Color (yellow)" Click="MarkdownColorYellow_OnClick"/>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- Content Area: Editor -->
+            <Border x:Name="ContentArea" Grid.Row="2" Padding="12" CornerRadius="0,0,0,0">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <TextBox x:Name="EditorTextBox"
+                             Text="{Binding MarkdownText, Mode=TwoWay}"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="8"
+                             FontFamily="Consolas, Courier New, monospace"
+                             FontSize="13"
+                             Foreground="#E0E0E0"
+                             Watermark="Type markdown here..."
+                             MinHeight="180"/>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

@@ -2,8 +2,10 @@ using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using Boxes.App.Models;
 using Boxes.App.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -13,31 +15,57 @@ namespace Boxes.App.ViewModels;
 
 public partial class SettingsPageViewModel : ViewModelBase
 {
-    public string Title => "Global Settings";
-    public string Description => "Control appearance, behavior, and integrations";
+    public string Title => "Settings";
+    public string Description => "Customize your Desktop Boxes experience";
 
+    // Category Navigation
+    [ObservableProperty]
+    private string? selectedCategory = "appearance";
+
+    [ObservableProperty]
+    private string searchText = string.Empty;
+
+    [ObservableProperty]
+    private bool isCategoryVisible = true;
+
+    // Appearance
     [ObservableProperty]
     private string themePreference = "System";
 
+    [ObservableProperty]
+    private Color selectedAccentColor = Color.Parse("#3A8DFF");
+
+    [ObservableProperty]
+    private Color selectedBoxBackgroundColor = Color.Parse("#1C2235");
+
+    [ObservableProperty]
+    private string? boxBackgroundColorHex = "#1C2235";
+
+    [ObservableProperty]
+    private int boxesTransparencyPercent = 100;
+
+    // Behavior
     [ObservableProperty]
     private bool autoSnapEnabled = true;
 
     [ObservableProperty]
     private bool showBoxOutlines = true;
 
-        [ObservableProperty]
-        private bool runAtStartup;
+    [ObservableProperty]
+    private bool runAtStartup;
 
+    // Integrations
     [ObservableProperty]
     private bool oneDriveLinked;
 
     [ObservableProperty]
     private bool googleDriveLinked;
 
+    // NoteHub
     [ObservableProperty]
-    private int boxesTransparencyPercent = 100;
+    private string? noteHubDirectoryPath;
 
-    // Box Customization Settings
+    // Box Customization
     [ObservableProperty]
     private int boxHeaderHeight = 40;
 
@@ -59,35 +87,33 @@ public partial class SettingsPageViewModel : ViewModelBase
     [ObservableProperty]
     private int boxContentVerticalPadding = 12;
 
-    public IAsyncRelayCommand SaveCommand { get; }
-    public IAsyncRelayCommand ResetDataCommand { get; }
-    public IAsyncRelayCommand OpenAllWindowsCommand { get; }
-    public IAsyncRelayCommand CloseAllWindowsCommand { get; }
-        public IAsyncRelayCommand ResetAccentCommand { get; }
-    public IAsyncRelayCommand CreateShowBoxesShortcutCommand { get; }
-
-    [ObservableProperty]
-    private Color selectedAccentColor = Color.Parse("#3A8DFF");
-
+    // Popup State
     [ObservableProperty]
     private bool isAccentColorPickerPopupOpen;
-
-    private Color? _originalAccentColor;
-
-    [ObservableProperty]
-    private string? boxBackgroundColorHex = "#1C2235";
-
-    [ObservableProperty]
-    private Color selectedBoxBackgroundColor = Color.Parse("#1C2235");
 
     [ObservableProperty]
     private bool isColorPickerPopupOpen;
 
     [ObservableProperty]
+    private Color? originalAccentColor;
+
+    // Recent Colors
+    [ObservableProperty]
     private ObservableCollection<Color> recentAccentColors = new();
 
     [ObservableProperty]
     private ObservableCollection<Color> recentBoxBackgroundColors = new();
+
+    // Commands
+    public IAsyncRelayCommand SaveCommand { get; }
+    public IAsyncRelayCommand ResetDataCommand { get; }
+    public IAsyncRelayCommand OpenAllWindowsCommand { get; }
+    public IAsyncRelayCommand CloseAllWindowsCommand { get; }
+    public IAsyncRelayCommand ResetAccentCommand { get; }
+    public IAsyncRelayCommand CreateShowBoxesShortcutCommand { get; }
+    public IAsyncRelayCommand BrowseNoteHubPathCommand { get; }
+    public IAsyncRelayCommand<string> SelectCategoryCommand { get; }
+    public IAsyncRelayCommand<string> ResetCategoryCommand { get; }
 
     public IRelayCommand ApplyBoxBackgroundColorCommand { get; }
     public IRelayCommand ResetBoxBackgroundColorCommand { get; }
@@ -107,6 +133,10 @@ public partial class SettingsPageViewModel : ViewModelBase
         CloseAllWindowsCommand = new AsyncRelayCommand(CloseAllWindowsAsync);
         ResetAccentCommand = new AsyncRelayCommand(ResetAccentAsync);
         CreateShowBoxesShortcutCommand = new AsyncRelayCommand(CreateShowBoxesShortcutAsync);
+        BrowseNoteHubPathCommand = new AsyncRelayCommand(BrowseNoteHubPathAsync);
+        SelectCategoryCommand = new AsyncRelayCommand<string>(SelectCategoryAsync);
+        ResetCategoryCommand = new AsyncRelayCommand<string>(ResetCategoryAsync);
+
         ApplyBoxBackgroundColorCommand = new RelayCommand(ApplyBoxBackgroundColor);
         ResetBoxBackgroundColorCommand = new RelayCommand(ResetBoxBackgroundColor);
         OpenColorPickerPopupCommand = new RelayCommand(() => IsColorPickerPopupOpen = true);
@@ -116,7 +146,74 @@ public partial class SettingsPageViewModel : ViewModelBase
         CloseAccentColorPickerPopupCommand = new RelayCommand(CloseAccentColorPickerPopup);
         SelectRecentAccentColorCommand = new RelayCommand<Color>(SelectRecentAccentColor);
         SelectRecentBoxBackgroundColorCommand = new RelayCommand<Color>(SelectRecentBoxBackgroundColor);
+
         _ = LoadAsync();
+    }
+
+    partial void OnSelectedCategoryChanged(string? value)
+    {
+        // Update visibility based on category
+        UpdateCategoryVisibility();
+    }
+
+    partial void OnSearchTextChanged(string value)
+    {
+        // Filter settings based on search - could implement partial matching
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            SelectedCategory = "appearance";
+        }
+    }
+
+    private void UpdateCategoryVisibility()
+    {
+        // This would be used with a converter in the XAML
+        // For now, we rely on IsVisible binding with converter
+    }
+
+    private async Task SelectCategoryAsync(string? category)
+    {
+        SelectedCategory = category;
+        await Task.CompletedTask;
+    }
+
+    private async Task ResetCategoryAsync(string? category)
+    {
+        var confirmed = await DialogService.ShowConfirmationAsync($"Reset {category} settings to defaults?");
+        if (!confirmed) return;
+
+        switch (category)
+        {
+            case "appearance":
+                ThemePreference = "System";
+                SelectedAccentColor = Color.Parse("#3A8DFF");
+                SelectedBoxBackgroundColor = Color.Parse("#1C2235");
+                BoxesTransparencyPercent = 100;
+                break;
+            case "behavior":
+                AutoSnapEnabled = true;
+                ShowBoxOutlines = true;
+                RunAtStartup = false;
+                break;
+            case "customization":
+                BoxHeaderHeight = 40;
+                ShowBoxHeader = true;
+                BoxCornerRadius = 8;
+                BoxIconSize = 48;
+                ShowShortcutLabels = true;
+                BoxContentPadding = 12;
+                BoxContentVerticalPadding = 12;
+                break;
+            case "integrations":
+                OneDriveLinked = false;
+                GoogleDriveLinked = false;
+                break;
+            case "notehub":
+                NoteHubDirectoryPath = null;
+                break;
+        }
+
+        await SaveAsync();
     }
 
     private async Task LoadAsync()
@@ -140,14 +237,14 @@ public partial class SettingsPageViewModel : ViewModelBase
             BoxBackgroundColor = BoxBackgroundColorHex ?? "#1C2235",
             RecentAccentColors = RecentAccentColors.Select(c => $"#{c.R:X2}{c.G:X2}{c.B:X2}").ToList(),
             RecentBoxBackgroundColors = RecentBoxBackgroundColors.Select(c => $"#{c.R:X2}{c.G:X2}{c.B:X2}").ToList(),
-            // Box Customization
             BoxHeaderHeight = BoxHeaderHeight,
             ShowBoxHeader = ShowBoxHeader,
             BoxCornerRadius = BoxCornerRadius,
             BoxIconSize = BoxIconSize,
             ShowShortcutLabels = ShowShortcutLabels,
             BoxContentPadding = BoxContentPadding,
-            BoxContentVerticalPadding = BoxContentVerticalPadding
+            BoxContentVerticalPadding = BoxContentVerticalPadding,
+            NoteHubDirectoryPath = string.IsNullOrWhiteSpace(NoteHubDirectoryPath) ? null : NoteHubDirectoryPath.Trim()
         };
 
         await AppServices.SettingsService.SaveAsync(model);
@@ -171,18 +268,20 @@ public partial class SettingsPageViewModel : ViewModelBase
         OneDriveLinked = settings.OneDriveLinked;
         GoogleDriveLinked = settings.GoogleDriveLinked;
         BoxesTransparencyPercent = settings.BoxesTransparencyPercent;
+
         if (!string.IsNullOrWhiteSpace(settings.AccentHex) && Color.TryParse(settings.AccentHex, out var accentColor))
         {
             SelectedAccentColor = accentColor;
             AccentService.ApplyAccent(accentColor);
         }
+
         BoxBackgroundColorHex = settings.BoxBackgroundColor ?? "#1C2235";
         if (Color.TryParse(BoxBackgroundColorHex, out var color))
         {
             SelectedBoxBackgroundColor = color;
         }
 
-        // Load recently used colors
+        // Load recent colors
         RecentAccentColors.Clear();
         if (settings.RecentAccentColors != null)
         {
@@ -207,7 +306,7 @@ public partial class SettingsPageViewModel : ViewModelBase
             }
         }
 
-        // Box Customization
+        // Box customization
         BoxHeaderHeight = settings.BoxHeaderHeight;
         ShowBoxHeader = settings.ShowBoxHeader;
         BoxCornerRadius = settings.BoxCornerRadius;
@@ -215,9 +314,10 @@ public partial class SettingsPageViewModel : ViewModelBase
         ShowShortcutLabels = settings.ShowShortcutLabels;
         BoxContentPadding = settings.BoxContentPadding;
         BoxContentVerticalPadding = settings.BoxContentVerticalPadding;
+        NoteHubDirectoryPath = settings.NoteHubDirectoryPath;
     }
 
-    // Auto-save box customization settings when they change
+    // Auto-save box customization when changed
     partial void OnBoxHeaderHeightChanged(int value) => _ = SaveBoxCustomizationAsync();
     partial void OnShowBoxHeaderChanged(bool value) => _ = SaveBoxCustomizationAsync();
     partial void OnBoxCornerRadiusChanged(int value) => _ = SaveBoxCustomizationAsync();
@@ -241,11 +341,9 @@ public partial class SettingsPageViewModel : ViewModelBase
 
     private async Task ResetDataAsync()
     {
-        var confirmed = await DialogService.ShowConfirmationAsync("This will delete all Boxes saved data and restart the app. Continue?");
-        if (!confirmed)
-        {
-            return;
-        }
+        var confirmed = await DialogService.ShowConfirmationAsync(
+            "This will delete all Boxes saved data and restart the app. Continue?");
+        if (!confirmed) return;
 
         await AppServices.DataMaintenanceService.ResetAllAsync();
 
@@ -268,16 +366,16 @@ public partial class SettingsPageViewModel : ViewModelBase
 
     private void OpenAccentColorPickerPopup()
     {
-        _originalAccentColor = SelectedAccentColor;
+        OriginalAccentColor = SelectedAccentColor;
         IsAccentColorPickerPopupOpen = true;
     }
 
     private void CloseAccentColorPickerPopup()
     {
-        if (_originalAccentColor.HasValue)
+        if (OriginalAccentColor.HasValue)
         {
-            SelectedAccentColor = _originalAccentColor.Value;
-            AccentService.ApplyAccent(_originalAccentColor.Value);
+            SelectedAccentColor = OriginalAccentColor.Value;
+            AccentService.ApplyAccent(OriginalAccentColor.Value);
         }
         IsAccentColorPickerPopupOpen = false;
     }
@@ -286,11 +384,13 @@ public partial class SettingsPageViewModel : ViewModelBase
     {
         AccentService.ApplyAccent(SelectedAccentColor);
         AddToRecentAccentColors(SelectedAccentColor);
+
         var current = await AppServices.SettingsService.GetAsync();
         current.AccentHex = $"#{SelectedAccentColor.R:X2}{SelectedAccentColor.G:X2}{SelectedAccentColor.B:X2}";
         current.RecentAccentColors = RecentAccentColors.Select(c => $"#{c.R:X2}{c.G:X2}{c.B:X2}").ToList();
         await AppServices.SettingsService.SaveAsync(current);
-        _originalAccentColor = null;
+
+        OriginalAccentColor = null;
         IsAccentColorPickerPopupOpen = false;
     }
 
@@ -304,17 +404,14 @@ public partial class SettingsPageViewModel : ViewModelBase
 
     private void AddToRecentAccentColors(Color color)
     {
-        // Remove if already exists
         var existing = RecentAccentColors.FirstOrDefault(c => c.R == color.R && c.G == color.G && c.B == color.B);
         if (existing != default)
         {
             RecentAccentColors.Remove(existing);
         }
-        
-        // Add to beginning
+
         RecentAccentColors.Insert(0, color);
-        
-        // Keep only 5 most recent
+
         while (RecentAccentColors.Count > 5)
         {
             RecentAccentColors.RemoveAt(RecentAccentColors.Count - 1);
@@ -343,8 +440,25 @@ public partial class SettingsPageViewModel : ViewModelBase
         var ok = DesktopIntegrationService.CreateShowBurstStartMenuShortcut();
         var message = ok
             ? "Shortcut created in Start Menu → Programs. You can pin it to the taskbar."
-            : "Failed to create shortcut. Try running the app with sufficient permissions.";
+            : "Failed to create shortcut. Try running with sufficient permissions.";
         await DialogService.ShowConfirmationAsync(message);
+    }
+
+    private async Task BrowseNoteHubPathAsync()
+    {
+        var window = AppServices.MainWindowOwner;
+        if (window == null) return;
+
+        var folders = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Select NoteHub directory",
+            AllowMultiple = false
+        });
+
+        if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } path)
+        {
+            NoteHubDirectoryPath = path;
+        }
     }
 
     partial void OnSelectedBoxBackgroundColorChanged(Color value)
@@ -354,17 +468,18 @@ public partial class SettingsPageViewModel : ViewModelBase
 
     partial void OnSelectedAccentColorChanged(Color value)
     {
-        // Preview accent color changes in real-time
         AccentService.ApplyAccent(value);
     }
 
     private async void ApplyBoxBackgroundColor()
     {
         AddToRecentBoxBackgroundColors(SelectedBoxBackgroundColor);
+
         var current = await AppServices.SettingsService.GetAsync();
         current.BoxBackgroundColor = BoxBackgroundColorHex ?? "#1C2235";
         current.RecentBoxBackgroundColors = RecentBoxBackgroundColors.Select(c => $"#{c.R:X2}{c.G:X2}{c.B:X2}").ToList();
         await AppServices.SettingsService.SaveAsync(current);
+
         IsColorPickerPopupOpen = false;
     }
 
@@ -378,17 +493,14 @@ public partial class SettingsPageViewModel : ViewModelBase
 
     private void AddToRecentBoxBackgroundColors(Color color)
     {
-        // Remove if already exists
         var existing = RecentBoxBackgroundColors.FirstOrDefault(c => c.R == color.R && c.G == color.G && c.B == color.B);
         if (existing != default)
         {
             RecentBoxBackgroundColors.Remove(existing);
         }
-        
-        // Add to beginning
+
         RecentBoxBackgroundColors.Insert(0, color);
-        
-        // Keep only 5 most recent
+
         while (RecentBoxBackgroundColors.Count > 5)
         {
             RecentBoxBackgroundColors.RemoveAt(RecentBoxBackgroundColors.Count - 1);
@@ -407,9 +519,9 @@ public partial class SettingsPageViewModel : ViewModelBase
     {
         BoxBackgroundColorHex = "#1C2235";
         SelectedBoxBackgroundColor = Color.Parse("#1C2235");
+
         var current = await AppServices.SettingsService.GetAsync();
         current.BoxBackgroundColor = "#1C2235";
         await AppServices.SettingsService.SaveAsync(current);
     }
 }
-

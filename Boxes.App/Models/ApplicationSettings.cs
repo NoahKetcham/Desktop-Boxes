@@ -24,5 +24,8 @@ public class ApplicationSettings
     public bool ShowShortcutLabels { get; set; } = true;
     public int BoxContentPadding { get; set; } = 12;
     public int BoxContentVerticalPadding { get; set; } = 12;
+
+    // NoteHub
+    public string? NoteHubDirectoryPath { get; set; }
 }
 

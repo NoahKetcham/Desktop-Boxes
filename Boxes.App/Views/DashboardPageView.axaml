@@ -191,6 +191,69 @@
                 </ListBox>
             </StackPanel>
 
+            <StackPanel Spacing="24" Margin="0,32,0,0">
+                <TextBlock Text="Notepads" FontSize="18" FontWeight="SemiBold"/>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Button Content="New Notepad" Classes="btn-primary" Command="{Binding NewBoxCommand}"
+                            ToolTip.Tip="Create a new notepad (opens Create dialog)"/>
+                    <Button Content="Delete" Classes="btn-danger" Command="{Binding DeleteNotepadCommand}" CommandParameter="{Binding SelectedNotepad}"/>
+                </StackPanel>
+
+                <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="20"
+                        IsVisible="{Binding Notepads.Count, Converter={StaticResource IntIsZeroToBoolConverter}}">
+                    <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="No notepads yet" FontSize="18" FontWeight="SemiBold"/>
+                        <TextBlock Text="Create a notepad to take quick markdown notes on your desktop." Classes="subtitle"/>
+                        <Button Content="Create a Notepad" Classes="btn-primary" Command="{Binding NewBoxCommand}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <ListBox ItemsSource="{Binding Notepads}" SelectedItem="{Binding SelectedNotepad, Mode=TwoWay}" BorderThickness="0" Background="Transparent">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:NotepadSummaryViewModel">
+                            <Border Classes="card-row"
+                                    Background="{StaticResource SurfaceElevatedBrush}"
+                                    CornerRadius="{StaticResource RadiusL}"
+                                    Margin="0,0,0,10"
+                                    Padding="16">
+                                <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="16"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                        <Button Content="Open" Classes="btn-primary"
+                                                Command="{Binding DataContext.OpenNotepadCommand, ElementName=DashboardView}" CommandParameter="{Binding}"
+                                                ToolTip.Tip="Open notepad"/>
+                                        <Button Content="Delete" Classes="btn-danger"
+                                                Command="{Binding DataContext.DeleteNotepadCommand, ElementName=DashboardView}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="Delete notepad"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </StackPanel>
+
+            <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16">
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="NoteHub" FontSize="18" FontWeight="SemiBold"/>
+                            <TextBlock Text="Notes with folder navigation. Choose storage location in Settings." Classes="subtitle"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Button Content="Open NoteHub" Classes="btn-primary" Command="{Binding OpenNoteHubCommand}"
+                                    ToolTip.Tip="Open NoteHub" AutomationProperties.Name="Open NoteHub"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
             <Border Classes="card-row" Background="{StaticResource SurfaceElevatedBrush}" CornerRadius="{StaticResource RadiusL}" Padding="16">
                 <StackPanel Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">

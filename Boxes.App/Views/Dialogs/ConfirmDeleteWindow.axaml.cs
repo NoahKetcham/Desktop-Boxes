@@ -6,6 +6,11 @@ namespace Boxes.App.Views.Dialogs;
 
 public partial class ConfirmDeleteWindow : Window
 {
+    public ConfirmDeleteWindow()
+        : this("")
+    {
+    }
+
     public ConfirmDeleteWindow(string boxName)
     {
         InitializeComponent();

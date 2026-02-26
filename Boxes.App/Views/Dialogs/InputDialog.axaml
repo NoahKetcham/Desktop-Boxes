@@ -1,0 +1,28 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Boxes.App.ViewModels"
+        x:Class="Boxes.App.Views.Dialogs.InputDialog"
+        x:DataType="vm:InputDialogViewModel"
+        Width="380"
+        Height="180"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Border Padding="24" Background="{StaticResource SurfaceBrush}">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="16">
+            <StackPanel Spacing="4">
+                <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding Prompt}" Classes="subtitle" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <TextBox Grid.Row="1" Watermark="{Binding Watermark}" Text="{Binding Value, Mode=TwoWay}"
+                     VerticalAlignment="Center"/>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <Button Content="Cancel" Classes="btn-subtle" Command="{Binding CancelCommand}"/>
+                <Button Content="{Binding ConfirmButtonText}" Classes="btn-primary" Command="{Binding ConfirmCommand}"
+                        IsEnabled="{Binding CanConfirm}"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

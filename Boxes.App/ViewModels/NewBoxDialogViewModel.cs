@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Platform.Storage;
 using Boxes.App.Models;
 using CommunityToolkit.Mvvm.Input;
 
@@ -8,6 +9,23 @@ namespace Boxes.App.ViewModels;
 public partial class NewBoxDialogViewModel : ViewModelBase
 {
     private Window? _window;
+
+    private CreateItemType _selectedType = CreateItemType.Box;
+    public CreateItemType SelectedType
+    {
+        get => _selectedType;
+        set
+        {
+            if (SetProperty(ref _selectedType, value))
+            {
+                UpdateCanCreate();
+                OnPropertyChanged(nameof(CreateButtonText));
+                OnPropertyChanged(nameof(CreateButtonToolTip));
+                OnPropertyChanged(nameof(IsBoxSelected));
+                OnPropertyChanged(nameof(IsNotepadSelected));
+            }
+        }
+    }
 
     private string _name = string.Empty;
     public string Name
@@ -43,6 +61,11 @@ public partial class NewBoxDialogViewModel : ViewModelBase
         private set => SetProperty(ref _canCreate, value);
     }
 
+    public string CreateButtonText => SelectedType == CreateItemType.Notepad ? "Create Notepad" : "Create Box";
+    public string CreateButtonToolTip => SelectedType == CreateItemType.Notepad ? "Create a new notepad" : "Create the new box";
+    public bool IsBoxSelected => SelectedType == CreateItemType.Box;
+    public bool IsNotepadSelected => SelectedType == CreateItemType.Notepad;
+
     public IAsyncRelayCommand BrowseCommand { get; }
     public IRelayCommand CancelCommand { get; }
     public IRelayCommand CreateCommand { get; }
@@ -66,15 +89,15 @@ public partial class NewBoxDialogViewModel : ViewModelBase
             return;
         }
 
-        var dialog = new OpenFolderDialog
+        var folders = await _window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Select target folder"
-        };
+            Title = "Select target folder",
+            AllowMultiple = false
+        });
 
-        var result = await dialog.ShowAsync(_window);
-        if (!string.IsNullOrWhiteSpace(result))
+        if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } path)
         {
-            TargetPath = result;
+            TargetPath = path;
         }
     }
 
@@ -85,6 +108,16 @@ public partial class NewBoxDialogViewModel : ViewModelBase
 
     private void Create()
     {
+        if (SelectedType == CreateItemType.Notepad)
+        {
+            _window?.Close(new CreateItemResult
+            {
+                Type = CreateItemType.Notepad,
+                Notepad = new Notepad { Name = Name.Trim().Length > 0 ? Name.Trim() : "Notepad" }
+            });
+            return;
+        }
+
         var box = new DesktopBox
         {
             Name = Name.Trim(),
@@ -92,12 +125,12 @@ public partial class NewBoxDialogViewModel : ViewModelBase
             TargetPath = TargetPath.Trim()
         };
 
-        _window?.Close(box);
+        _window?.Close(new CreateItemResult { Type = CreateItemType.Box, Box = box });
     }
 
     private void UpdateCanCreate()
     {
-        var newValue = !string.IsNullOrWhiteSpace(Name);
+        var newValue = SelectedType == CreateItemType.Notepad || !string.IsNullOrWhiteSpace(Name);
         if (CanCreate != newValue)
         {
             CanCreate = newValue;

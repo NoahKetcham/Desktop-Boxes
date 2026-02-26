@@ -15,6 +15,7 @@ namespace Boxes.App.ViewModels;
 public partial class DashboardPageViewModel : ViewModelBase
 {
     public ObservableCollection<BoxSummaryViewModel> Boxes { get; } = new();
+    public ObservableCollection<NotepadSummaryViewModel> Notepads { get; } = new();
     public ObservableCollection<DesktopFileViewModel> ScannedFiles { get; } = new();
     public ObservableCollection<DesktopFileViewModel> CurrentScannedItems { get; } = new();
     public ObservableCollection<DesktopFileViewModel> ScanNavigationStack { get; } = new();
@@ -27,6 +28,9 @@ public partial class DashboardPageViewModel : ViewModelBase
 
     [ObservableProperty]
     private BoxSummaryViewModel? selectedBox;
+
+    [ObservableProperty]
+    private NotepadSummaryViewModel? selectedNotepad;
 
     [ObservableProperty]
     private bool hasScannedFiles;
@@ -66,6 +70,9 @@ public partial class DashboardPageViewModel : ViewModelBase
     public IRelayCommand<BoxSummaryViewModel?> ToggleTemplatesForBoxCommand { get; }
     public IAsyncRelayCommand<BoxTemplateOptionViewModel?> SelectTemplateForSelectedBoxCommand { get; }
     public IRelayCommand<BoxTemplateOptionViewModel?> ShowTemplateInfoCommand { get; }
+    public IAsyncRelayCommand<NotepadSummaryViewModel?> OpenNotepadCommand { get; }
+    public IAsyncRelayCommand<NotepadSummaryViewModel?> DeleteNotepadCommand { get; }
+    public IAsyncRelayCommand OpenNoteHubCommand { get; }
 
     public DashboardPageViewModel()
     {
@@ -87,6 +94,9 @@ public partial class DashboardPageViewModel : ViewModelBase
         ToggleTemplatesForBoxCommand = new RelayCommand<BoxSummaryViewModel?>(ToggleTemplatesForBox);
         SelectTemplateForSelectedBoxCommand = new AsyncRelayCommand<BoxTemplateOptionViewModel?>(SelectTemplateForSelectedBoxAsync);
         ShowTemplateInfoCommand = new RelayCommand<BoxTemplateOptionViewModel?>(ShowTemplateInfo);
+        OpenNotepadCommand = new AsyncRelayCommand<NotepadSummaryViewModel?>(OpenNotepadAsync);
+        DeleteNotepadCommand = new AsyncRelayCommand<NotepadSummaryViewModel?>(DeleteNotepadAsync, param => param != null);
+        OpenNoteHubCommand = new AsyncRelayCommand(OpenNoteHubAsync);
 
         ScannedFiles.CollectionChanged += OnScannedFilesCollectionChanged;
 
@@ -110,6 +120,11 @@ public partial class DashboardPageViewModel : ViewModelBase
                 DeleteBoxCommand.NotifyCanExecuteChanged();
             });
         }
+    }
+
+    partial void OnSelectedNotepadChanged(NotepadSummaryViewModel? value)
+    {
+        DeleteNotepadCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnIsDesktopCleanChanged(bool value)
@@ -176,6 +191,7 @@ public partial class DashboardPageViewModel : ViewModelBase
     {
         await AppServices.BoxService.InitializeAsync().ConfigureAwait(false);
         var boxes = await AppServices.BoxService.GetBoxesAsync();
+        var notepads = await AppServices.NotepadCatalogService.GetNotepadsAsync();
 
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -184,30 +200,104 @@ public partial class DashboardPageViewModel : ViewModelBase
             {
                 Boxes.Add(BoxSummaryViewModel.FromModel(box));
             }
-
             SelectedBox = Boxes.FirstOrDefault();
+
+            Notepads.Clear();
+            foreach (var notepad in notepads)
+            {
+                Notepads.Add(NotepadSummaryViewModel.FromModel(notepad));
+            }
+            SelectedNotepad = Notepads.FirstOrDefault();
         });
 
         foreach (var box in boxes)
         {
             await AppServices.BoxWindowManager.ShowAsync(box);
         }
+        foreach (var notepad in notepads)
+        {
+            await AppServices.WidgetWindowManager.ShowNotepadAsync(notepad);
+        }
     }
 
 
     private async Task CreateNewBoxAsync()
     {
-        var model = await DialogService.ShowNewBoxDialogAsync().ConfigureAwait(false);
-        if (model is null)
+        var result = await DialogService.ShowNewBoxDialogAsync().ConfigureAwait(false);
+        if (result is null)
         {
             return;
         }
 
-        var persisted = await AppServices.BoxService.AddOrUpdateAsync(model);
-        await AppServices.BoxWindowManager.ShowAsync(persisted);
-        var viewModel = BoxSummaryViewModel.FromModel(persisted);
-        Boxes.Add(viewModel);
-        SelectedBox = viewModel;
+        if (result.Type == CreateItemType.Notepad && result.Notepad is not null)
+        {
+            var persisted = await AppServices.NotepadCatalogService.AddOrUpdateAsync(result.Notepad).ConfigureAwait(false);
+            await AppServices.WidgetWindowManager.ShowNotepadAsync(persisted).ConfigureAwait(false);
+            var viewModel = NotepadSummaryViewModel.FromModel(persisted);
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                Notepads.Add(viewModel);
+                SelectedNotepad = viewModel;
+            });
+            return;
+        }
+
+        if (result.Box is null)
+        {
+            return;
+        }
+
+        var persistedBox = await AppServices.BoxService.AddOrUpdateAsync(result.Box);
+        await AppServices.BoxWindowManager.ShowAsync(persistedBox);
+        var boxViewModel = BoxSummaryViewModel.FromModel(persistedBox);
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            Boxes.Add(boxViewModel);
+            SelectedBox = boxViewModel;
+        });
+    }
+
+    private async Task OpenNotepadAsync(NotepadSummaryViewModel? viewModel)
+    {
+        var target = viewModel ?? SelectedNotepad;
+        if (target is null)
+        {
+            return;
+        }
+
+        var latest = await AppServices.NotepadCatalogService.GetNotepadAsync(target.Id).ConfigureAwait(false);
+        if (latest == null)
+        {
+            latest = target.ToModel();
+        }
+
+        await AppServices.WidgetWindowManager.ShowNotepadAsync(latest).ConfigureAwait(false);
+    }
+
+    private async Task DeleteNotepadAsync(NotepadSummaryViewModel? viewModel)
+    {
+        var target = viewModel ?? SelectedNotepad;
+        if (target == null)
+        {
+            return;
+        }
+
+        var confirmed = await DialogService.ShowDeleteConfirmationAsync(target.Name);
+        if (!confirmed)
+        {
+            return;
+        }
+
+        var toRemove = target;
+        await AppServices.NotepadCatalogService.DeleteAsync(toRemove.Id);
+        await AppServices.WidgetWindowManager.CloseNotepadAsync(toRemove.Id);
+        Notepads.Remove(toRemove);
+        SelectedNotepad = Notepads.FirstOrDefault();
+    }
+
+    private async Task OpenNoteHubAsync()
+    {
+        await AppServices.WidgetWindowManager.ShowNoteHubAsync().ConfigureAwait(false);
     }
 
     private async Task OpenBoxAsync(BoxSummaryViewModel? viewModel)

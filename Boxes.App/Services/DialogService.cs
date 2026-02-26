@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Boxes.App.Models;
+using Boxes.App.ViewModels;
 using Boxes.App.Views.Dialogs;
 
 namespace Boxes.App.Services;
@@ -16,13 +17,13 @@ public static class DialogService
         _mainWindow = mainWindow;
     }
 
-    public static Task<DesktopBox?> ShowNewBoxDialogAsync()
+    public static Task<CreateItemResult?> ShowNewBoxDialogAsync()
     {
         EnsureInitialized();
         return DispatchAsync(async () =>
         {
             var dialog = new NewBoxWindow();
-            return await dialog.ShowDialog<DesktopBox?>(_mainWindow!);
+            return await dialog.ShowDialog<CreateItemResult?>(_mainWindow!);
         });
     }
 
@@ -55,6 +56,24 @@ public static class DialogService
         return DispatchAsync(async () =>
         {
             var dialog = new DesktopBuildNameDialog();
+            return await dialog.ShowDialog<string?>(_mainWindow!);
+        });
+    }
+
+    public static Task<string?> ShowInputDialogAsync(string title, string prompt, string defaultValue = "", string watermark = "", string confirmButtonText = "OK")
+    {
+        EnsureInitialized();
+        return DispatchAsync(async () =>
+        {
+            var vm = new InputDialogViewModel
+            {
+                Title = title,
+                Prompt = prompt,
+                Value = defaultValue,
+                Watermark = watermark,
+                ConfirmButtonText = confirmButtonText
+            };
+            var dialog = new InputDialog { DataContext = vm };
             return await dialog.ShowDialog<string?>(_mainWindow!);
         });
     }
