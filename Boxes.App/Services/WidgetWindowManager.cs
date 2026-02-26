@@ -18,6 +18,10 @@ public class WidgetWindowManager
     private readonly Dictionary<Guid, NotepadEditorWindow> _editorWindows = new();
     private readonly Dictionary<Guid, NotepadWindowViewModel> _viewModels = new();
 
+    private NoteHubPreviewWindow? _noteHubPreview;
+    private NoteHubEditorWindow? _noteHubEditor;
+    private NoteHubWindowViewModel? _noteHubViewModel;
+
     public async Task ShowNotepadAsync(Notepad notepad)
     {
         var id = notepad.Id;
@@ -209,6 +213,155 @@ public class WidgetWindowManager
             };
 
             _editorWindows[notepadId] = window;
+            window.Show();
+            window.Activate();
+        });
+    }
+
+    public async Task ShowNoteHubAsync(string? initialPath = null)
+    {
+        if (_noteHubPreview != null)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _noteHubPreview.Show();
+                _noteHubPreview.Activate();
+                if (!string.IsNullOrEmpty(initialPath))
+                {
+                    _noteHubViewModel!.CurrentRelativePath = initialPath;
+                }
+            });
+            return;
+        }
+
+        var state = await AppServices.WidgetStateService.GetAsync("notehubPreview").ConfigureAwait(false);
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            _noteHubViewModel = new NoteHubWindowViewModel(initialPath);
+
+            var window = new NoteHubPreviewWindow
+            {
+                DataContext = _noteHubViewModel
+            };
+
+            if (state is not null)
+            {
+                if (state.Width > 0 && state.Height > 0)
+                {
+                    window.Width = state.Width;
+                    window.Height = state.Height;
+                }
+                if (!double.IsNaN(state.X) && !double.IsNaN(state.Y))
+                {
+                    window.Position = new PixelPoint((int)state.X, (int)state.Y);
+                }
+            }
+
+            _noteHubViewModel.RequestClose += OnNoteHubRequestClose;
+            _noteHubViewModel.RequestOpenEditor += OnNoteHubRequestOpenEditor;
+            _noteHubViewModel.RequestCloseEditor += OnNoteHubRequestCloseEditor;
+
+            window.Closed += async (_, _) =>
+            {
+                _noteHubViewModel.RequestClose -= OnNoteHubRequestClose;
+                _noteHubViewModel.RequestOpenEditor -= OnNoteHubRequestOpenEditor;
+                _noteHubViewModel.RequestCloseEditor -= OnNoteHubRequestCloseEditor;
+                _noteHubViewModel.SaveImmediately();
+                if (_noteHubEditor != null)
+                {
+                    _noteHubEditor.Close();
+                    _noteHubEditor = null;
+                }
+                var w = window;
+                var stateToSave = new WidgetStateData
+                {
+                    Width = w.Width,
+                    Height = w.Height,
+                    X = w.Position.X,
+                    Y = w.Position.Y
+                };
+                await AppServices.WidgetStateService.SaveAsync("notehubPreview", stateToSave).ConfigureAwait(false);
+                _noteHubPreview = null;
+                _noteHubViewModel = null;
+            };
+
+            _noteHubPreview = window;
+            window.Show();
+            window.Activate();
+        });
+    }
+
+    private void OnNoteHubRequestClose(object? sender, EventArgs e)
+    {
+        _noteHubPreview?.Close();
+    }
+
+    private void OnNoteHubRequestOpenEditor(object? sender, EventArgs e)
+    {
+        _ = ShowNoteHubEditorAsync();
+    }
+
+    private void OnNoteHubRequestCloseEditor(object? sender, EventArgs e)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            _noteHubEditor?.Close();
+        });
+    }
+
+    private async Task ShowNoteHubEditorAsync()
+    {
+        if (_noteHubViewModel == null) return;
+
+        if (_noteHubEditor != null)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _noteHubEditor.Show();
+                _noteHubEditor.Activate();
+            });
+            return;
+        }
+
+        var state = await AppServices.WidgetStateService.GetAsync("notehubEditor").ConfigureAwait(false);
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (_noteHubViewModel == null) return;
+
+            const int editorHeight = 380;
+            const int editorWidth = 600;
+
+            var window = new NoteHubEditorWindow
+            {
+                DataContext = _noteHubViewModel,
+                Width = state is not null && state.Width > 0 ? state.Width : editorWidth,
+                Height = state is not null && state.Height > 0 ? state.Height : editorHeight
+            };
+
+            var working = window.Screens?.Primary?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
+            const int margin = 16;
+            var x = working.X + (working.Width - (int)window.Width) / 2;
+            var y = working.Bottom - (int)window.Height - margin;
+            window.Position = new PixelPoint(Math.Max(working.X, x), Math.Max(working.Y, y));
+
+            window.Closed += async (_, _) =>
+            {
+                _noteHubViewModel.SaveImmediately();
+                var w = window;
+                var stateToSave = new WidgetStateData
+                {
+                    Width = w.Width,
+                    Height = w.Height,
+                    X = w.Position.X,
+                    Y = w.Position.Y
+                };
+                await AppServices.WidgetStateService.SaveAsync("notehubEditor", stateToSave).ConfigureAwait(false);
+                _noteHubEditor = null;
+            };
+
+            _noteHubEditor = window;
             window.Show();
             window.Activate();
         });

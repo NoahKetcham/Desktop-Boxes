@@ -236,7 +236,8 @@ public class SettingsService
         BoxIconSize = settings.BoxIconSize,
         ShowShortcutLabels = settings.ShowShortcutLabels,
         BoxContentPadding = settings.BoxContentPadding,
-        BoxContentVerticalPadding = settings.BoxContentVerticalPadding
+        BoxContentVerticalPadding = settings.BoxContentVerticalPadding,
+        NoteHubDirectoryPath = settings.NoteHubDirectoryPath
     };
 
     private void RaiseChanged()

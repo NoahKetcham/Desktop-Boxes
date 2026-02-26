@@ -17,6 +17,7 @@ public static class AppServices
     public static WidgetStateService WidgetStateService { get; private set; } = null!;
     public static NotepadService NotepadService { get; private set; } = null!;
     public static NotepadCatalogService NotepadCatalogService { get; private set; } = null!;
+    public static NoteHubService NoteHubService { get; private set; } = null!;
     public static ScannedFileService ScannedFileService { get; private set; } = null!;
     public static DesktopCleanupService DesktopCleanupService { get; private set; } = null!;
     public static ShellIconService ShellIconService { get; private set; } = null!;
@@ -89,6 +90,15 @@ public static class AppServices
             // #region agent log
             Program.DebugLog("AppServices.cs:Initialize:afterNotepadCatalog", "NotepadCatalogService initialized", "H2");
             // #endregion
+
+            var appSettings = SettingsService.GetAsync().GetAwaiter().GetResult();
+            var noteHubRoot = appSettings.NoteHubDirectoryPath;
+            if (string.IsNullOrWhiteSpace(noteHubRoot))
+            {
+                noteHubRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "NoteHub");
+            }
+            Directory.CreateDirectory(noteHubRoot);
+            NoteHubService = new NoteHubService(noteHubRoot);
 
             ScannedFileService = new ScannedFileService(rootDirectory);
             DesktopCleanupService = new DesktopCleanupService();

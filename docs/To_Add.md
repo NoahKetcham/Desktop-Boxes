@@ -38,29 +38,35 @@ Sizing the box reveals a secondary background image.  would be cool to reveal a 
 
 
 # TO-DO:
-- inspect and improve upon current data saving/updating functionality.
-    - (Completed 2026-02-14 - Added atomic file writes, retry logic, backup on corruption, and comprehensive error handling to SettingsService and BoxService)
 - Add feature to click and drag desktop (highlighted area) to create a new box the shape of highlighted area.
-- Implement box window templates (dashboard picker + template info + selection persistence).
-    - (Partially completed 2025-12-14 – Added Dashboard template picker UI, template info panel, and persisted `TemplateKey` placeholder; documented the expander animation approach in `docs/thatSauce/TemplateExpanderAnimation.md`.)
-- start building themes, well organized each theme in its own file probably.
-    - (Completed 2026-02-14 - Added GlassTheme.axaml and AcetateTheme.axaml with complete color palettes, spacing, shadows, and corner radii)
-- Auto start the app when the computer starts up, only boxes windows should start not settings ui.
     - Currently both boxes and settings ui start when the computer starts up.
-- Work on adaptive sizing for icons, sizing, spacing and text.
-- Enhance settings save and load functionality.
-    - (Completed 2025-12-05 – Added sidebar box settings with auto-save for name/description, click-out deselect, and inline delete replacing popup.)
-    - (Completed 2026-02-14 - Full rewrite with retry logic, atomic writes, and corruption recovery)
-- Add feature to click and drag desktop (highlighted area) to create a new box the shape of highlighted area.
-- Focus on standard boxes optimizations and improvements before taskbar boxes.
-- Add multi-monitor support.
-- Add setting toggle for removing real desktop icons from the desktop when drag the icon into a box.
 - Add Pages to the boxes.
 - Add hover effects to the boxes.
 - Add drag and drop reorganization and cascading sortingwithin boxes.
-- Complete snap trigger features.
-- remove icons from desktop when dragged into a box. - toggleable setting.
+- Center destop box title text
+- remove snap to taskbar feature.
+- add a keyboard shortcut to launch settings ui if closed.
+- improve settings UI scaling and layout.
+    - ensure elements are not cut off when window is resized.
+    - remove ugly highlight bg in dashboard.
+    - use same color/opacity settings in settings as in boxes???
+- Add debouncing to the desktop box window collapse animation (same time as animation length).
+- Menu button in desktop box window should open the box settings ui and various other options.
+    - migrate close button to menu button.
+    - add a keyboard shortcut to launch settings ui if closed.
+    menu button should exist in one place for all boxes and not dependant on header bar.  If header is hidden the menu button should still be visible.
+- Build in feature to store layouts and modes with ability to easily switch between them.
+    - game mode, work mode, etc.
+- brainstorm widgets and addons.
+- Polish NoteHub UI.
 
+
+
+
+# TO-DO LATER:
+- AI Integrations
+    - AI organizer
+    - AI note optimization
 
 # NOTES:
 - Hysteresis is good for solving the jittering issue.

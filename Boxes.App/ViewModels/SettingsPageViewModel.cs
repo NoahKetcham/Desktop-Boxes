@@ -2,8 +2,10 @@ using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using Boxes.App.Models;
 using Boxes.App.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -59,6 +61,10 @@ public partial class SettingsPageViewModel : ViewModelBase
     [ObservableProperty]
     private bool googleDriveLinked;
 
+    // NoteHub
+    [ObservableProperty]
+    private string? noteHubDirectoryPath;
+
     // Box Customization
     [ObservableProperty]
     private int boxHeaderHeight = 40;
@@ -105,6 +111,7 @@ public partial class SettingsPageViewModel : ViewModelBase
     public IAsyncRelayCommand CloseAllWindowsCommand { get; }
     public IAsyncRelayCommand ResetAccentCommand { get; }
     public IAsyncRelayCommand CreateShowBoxesShortcutCommand { get; }
+    public IAsyncRelayCommand BrowseNoteHubPathCommand { get; }
     public IAsyncRelayCommand<string> SelectCategoryCommand { get; }
     public IAsyncRelayCommand<string> ResetCategoryCommand { get; }
 
@@ -126,6 +133,7 @@ public partial class SettingsPageViewModel : ViewModelBase
         CloseAllWindowsCommand = new AsyncRelayCommand(CloseAllWindowsAsync);
         ResetAccentCommand = new AsyncRelayCommand(ResetAccentAsync);
         CreateShowBoxesShortcutCommand = new AsyncRelayCommand(CreateShowBoxesShortcutAsync);
+        BrowseNoteHubPathCommand = new AsyncRelayCommand(BrowseNoteHubPathAsync);
         SelectCategoryCommand = new AsyncRelayCommand<string>(SelectCategoryAsync);
         ResetCategoryCommand = new AsyncRelayCommand<string>(ResetCategoryAsync);
 
@@ -200,6 +208,9 @@ public partial class SettingsPageViewModel : ViewModelBase
                 OneDriveLinked = false;
                 GoogleDriveLinked = false;
                 break;
+            case "notehub":
+                NoteHubDirectoryPath = null;
+                break;
         }
 
         await SaveAsync();
@@ -232,7 +243,8 @@ public partial class SettingsPageViewModel : ViewModelBase
             BoxIconSize = BoxIconSize,
             ShowShortcutLabels = ShowShortcutLabels,
             BoxContentPadding = BoxContentPadding,
-            BoxContentVerticalPadding = BoxContentVerticalPadding
+            BoxContentVerticalPadding = BoxContentVerticalPadding,
+            NoteHubDirectoryPath = string.IsNullOrWhiteSpace(NoteHubDirectoryPath) ? null : NoteHubDirectoryPath.Trim()
         };
 
         await AppServices.SettingsService.SaveAsync(model);
@@ -302,6 +314,7 @@ public partial class SettingsPageViewModel : ViewModelBase
         ShowShortcutLabels = settings.ShowShortcutLabels;
         BoxContentPadding = settings.BoxContentPadding;
         BoxContentVerticalPadding = settings.BoxContentVerticalPadding;
+        NoteHubDirectoryPath = settings.NoteHubDirectoryPath;
     }
 
     // Auto-save box customization when changed
@@ -429,6 +442,23 @@ public partial class SettingsPageViewModel : ViewModelBase
             ? "Shortcut created in Start Menu → Programs. You can pin it to the taskbar."
             : "Failed to create shortcut. Try running with sufficient permissions.";
         await DialogService.ShowConfirmationAsync(message);
+    }
+
+    private async Task BrowseNoteHubPathAsync()
+    {
+        var window = AppServices.MainWindowOwner;
+        if (window == null) return;
+
+        var folders = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Select NoteHub directory",
+            AllowMultiple = false
+        });
+
+        if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } path)
+        {
+            NoteHubDirectoryPath = path;
+        }
     }
 
     partial void OnSelectedBoxBackgroundColorChanged(Color value)

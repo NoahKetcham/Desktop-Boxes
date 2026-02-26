@@ -56,6 +56,14 @@
                 </Button>
 
                 <Button Classes="nav-item"
+                        Command="{Binding SelectCategoryCommand}" CommandParameter="notehub">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="📝" FontSize="16"/>
+                        <TextBlock Text="NoteHub"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Classes="nav-item"
                         Command="{Binding SelectCategoryCommand}" CommandParameter="developer">
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <TextBlock Text="🔧" FontSize="16"/>
@@ -373,6 +381,28 @@
                                 <TextBlock Text="Create a shortcut to quickly show/hide boxes" Classes="setting-description"/>
                                 <Button Classes="btn-subtle" Command="{Binding CreateShowBoxesShortcutCommand}" 
                                         Content="Create Shortcut" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- NOTEHUB SECTION -->
+                <Border Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=notehub, FallbackValue=True}">
+                    <StackPanel Spacing="16">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="📝" FontSize="20"/>
+                            <TextBlock Text="NoteHub" FontWeight="SemiBold" FontSize="18"/>
+                        </StackPanel>
+
+                        <Border Classes="setting-row">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="NoteHub Directory" FontWeight="Medium"/>
+                                <TextBlock Text="Where to store your NoteHub notes. Leave empty for Documents/NoteHub" Classes="setting-description"/>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding NoteHubDirectoryPath, Mode=TwoWay}" 
+                                             Watermark="Documents/NoteHub (default)" Margin="0,0,8,0"/>
+                                    <Button Grid.Column="1" Classes="btn-subtle" Command="{Binding BrowseNoteHubPathCommand}" Content="Browse"/>
+                                </Grid>
                             </StackPanel>
                         </Border>
                     </StackPanel>

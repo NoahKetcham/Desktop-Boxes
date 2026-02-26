@@ -72,6 +72,7 @@ public partial class DashboardPageViewModel : ViewModelBase
     public IRelayCommand<BoxTemplateOptionViewModel?> ShowTemplateInfoCommand { get; }
     public IAsyncRelayCommand<NotepadSummaryViewModel?> OpenNotepadCommand { get; }
     public IAsyncRelayCommand<NotepadSummaryViewModel?> DeleteNotepadCommand { get; }
+    public IAsyncRelayCommand OpenNoteHubCommand { get; }
 
     public DashboardPageViewModel()
     {
@@ -95,6 +96,7 @@ public partial class DashboardPageViewModel : ViewModelBase
         ShowTemplateInfoCommand = new RelayCommand<BoxTemplateOptionViewModel?>(ShowTemplateInfo);
         OpenNotepadCommand = new AsyncRelayCommand<NotepadSummaryViewModel?>(OpenNotepadAsync);
         DeleteNotepadCommand = new AsyncRelayCommand<NotepadSummaryViewModel?>(DeleteNotepadAsync, param => param != null);
+        OpenNoteHubCommand = new AsyncRelayCommand(OpenNoteHubAsync);
 
         ScannedFiles.CollectionChanged += OnScannedFilesCollectionChanged;
 
@@ -291,6 +293,11 @@ public partial class DashboardPageViewModel : ViewModelBase
         await AppServices.WidgetWindowManager.CloseNotepadAsync(toRemove.Id);
         Notepads.Remove(toRemove);
         SelectedNotepad = Notepads.FirstOrDefault();
+    }
+
+    private async Task OpenNoteHubAsync()
+    {
+        await AppServices.WidgetWindowManager.ShowNoteHubAsync().ConfigureAwait(false);
     }
 
     private async Task OpenBoxAsync(BoxSummaryViewModel? viewModel)
