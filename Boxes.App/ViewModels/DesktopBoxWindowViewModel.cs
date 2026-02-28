@@ -7,6 +7,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Specialized;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Boxes.App.Models;
@@ -29,6 +31,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
     public IRelayCommand NavigateUpCommand { get; }
     public IRelayCommand NavigateHomeCommand { get; }
     public IRelayCommand ToggleSnapCommand { get; }
+    public IRelayCommand OpenSettingsCommand { get; }
 
     public string CurrentPath => NavigationStack.Count == 0
         ? "Desktop"
@@ -91,6 +94,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         NavigateUpCommand = new RelayCommand(NavigateUp, () => NavigationStack.Count > 0);
         NavigateHomeCommand = new RelayCommand(NavigateHome, () => NavigationStack.Count > 0);
         ToggleSnapCommand = new RelayCommand(ToggleSnap);
+        OpenSettingsCommand = new RelayCommand(OpenSettings);
 
         ApplySnapState(model.IsSnappedToTaskbar, model.IsCollapsed, model.ExpandedHeight, model.ExpandedPositionX, model.ExpandedPositionY, suppressSync: true);
         
@@ -112,6 +116,42 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         else
         {
             RequestUnsnapFromTaskbar?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private void OpenSettings()
+    {
+        // Get the application lifetime to access/create the main window
+        if (Avalonia.Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            return;
+        }
+
+        var mainWindow = desktop.MainWindow;
+        
+        // If main window was closed or doesn't exist, create a new one
+        if (mainWindow == null || !mainWindow.IsVisible)
+        {
+            mainWindow = new Views.MainWindow
+            {
+                DataContext = new MainWindowViewModel()
+            };
+            desktop.MainWindow = mainWindow;
+            AppServices.MainWindowOwner = mainWindow;
+        }
+
+        // Show and activate the main window
+        mainWindow.Show();
+        mainWindow.Activate();
+
+        // Navigate to Settings page
+        if (mainWindow.DataContext is MainWindowViewModel mainVm)
+        {
+            var settingsNav = mainVm.NavigationItems.FirstOrDefault(n => n.Content is SettingsPageViewModel);
+            if (settingsNav != null)
+            {
+                mainVm.SelectedNavigationItem = settingsNav;
+            }
         }
     }
 

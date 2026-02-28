@@ -92,6 +92,8 @@
                 PointerPressed="Header_PointerPressed" PointerMoved="Header_PointerMoved" PointerReleased="Header_PointerReleased">
             <Border.ContextMenu>
                 <ContextMenu>
+                    <MenuItem Header="Settings" Command="{Binding OpenSettingsCommand}"/>
+                    <Separator/>
                     <MenuItem Header="Close Window" Command="{Binding CloseCommand}"/>
                 </ContextMenu>
             </Border.ContextMenu>
