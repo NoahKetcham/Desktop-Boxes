@@ -28,6 +28,7 @@
                 <SolidColorBrush Color="Transparent"/>
             </conv:BooleanToBrushConverter.FalseBrush>
         </conv:BooleanToBrushConverter>
+        <conv:BoolToGridLengthConverter x:Key="BoolToGridLength" TrueValue="340" FalseValue="0"/>
     </Window.Resources>
 
     <Window.Styles>
@@ -66,7 +67,12 @@
         </Style>
     </Window.Styles>
 
-    <Grid ColumnDefinitions="230,*,340" RowDefinitions="*" ColumnSpacing="20" Margin="20">
+    <Grid RowDefinitions="*" ColumnSpacing="20" Margin="20">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="230"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="{Binding IsRightSidebarVisible, Converter={StaticResource BoolToGridLength}}"/>
+        </Grid.ColumnDefinitions>
         <!-- Navigation Sidebar -->
         <Border Grid.Column="0"
                 Background="{StaticResource NavBackgroundBrush}"
@@ -145,8 +151,9 @@
             <ContentControl Content="{Binding CurrentPage}"/>
         </Border>
 
-        <!-- Right Sidebar -->
+        <!-- Right Sidebar (hidden on Settings page) -->
         <Border Grid.Column="2" 
+                IsVisible="{Binding IsRightSidebarVisible}"
                 Background="{StaticResource AdvertisingBackgroundBrush}" 
                 Padding="24" 
                 CornerRadius="{StaticResource RadiusL}"

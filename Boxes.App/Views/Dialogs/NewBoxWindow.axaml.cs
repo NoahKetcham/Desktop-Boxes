@@ -1,14 +1,22 @@
 using System;
 using Avalonia.Controls;
+using Boxes.App.Models;
 using Boxes.App.ViewModels;
 
 namespace Boxes.App.Views.Dialogs;
 
 public partial class NewBoxWindow : Window
 {
-    public NewBoxWindow()
+    public NewBoxWindow() : this(CreateItemType.Box) { }
+
+    public NewBoxWindow(CreateItemType defaultType)
     {
         InitializeComponent();
+        Title = defaultType == CreateItemType.Notepad ? "Create Notepad" : "Create Box";
+        if (DataContext is NewBoxDialogViewModel vm)
+        {
+            vm.SelectedType = defaultType;
+        }
         AttachContext();
     }
 

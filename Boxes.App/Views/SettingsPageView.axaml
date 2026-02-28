@@ -3,7 +3,8 @@
              xmlns:vm="using:Boxes.App.ViewModels"
              xmlns:controls="using:Avalonia.Controls"
              x:Class="Boxes.App.Views.SettingsPageView"
-             x:DataType="vm:SettingsPageViewModel">
+             x:DataType="vm:SettingsPageViewModel"
+             x:Name="SettingsView">
 
     <Design.DataContext>
         <vm:SettingsPageViewModel/>
@@ -23,7 +24,7 @@
                          Margin="0,0,0,16"/>
 
                 <!-- Navigation Items -->
-                <Button Classes="nav-item" Classes.active="{Binding SelectedCategory, Converter={x:Static StringConverters.IsNotNullOrEmpty}, ConverterParameter=appearance}"
+                <Button x:Name="NavAppearance" Classes="nav-item"
                         Command="{Binding SelectCategoryCommand}" CommandParameter="appearance">
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <TextBlock Text="🎨" FontSize="16"/>
@@ -31,7 +32,7 @@
                     </StackPanel>
                 </Button>
 
-                <Button Classes="nav-item"
+                <Button x:Name="NavBehavior" Classes="nav-item"
                         Command="{Binding SelectCategoryCommand}" CommandParameter="behavior">
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <TextBlock Text="⚡" FontSize="16"/>
@@ -39,7 +40,7 @@
                     </StackPanel>
                 </Button>
 
-                <Button Classes="nav-item"
+                <Button x:Name="NavCustomization" Classes="nav-item"
                         Command="{Binding SelectCategoryCommand}" CommandParameter="customization">
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <TextBlock Text="📦" FontSize="16"/>
@@ -47,7 +48,7 @@
                     </StackPanel>
                 </Button>
 
-                <Button Classes="nav-item"
+                <Button x:Name="NavIntegrations" Classes="nav-item"
                         Command="{Binding SelectCategoryCommand}" CommandParameter="integrations">
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <TextBlock Text="🔗" FontSize="16"/>
@@ -55,7 +56,7 @@
                     </StackPanel>
                 </Button>
 
-                <Button Classes="nav-item"
+                <Button x:Name="NavNoteHub" Classes="nav-item"
                         Command="{Binding SelectCategoryCommand}" CommandParameter="notehub">
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <TextBlock Text="📝" FontSize="16"/>
@@ -63,7 +64,7 @@
                     </StackPanel>
                 </Button>
 
-                <Button Classes="nav-item"
+                <Button x:Name="NavDeveloper" Classes="nav-item"
                         Command="{Binding SelectCategoryCommand}" CommandParameter="developer">
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <TextBlock Text="🔧" FontSize="16"/>
@@ -91,8 +92,8 @@
         </Border>
 
         <!-- Main Content Area -->
-        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="24">
-            <StackPanel Spacing="16" MaxWidth="800">
+        <ScrollViewer x:Name="ContentScrollViewer" Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="24">
+            <StackPanel Spacing="16" MaxWidth="800" Margin="0,0,0,80">
                 
                 <!-- Header -->
                 <StackPanel Spacing="4" Margin="0,0,0,8">
@@ -101,7 +102,7 @@
                 </StackPanel>
 
                 <!-- APPEARANCE SECTION -->
-                <Border Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=appearance, FallbackValue=True}">
+                <Border x:Name="AppearanceSection" Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=appearance, FallbackValue=True}">
                     <StackPanel Spacing="16">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <TextBlock Text="🎨" FontSize="20"/>
@@ -187,7 +188,7 @@
                 </Border>
 
                 <!-- BEHAVIOR SECTION -->
-                <Border Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=behavior, FallbackValue=True}">
+                <Border x:Name="BehaviorSection" Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=behavior, FallbackValue=True}">
                     <StackPanel Spacing="16">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <TextBlock Text="⚡" FontSize="20"/>
@@ -234,7 +235,7 @@
                 </Border>
 
                 <!-- BOX CUSTOMIZATION SECTION -->
-                <Border Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=customization, FallbackValue=True}">
+                <Border x:Name="CustomizationSection" Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=customization, FallbackValue=True}">
                     <StackPanel Spacing="16">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <TextBlock Text="📦" FontSize="20"/>
@@ -348,7 +349,7 @@
                 </Border>
 
                 <!-- INTEGRATIONS SECTION -->
-                <Border Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=integrations, FallbackValue=True}">
+                <Border x:Name="IntegrationsSection" Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=integrations, FallbackValue=True}">
                     <StackPanel Spacing="16">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <TextBlock Text="🔗" FontSize="20"/>
@@ -387,7 +388,7 @@
                 </Border>
 
                 <!-- NOTEHUB SECTION -->
-                <Border Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=notehub, FallbackValue=True}">
+                <Border x:Name="NoteHubSection" Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=notehub, FallbackValue=True}">
                     <StackPanel Spacing="16">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <TextBlock Text="📝" FontSize="20"/>
@@ -409,7 +410,7 @@
                 </Border>
 
                 <!-- DEVELOPER SECTION -->
-                <Border Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=developer, FallbackValue=True}">
+                <Border x:Name="DeveloperSection" Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=developer, FallbackValue=True}">
                     <StackPanel Spacing="16">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <TextBlock Text="🔧" FontSize="20"/>

@@ -17,12 +17,12 @@ public static class DialogService
         _mainWindow = mainWindow;
     }
 
-    public static Task<CreateItemResult?> ShowNewBoxDialogAsync()
+    public static Task<CreateItemResult?> ShowNewBoxDialogAsync(CreateItemType defaultType = CreateItemType.Box)
     {
         EnsureInitialized();
         return DispatchAsync(async () =>
         {
-            var dialog = new NewBoxWindow();
+            var dialog = new NewBoxWindow(defaultType);
             return await dialog.ShowDialog<CreateItemResult?>(_mainWindow!);
         });
     }

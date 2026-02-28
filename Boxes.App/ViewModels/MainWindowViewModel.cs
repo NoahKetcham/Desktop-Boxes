@@ -15,7 +15,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private ViewModelBase? currentPage;
 
     [ObservableProperty]
-    private ViewModelBase sidebarContent;
+    private ViewModelBase? sidebarContent;
+
+    [ObservableProperty]
+    private bool isRightSidebarVisible = true;
 
     public AdvertisingViewModel Advertising { get; } = new();
 
@@ -52,9 +55,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
         CurrentPage = value?.Content;
 
-        // Show dashboard sidebar when on Dashboard, advertising on other pages
-        SidebarContent = value?.Content is DashboardPageViewModel
-            ? _dashboardSidebar
-            : Advertising;
+        // Show dashboard sidebar when on Dashboard, advertising on Overview, hide on Settings
+        var isSettings = value?.Content is SettingsPageViewModel;
+        IsRightSidebarVisible = !isSettings;
+        SidebarContent = value?.Content switch
+        {
+            DashboardPageViewModel => _dashboardSidebar,
+            SettingsPageViewModel => null,
+            _ => Advertising
+        };
     }
 }

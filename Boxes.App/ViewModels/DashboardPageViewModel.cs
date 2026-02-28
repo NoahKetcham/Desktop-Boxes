@@ -53,6 +53,7 @@ public partial class DashboardPageViewModel : ViewModelBase
     public bool CanToggleDesktopCleanup => !IsCleaningDesktop;
 
     public IAsyncRelayCommand NewBoxCommand { get; }
+    public IAsyncRelayCommand NewNotepadCommand { get; }
     public IAsyncRelayCommand EditBoxCommand { get; }
     public IAsyncRelayCommand DeleteBoxCommand { get; }
     public IAsyncRelayCommand<BoxSummaryViewModel?> OpenBoxCommand { get; }
@@ -77,6 +78,7 @@ public partial class DashboardPageViewModel : ViewModelBase
     public DashboardPageViewModel()
     {
         NewBoxCommand = new AsyncRelayCommand(CreateNewBoxAsync);
+        NewNotepadCommand = new AsyncRelayCommand(CreateNewNotepadAsync);
         EditBoxCommand = new AsyncRelayCommand(EditSelectedAsync, () => SelectedBox != null);
         DeleteBoxCommand = new AsyncRelayCommand(DeleteSelectedAsync, () => SelectedBox != null);
         OpenBoxCommand = new AsyncRelayCommand<BoxSummaryViewModel?>(OpenBoxAsync);
@@ -223,37 +225,38 @@ public partial class DashboardPageViewModel : ViewModelBase
 
     private async Task CreateNewBoxAsync()
     {
-        var result = await DialogService.ShowNewBoxDialogAsync().ConfigureAwait(false);
-        if (result is null)
+        var box = new DesktopBox
         {
-            return;
-        }
+            Name = "Box",
+            Description = string.Empty,
+            TargetPath = string.Empty
+        };
 
-        if (result.Type == CreateItemType.Notepad && result.Notepad is not null)
-        {
-            var persisted = await AppServices.NotepadCatalogService.AddOrUpdateAsync(result.Notepad).ConfigureAwait(false);
-            await AppServices.WidgetWindowManager.ShowNotepadAsync(persisted).ConfigureAwait(false);
-            var viewModel = NotepadSummaryViewModel.FromModel(persisted);
-            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                Notepads.Add(viewModel);
-                SelectedNotepad = viewModel;
-            });
-            return;
-        }
-
-        if (result.Box is null)
-        {
-            return;
-        }
-
-        var persistedBox = await AppServices.BoxService.AddOrUpdateAsync(result.Box);
+        var persistedBox = await AppServices.BoxService.AddOrUpdateAsync(box);
         await AppServices.BoxWindowManager.ShowAsync(persistedBox);
         var boxViewModel = BoxSummaryViewModel.FromModel(persistedBox);
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
         {
             Boxes.Add(boxViewModel);
             SelectedBox = boxViewModel;
+        });
+    }
+
+    private async Task CreateNewNotepadAsync()
+    {
+        var result = await DialogService.ShowNewBoxDialogAsync(CreateItemType.Notepad).ConfigureAwait(false);
+        if (result is null || result.Type != CreateItemType.Notepad || result.Notepad is null)
+        {
+            return;
+        }
+
+        var persisted = await AppServices.NotepadCatalogService.AddOrUpdateAsync(result.Notepad).ConfigureAwait(false);
+        await AppServices.WidgetWindowManager.ShowNotepadAsync(persisted).ConfigureAwait(false);
+        var viewModel = NotepadSummaryViewModel.FromModel(persisted);
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            Notepads.Add(viewModel);
+            SelectedNotepad = viewModel;
         });
     }
 
