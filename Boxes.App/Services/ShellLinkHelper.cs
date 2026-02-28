@@ -192,6 +192,114 @@ internal static class ShellLinkHelper
         var k = key; // local copy allows passing by ref
         SetStringProperty(store, ref k, value);
     }
+
+    #region Jump List Support
+
+    [ComImport]
+    [Guid("6332DEBF-87B5-4670-90C0-5E57B408A49E")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface ICustomDestinationList
+    {
+        void SetAppID([MarshalAs(UnmanagedType.LPWStr)] string pszAppID);
+        void BeginList(out uint pcMinSlots, [MarshalAs(UnmanagedType.LPStruct)] Guid riid, out IntPtr ppv);
+        void AppendCategory([MarshalAs(UnmanagedType.LPWStr)] string pszCategory, IObjectArray poa);
+        void AppendKnownCategory(int category);
+        void AddUserTasks(IObjectArray poa);
+        void CommitList();
+        void GetRemovedDestinations([MarshalAs(UnmanagedType.LPStruct)] Guid riid, out IntPtr ppv);
+        void DeleteList([MarshalAs(UnmanagedType.LPWStr)] string pszAppID);
+        void AbortList();
+    }
+
+    [ComImport]
+    [Guid("77F10CF0-3DB5-4966-B520-B7C54FD35ED6")]
+    private class DestinationListCoClass
+    {
+    }
+
+    [ComImport]
+    [Guid("92CA9DCD-5622-4BBA-A805-5E9F541BD8C9")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IObjectArray
+    {
+        void GetCount(out uint pcObjects);
+        void GetAt(uint uiIndex, [MarshalAs(UnmanagedType.LPStruct)] Guid riid, out IntPtr ppv);
+    }
+
+    [ComImport]
+    [Guid("5632B1A4-E38A-400A-928A-D4CD63230295")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IObjectCollection : IObjectArray
+    {
+        new void GetCount(out uint pcObjects);
+        new void GetAt(uint uiIndex, [MarshalAs(UnmanagedType.LPStruct)] Guid riid, out IntPtr ppv);
+        void AddObject([MarshalAs(UnmanagedType.IUnknown)] object punk);
+        void AddFromArray(IObjectArray poaSource);
+        void RemoveObjectAt(uint uiIndex);
+        void Clear();
+    }
+
+    [ComImport]
+    [Guid("2D3468C1-36A7-43B6-AC24-D3F02FD9607A")]
+    private class EnumerableObjectCollectionCoClass
+    {
+    }
+
+    private static readonly Guid IID_IObjectArray = new("92CA9DCD-5622-4BBA-A805-5E9F541BD8C9");
+
+    public static bool SetJumpListTasks(string appUserModelId, params (string title, string exePath, string arguments, string? iconPath, int iconIndex)[] tasks)
+    {
+        try
+        {
+            var destList = (ICustomDestinationList)new DestinationListCoClass();
+            destList.SetAppID(appUserModelId);
+            destList.BeginList(out _, IID_IObjectArray, out _);
+
+            var collection = (IObjectCollection)new EnumerableObjectCollectionCoClass();
+
+            foreach (var (title, exePath, arguments, iconPath, iconIndex) in tasks)
+            {
+                var link = (IShellLinkW)new ShellLinkCoClass();
+                link.SetPath(exePath);
+                link.SetArguments(arguments);
+                link.SetDescription(title);
+                if (!string.IsNullOrWhiteSpace(iconPath))
+                {
+                    link.SetIconLocation(iconPath, iconIndex);
+                }
+
+                // Set the title via property store
+                try
+                {
+                    var propStore = (IPropertyStore)link;
+                    SetStringPropertyReadonly(propStore, PKEY_Title, title);
+                    propStore.Commit();
+                }
+                catch
+                {
+                    // Ignore property store failures
+                }
+
+                collection.AddObject(link);
+            }
+
+            destList.AddUserTasks((IObjectArray)collection);
+            destList.CommitList();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static readonly PROPERTYKEY PKEY_Title = new()
+    {
+        fmtid = new Guid("F29F85E0-4FF9-1068-AB91-08002B27B3D9"),
+        pid = 2
+    };
+
+    #endregion
 }
 
 

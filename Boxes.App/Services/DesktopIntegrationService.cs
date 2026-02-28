@@ -205,7 +205,7 @@ public static class DesktopIntegrationService
             var linkPath = Path.Combine(programs, "Show Boxes.lnk");
 
             var appId = "Boxes.App.ShowBoxes"; // distinct AppUserModelID for separate taskbar identity
-            return ShellLinkHelper.CreateShortcut(
+            var shortcutCreated = ShellLinkHelper.CreateShortcut(
                 linkPath,
                 exePath,
                 arguments: "--boxes-command showburst",
@@ -216,11 +216,42 @@ public static class DesktopIntegrationService
                 appUserModelId: appId,
                 relaunchDisplayName: "Show Boxes"
             );
+
+            // Set up jump list tasks for the pinned shortcut
+            if (shortcutCreated)
+            {
+                SetupJumpListTasks(appId, exePath);
+            }
+
+            return shortcutCreated;
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"[DesktopIntegrationService] Failed to create Start Menu shortcut: {ex}");
             return false;
+        }
+    }
+
+    public static void SetupJumpListTasks(string? appId = null, string? exePath = null)
+    {
+        try
+        {
+            exePath ??= Process.GetCurrentProcess().MainModule?.FileName;
+            if (string.IsNullOrWhiteSpace(exePath))
+            {
+                return;
+            }
+
+            appId ??= "Boxes.App.ShowBoxes";
+
+            ShellLinkHelper.SetJumpListTasks(
+                appId,
+                ("Stop Desktop Boxes", exePath, "--boxes-command stop", exePath, 0)
+            );
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[DesktopIntegrationService] Failed to setup jump list tasks: {ex}");
         }
     }
 }

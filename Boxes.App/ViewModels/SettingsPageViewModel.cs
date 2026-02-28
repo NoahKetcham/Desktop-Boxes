@@ -114,6 +114,7 @@ public partial class SettingsPageViewModel : ViewModelBase
     public IAsyncRelayCommand CloseAllWindowsCommand { get; }
     public IAsyncRelayCommand ResetAccentCommand { get; }
     public IAsyncRelayCommand CreateShowBoxesShortcutCommand { get; }
+    public IRelayCommand StopDesktopBoxesCommand { get; }
     public IAsyncRelayCommand BrowseNoteHubPathCommand { get; }
     public IAsyncRelayCommand<string> SelectCategoryCommand { get; }
     public IAsyncRelayCommand<string> ResetCategoryCommand { get; }
@@ -136,6 +137,7 @@ public partial class SettingsPageViewModel : ViewModelBase
         CloseAllWindowsCommand = new AsyncRelayCommand(CloseAllWindowsAsync);
         ResetAccentCommand = new AsyncRelayCommand(ResetAccentAsync);
         CreateShowBoxesShortcutCommand = new AsyncRelayCommand(CreateShowBoxesShortcutAsync);
+        StopDesktopBoxesCommand = new RelayCommand(StopDesktopBoxes);
         BrowseNoteHubPathCommand = new AsyncRelayCommand(BrowseNoteHubPathAsync);
         SelectCategoryCommand = new AsyncRelayCommand<string>(SelectCategoryAsync);
         ResetCategoryCommand = new AsyncRelayCommand<string>(ResetCategoryAsync);
@@ -450,6 +452,14 @@ public partial class SettingsPageViewModel : ViewModelBase
             ? "Shortcut created in Start Menu → Programs. You can pin it to the taskbar."
             : "Failed to create shortcut. Try running with sufficient permissions.";
         await DialogService.ShowConfirmationAsync(message);
+    }
+
+    private void StopDesktopBoxes()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.Shutdown();
+        }
     }
 
     private async Task BrowseNoteHubPathAsync()

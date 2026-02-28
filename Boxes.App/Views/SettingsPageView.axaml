@@ -340,7 +340,13 @@
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Start Menu Shortcut" FontWeight="Medium"/>
                                 <Button Classes="btn-subtle" Command="{Binding CreateShowBoxesShortcutCommand}" 
-                                        Content="Create Shortcut" Margin="0,8,0,0"/>
+                                        Content="Create Shortcut" Margin="0,8,0,0">
+                                    <Button.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Stop Desktop Boxes" Command="{Binding StopDesktopBoxesCommand}"/>
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
+                                </Button>
                             </StackPanel>
                         </Border>
                     </StackPanel>

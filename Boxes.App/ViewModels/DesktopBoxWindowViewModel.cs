@@ -121,22 +121,16 @@ public class DesktopBoxWindowViewModel : ViewModelBase
 
     private void OpenSettings()
     {
-        // Get the application lifetime to access/create the main window
-        if (Avalonia.Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            return;
-        }
-
-        var mainWindow = desktop.MainWindow;
+        // Try to get existing main window from AppServices
+        var mainWindow = AppServices.MainWindowOwner;
         
-        // If main window was closed or doesn't exist, create a new one
-        if (mainWindow == null || !mainWindow.IsVisible)
+        // Only create a new window if one doesn't exist at all
+        if (mainWindow == null)
         {
             mainWindow = new Views.MainWindow
             {
                 DataContext = new MainWindowViewModel()
             };
-            desktop.MainWindow = mainWindow;
             AppServices.MainWindowOwner = mainWindow;
         }
 

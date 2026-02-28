@@ -42,11 +42,18 @@ public partial class App : Application
         {
             DisableAvaloniaDataAnnotationValidation();
 
+            // Check if there are any boxes to determine startup behavior
+            var boxes = Task.Run(() => AppServices.BoxService.GetBoxesAsync()).GetAwaiter().GetResult();
+            var hasBoxes = boxes.Count > 0;
+
+            // Prevent app from closing when all windows are closed (boxes run without main window)
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
             // #region agent log
             Program.DebugLog("App.axaml.cs:OnFrameworkInitializationCompleted:creatingWindow", "About to create MainWindow", "H3");
             // #endregion
 
-            desktop.MainWindow = new MainWindow
+            var mainWindow = new MainWindow
             {
                 DataContext = new MainWindowViewModel(),
             };
@@ -55,10 +62,20 @@ public partial class App : Application
             Program.DebugLog("App.axaml.cs:OnFrameworkInitializationCompleted:windowCreated", "MainWindow created successfully", "H3");
             // #endregion
 
-            AppServices.MainWindowOwner = desktop.MainWindow;
-            DialogService.Initialize(desktop.MainWindow);
+            AppServices.MainWindowOwner = mainWindow;
+            DialogService.Initialize(mainWindow);
+
+            if (!hasBoxes)
+            {
+                // No boxes exist - show the main window so user can create some
+                desktop.MainWindow = mainWindow;
+                mainWindow.Show();
+            }
+            // If boxes exist, main window stays hidden - user can access via right-click menu on boxes
+            // We don't set desktop.MainWindow to avoid auto-show behavior
 
             DesktopIntegrationService.EnsureContextMenuRegistered(AppServices.BoxWindowManager.AreWindowsVisible);
+            DesktopIntegrationService.SetupJumpListTasks();
             _desktopIntegrationCts = new CancellationTokenSource();
             DesktopIntegrationService.StartCommandListener(HandleDesktopCommandAsync, _desktopIntegrationCts.Token);
             desktop.Exit += OnDesktopExit;
@@ -122,6 +139,16 @@ public partial class App : Application
                 if (notepads.Count > 0)
                 {
                     await AppServices.WidgetWindowManager.ShowNotepadAsync(notepads[0]);
+                }
+            });
+        }
+        else if (string.Equals(command, "stop", StringComparison.OrdinalIgnoreCase))
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                {
+                    desktop.Shutdown();
                 }
             });
         }
