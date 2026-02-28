@@ -34,6 +34,25 @@
             <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
             <Setter Property="Opacity" Value="1"/>
         </Style>
+        
+        <!-- Inline edit TextBox styles -->
+        <Style Selector="TextBox.inline-edit">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Cursor" Value="IBeam"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+        <Style Selector="TextBox.inline-edit:pointerover">
+            <Setter Property="Background" Value="{StaticResource SurfaceElevatedBrush}"/>
+        </Style>
+        <Style Selector="TextBox.inline-edit:focus">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Padding" Value="4,2"/>
+        </Style>
     </UserControl.Styles>
 
     <Border HorizontalAlignment="Center" MaxWidth="1000" Padding="24">
@@ -144,12 +163,12 @@
 
                                                 <!-- Box Info -->
                                                 <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                                                    <StackPanel Orientation="Horizontal" Spacing="10">
-                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="15"/>
-                                                        <Border Classes="badge" VerticalAlignment="Center">
-                                                            <TextBlock Classes="badge-text" Text="{Binding ItemCount, StringFormat='{}{0} items'}"/>
-                                                        </Border>
-                                                    </StackPanel>
+                                                    <TextBox Text="{Binding Name, Mode=TwoWay}" 
+                                                             Classes="inline-edit"
+                                                             FontWeight="SemiBold" FontSize="15"
+                                                             MinWidth="100" MaxWidth="300"
+                                                             ToolTip.Tip="Click to edit name"
+                                                             LostFocus="OnBoxNameLostFocus"/>
                                                     <TextBlock Text="{Binding Description}" 
                                                                Opacity="0.6" 
                                                                FontSize="13"
@@ -162,10 +181,6 @@
                                                             Command="{Binding DataContext.OpenBoxCommand, ElementName=DashboardView}" 
                                                             CommandParameter="{Binding}"
                                                             ToolTip.Tip="Open this box"/>
-                                                    <Button Content="Settings" Classes="btn-subtle"
-                                                            Command="{Binding DataContext.ConfigureBoxSettingsCommand, ElementName=DashboardView}" 
-                                                            CommandParameter="{Binding}"
-                                                            ToolTip.Tip="Configure box settings"/>
                                                     <Button Classes="btn-danger"
                                                             Command="{Binding DataContext.DeleteBoxCommand, ElementName=DashboardView}" 
                                                             CommandParameter="{Binding}"

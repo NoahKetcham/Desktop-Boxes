@@ -55,12 +55,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
         CurrentPage = value?.Content;
 
-        // Show dashboard sidebar when on Dashboard, advertising on Overview, hide on Settings
-        var isSettings = value?.Content is SettingsPageViewModel;
-        IsRightSidebarVisible = !isSettings;
+        // Hide sidebar on Dashboard and Settings, show advertising on Overview
+        var hideRightSidebar = value?.Content is SettingsPageViewModel || value?.Content is DashboardPageViewModel;
+        IsRightSidebarVisible = !hideRightSidebar;
         SidebarContent = value?.Content switch
         {
-            DashboardPageViewModel => _dashboardSidebar,
+            DashboardPageViewModel => null,
             SettingsPageViewModel => null,
             _ => Advertising
         };

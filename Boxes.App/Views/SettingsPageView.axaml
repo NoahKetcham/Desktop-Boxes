@@ -117,12 +117,9 @@
                         </StackPanel>
 
                         <!-- Theme -->
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Choose your preferred color scheme" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,200">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Theme" FontWeight="Medium"/>
-                                    <TextBlock Text="Choose your preferred color scheme" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="Theme" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <ComboBox Grid.Column="1" SelectedItem="{Binding ThemePreference, Mode=TwoWay}" 
                                          HorizontalAlignment="Stretch">
                                     <ComboBoxItem Content="System"/>
@@ -133,12 +130,9 @@
                         </Border>
 
                         <!-- Accent Color -->
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Primary highlight color for the app" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Accent Color" FontWeight="Medium"/>
-                                    <TextBlock Text="Primary highlight color for the app" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="Accent Color" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
                                     <Border Width="32" Height="32" CornerRadius="6" 
                                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="2">
@@ -152,12 +146,9 @@
                         </Border>
 
                         <!-- Box Background Color -->
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Default background color for boxes" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Box Background" FontWeight="Medium"/>
-                                    <TextBlock Text="Default background color for boxes" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="Box Background" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
                                     <Border Width="32" Height="32" CornerRadius="6"
                                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="2">
@@ -171,12 +162,9 @@
                         </Border>
 
                         <!-- Transparency -->
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Adjust window transparency level" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,150,50">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Box Transparency" FontWeight="Medium"/>
-                                    <TextBlock Text="Adjust window transparency level" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="Box Transparency" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <Slider Grid.Column="1" Minimum="20" Maximum="100" 
                                         Value="{Binding BoxesTransparencyPercent, Mode=TwoWay}"
                                         TickFrequency="10" IsSnapToTickEnabled="True"/>
@@ -202,32 +190,23 @@
                             </Button>
                         </StackPanel>
 
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Automatically snap new boxes to screen edges" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Auto Snap" FontWeight="Medium"/>
-                                    <TextBlock Text="Automatically snap new boxes to screen edges" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="Auto Snap" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoSnapEnabled, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
 
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Display border around boxes" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Show Box Outlines" FontWeight="Medium"/>
-                                    <TextBlock Text="Display border around boxes" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="Show Box Outlines" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowBoxOutlines, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
 
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Launch Desktop Boxes when Windows starts" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Run at Startup" FontWeight="Medium"/>
-                                    <TextBlock Text="Launch Desktop Boxes when Windows starts" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="Run at Startup" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding RunAtStartup, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
@@ -250,23 +229,17 @@
                         </StackPanel>
 
                         <!-- Show Header -->
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Display header with box name and controls" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Show Header Bar" FontWeight="Medium"/>
-                                    <TextBlock Text="Display header with box name and controls" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="Show Header Bar" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowBoxHeader, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
 
                         <!-- Header Height -->
-                        <Border Classes="setting-row" IsEnabled="{Binding ShowBoxHeader}">
+                        <Border Classes="setting-row" IsEnabled="{Binding ShowBoxHeader}" ToolTip.Tip="Vertical size of the header bar" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,120,50">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Header Height" FontWeight="Medium"/>
-                                    <TextBlock Text="Vertical size of the header bar" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="Header Height" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <Slider Grid.Column="1" Minimum="30" Maximum="60" 
                                         Value="{Binding BoxHeaderHeight, Mode=TwoWay}"
                                         TickFrequency="5" IsSnapToTickEnabled="True"/>
@@ -276,12 +249,9 @@
                         </Border>
 
                         <!-- Corner Radius -->
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Roundedness of box corners" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,120,50">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Corner Radius" FontWeight="Medium"/>
-                                    <TextBlock Text="Roundedness of box corners" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="Corner Radius" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <Slider Grid.Column="1" Minimum="0" Maximum="24" 
                                         Value="{Binding BoxCornerRadius, Mode=TwoWay}"
                                         TickFrequency="2" IsSnapToTickEnabled="True"/>
@@ -291,12 +261,9 @@
                         </Border>
 
                         <!-- Icon Size -->
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Size of shortcut icons inside boxes" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,120,50">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Icon Size" FontWeight="Medium"/>
-                                    <TextBlock Text="Size of shortcut icons inside boxes" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="Icon Size" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <Slider Grid.Column="1" Minimum="32" Maximum="72" 
                                         Value="{Binding BoxIconSize, Mode=TwoWay}"
                                         TickFrequency="8" IsSnapToTickEnabled="True"/>
@@ -306,23 +273,17 @@
                         </Border>
 
                         <!-- Show Labels -->
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Display file names under icons" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Show Shortcut Labels" FontWeight="Medium"/>
-                                    <TextBlock Text="Display file names under icons" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="Show Shortcut Labels" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowShortcutLabels, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
 
                         <!-- Horizontal Padding -->
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Space between content and sides" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,120,50">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Horizontal Padding" FontWeight="Medium"/>
-                                    <TextBlock Text="Space between content and sides" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="Horizontal Padding" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <Slider Grid.Column="1" Minimum="0" Maximum="32" 
                                         Value="{Binding BoxContentPadding, Mode=TwoWay}"
                                         TickFrequency="4" IsSnapToTickEnabled="True"/>
@@ -332,12 +293,9 @@
                         </Border>
 
                         <!-- Vertical Padding -->
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Space between content and top/bottom" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,120,50">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Vertical Padding" FontWeight="Medium"/>
-                                    <TextBlock Text="Space between content and top/bottom" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="Vertical Padding" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <Slider Grid.Column="1" Minimum="0" Maximum="32" 
                                         Value="{Binding BoxContentVerticalPadding, Mode=TwoWay}"
                                         TickFrequency="4" IsSnapToTickEnabled="True"/>
@@ -356,30 +314,23 @@
                             <TextBlock Text="Integrations" FontWeight="SemiBold" FontSize="18"/>
                         </StackPanel>
 
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Link your OneDrive account" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="OneDrive" FontWeight="Medium"/>
-                                    <TextBlock Text="Link your OneDrive account" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="OneDrive" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding OneDriveLinked, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
 
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Link your Google Drive account" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Google Drive" FontWeight="Medium"/>
-                                    <TextBlock Text="Link your Google Drive account" Classes="setting-description"/>
-                                </StackPanel>
+                                <TextBlock Text="Google Drive" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding GoogleDriveLinked, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
 
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Create a shortcut to quickly show/hide boxes" ToolTip.ShowDelay="2000">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Start Menu Shortcut" FontWeight="Medium"/>
-                                <TextBlock Text="Create a shortcut to quickly show/hide boxes" Classes="setting-description"/>
                                 <Button Classes="btn-subtle" Command="{Binding CreateShowBoxesShortcutCommand}" 
                                         Content="Create Shortcut" Margin="0,8,0,0"/>
                             </StackPanel>
@@ -395,10 +346,9 @@
                             <TextBlock Text="NoteHub" FontWeight="SemiBold" FontSize="18"/>
                         </StackPanel>
 
-                        <Border Classes="setting-row">
+                        <Border Classes="setting-row" ToolTip.Tip="Where to store your NoteHub notes. Leave empty for Documents/NoteHub" ToolTip.ShowDelay="2000">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="NoteHub Directory" FontWeight="Medium"/>
-                                <TextBlock Text="Where to store your NoteHub notes. Leave empty for Documents/NoteHub" Classes="setting-description"/>
                                 <Grid ColumnDefinitions="*,Auto">
                                     <TextBox Grid.Column="0" Text="{Binding NoteHubDirectoryPath, Mode=TwoWay}" 
                                              Watermark="Documents/NoteHub (default)" Margin="0,0,8,0"/>

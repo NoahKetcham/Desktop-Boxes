@@ -1,6 +1,8 @@
 using System;
 using System.ComponentModel;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Boxes.App.Services;
 using Boxes.App.ViewModels;
 
 namespace Boxes.App.Views;
@@ -35,5 +37,15 @@ public partial class DashboardPageView : UserControl
         // No-op; reserved for future use
     }
 
+    private async void OnBoxNameLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox textBox && textBox.DataContext is BoxSummaryViewModel box)
+        {
+            var model = box.ToModel();
+            var updated = await AppServices.BoxService.AddOrUpdateAsync(model);
+            await AppServices.BoxWindowManager.UpdateAsync(updated);
+            box.UpdateFromModel(updated);
+        }
+    }
 }
 
