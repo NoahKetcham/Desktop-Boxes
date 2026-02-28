@@ -8,7 +8,7 @@
         <vm:OverviewPageViewModel/>
     </Design.DataContext>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,12,0">
         <StackPanel Spacing="28" MaxWidth="900" HorizontalAlignment="Center">
             <!-- Header -->
             <StackPanel Spacing="6">
@@ -19,59 +19,65 @@
             <!-- Stats Cards -->
             <Grid ColumnDefinitions="*,*,*" ColumnSpacing="16" Margin="0,8,0,0">
                 <!-- Active Boxes Card -->
-                <Border Grid.Column="0" Padding="20" CornerRadius="{StaticResource RadiusL}" 
-                        BoxShadow="{StaticResource ShadowBase}">
+                <Border Grid.Column="0" Padding="16" CornerRadius="{StaticResource RadiusL}" 
+                        BoxShadow="{StaticResource ShadowBase}" MinWidth="120">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
                             <GradientStop Color="#2563EB" Offset="0"/>
                             <GradientStop Color="#1D4ED8" Offset="1"/>
                         </LinearGradientBrush>
                     </Border.Background>
-                    <StackPanel Spacing="12">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="📦" FontSize="18"/>
-                            <TextBlock Text="Active Boxes" FontWeight="Medium" FontSize="13" Opacity="0.9"/>
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="📦" FontSize="16"/>
+                            <TextBlock Text="Active Boxes" FontWeight="Medium" FontSize="12" Opacity="0.9"
+                                       TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
-                        <TextBlock Text="{Binding ActiveBoxCount}" FontSize="36" FontWeight="Bold" Classes="numeric"/>
-                        <TextBlock Text="desktop organizers" FontSize="11" Opacity="0.7"/>
+                        <TextBlock Text="{Binding ActiveBoxCount}" FontSize="32" FontWeight="Bold" Classes="numeric"/>
+                        <TextBlock Text="desktop organizers" FontSize="10" Opacity="0.7" 
+                                   TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                 </Border>
                 
                 <!-- Items Organized Card -->
-                <Border Grid.Column="1" Padding="20" CornerRadius="{StaticResource RadiusL}"
-                        BoxShadow="{StaticResource ShadowBase}">
+                <Border Grid.Column="1" Padding="16" CornerRadius="{StaticResource RadiusL}"
+                        BoxShadow="{StaticResource ShadowBase}" MinWidth="120">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
                             <GradientStop Color="#7C3AED" Offset="0"/>
                             <GradientStop Color="#6D28D9" Offset="1"/>
                         </LinearGradientBrush>
                     </Border.Background>
-                    <StackPanel Spacing="12">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="🔗" FontSize="18"/>
-                            <TextBlock Text="Shortcuts" FontWeight="Medium" FontSize="13" Opacity="0.9"/>
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="🔗" FontSize="16"/>
+                            <TextBlock Text="Shortcuts" FontWeight="Medium" FontSize="12" Opacity="0.9"
+                                       TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
-                        <TextBlock Text="{Binding TotalItemCount}" FontSize="36" FontWeight="Bold" Classes="numeric"/>
-                        <TextBlock Text="items in boxes" FontSize="11" Opacity="0.7"/>
+                        <TextBlock Text="{Binding TotalItemCount}" FontSize="32" FontWeight="Bold" Classes="numeric"/>
+                        <TextBlock Text="items in boxes" FontSize="10" Opacity="0.7"
+                                   TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                 </Border>
                 
                 <!-- Files Discovered Card -->
-                <Border Grid.Column="2" Padding="20" CornerRadius="{StaticResource RadiusL}"
-                        BoxShadow="{StaticResource ShadowBase}">
+                <Border Grid.Column="2" Padding="16" CornerRadius="{StaticResource RadiusL}"
+                        BoxShadow="{StaticResource ShadowBase}" MinWidth="120">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
                             <GradientStop Color="#EA580C" Offset="0"/>
                             <GradientStop Color="#C2410C" Offset="1"/>
                         </LinearGradientBrush>
                     </Border.Background>
-                    <StackPanel Spacing="12">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="📂" FontSize="18"/>
-                            <TextBlock Text="Scanned Files" FontWeight="Medium" FontSize="13" Opacity="0.9"/>
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="📂" FontSize="16"/>
+                            <TextBlock Text="Scanned Files" FontWeight="Medium" FontSize="12" Opacity="0.9"
+                                       TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
-                        <TextBlock Text="{Binding ScannedFilesCount}" FontSize="36" FontWeight="Bold" Classes="numeric"/>
-                        <TextBlock Text="desktop items found" FontSize="11" Opacity="0.7"/>
+                        <TextBlock Text="{Binding ScannedFilesCount}" FontSize="32" FontWeight="Bold" Classes="numeric"/>
+                        <TextBlock Text="desktop items" FontSize="10" Opacity="0.7"
+                                   TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                 </Border>
             </Grid>

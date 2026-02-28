@@ -90,7 +90,12 @@
         <Border x:Name="HeaderBar" Grid.Row="0" Background="#232B46" Padding="10,8" MinHeight="40" 
                 CornerRadius="8,8,0,0"
                 PointerPressed="Header_PointerPressed" PointerMoved="Header_PointerMoved" PointerReleased="Header_PointerReleased">
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
+            <Border.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Close Window" Command="{Binding CloseCommand}"/>
+                </ContextMenu>
+            </Border.ContextMenu>
+            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
                 <!-- Navigation Up Button -->
                 <Button Grid.Column="0" Classes="header-btn" Width="26" Height="26" 
                         Command="{Binding NavigateUpCommand}" VerticalAlignment="Center"
@@ -108,22 +113,6 @@
                                HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="180"
                                IsVisible="{Binding CanNavigateUp}"/>
                 </StackPanel>
-                
-                <!-- Snap to Taskbar Button -->
-                <Button Grid.Column="2" Classes="header-btn" Width="26" Height="26" 
-                        Command="{Binding ToggleSnapCommand}" Margin="4,0"
-                        ToolTip.Tip="Snap to taskbar"
-                        PointerPressed="Button_OnPointerPressed">
-                    <TextBlock Text="📌" FontSize="11" HorizontalAlignment="Center"/>
-                </Button>
-                
-                <!-- Close Button -->
-                <Button Grid.Column="3" Classes="header-btn" Width="26" Height="26" 
-                        Command="{Binding CloseCommand}"
-                        ToolTip.Tip="Close box"
-                        PointerPressed="Button_OnPointerPressed">
-                    <TextBlock Text="✕" FontSize="12" HorizontalAlignment="Center"/>
-                </Button>
             </Grid>
         </Border>
 
