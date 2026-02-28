@@ -236,6 +236,14 @@
                             </Grid>
                         </Border>
 
+                        <!-- Show Box Title -->
+                        <Border Classes="setting-row" ToolTip.Tip="Display box name in header" ToolTip.ShowDelay="2000">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Show Box Title" FontWeight="Medium" VerticalAlignment="Center"/>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowBoxTitle, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
                         <!-- Header Height -->
                         <Border Classes="setting-row" IsEnabled="{Binding ShowBoxHeader}" ToolTip.Tip="Vertical size of the header bar" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,120,50">

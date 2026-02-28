@@ -106,7 +106,7 @@
                 </Button>
                 
                 <!-- Box Name with breadcrumb hint -->
-                <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0">
+                <StackPanel x:Name="TitlePanel" Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0">
                     <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" 
                                HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="180"/>
                     <TextBlock Text="{Binding CurrentPath}" FontSize="9" Opacity="0.6" 

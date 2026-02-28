@@ -19,6 +19,7 @@ public class ApplicationSettings
     // Box Customization Settings
     public int BoxHeaderHeight { get; set; } = 40;
     public bool ShowBoxHeader { get; set; } = true;
+    public bool ShowBoxTitle { get; set; } = true;
     public int BoxCornerRadius { get; set; } = 8;
     public int BoxIconSize { get; set; } = 48;
     public bool ShowShortcutLabels { get; set; } = true;

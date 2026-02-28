@@ -232,6 +232,7 @@ public class SettingsService
         // Box Customization
         BoxHeaderHeight = settings.BoxHeaderHeight,
         ShowBoxHeader = settings.ShowBoxHeader,
+        ShowBoxTitle = settings.ShowBoxTitle,
         BoxCornerRadius = settings.BoxCornerRadius,
         BoxIconSize = settings.BoxIconSize,
         ShowShortcutLabels = settings.ShowShortcutLabels,

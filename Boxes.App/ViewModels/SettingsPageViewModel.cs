@@ -73,6 +73,9 @@ public partial class SettingsPageViewModel : ViewModelBase
     private bool showBoxHeader = true;
 
     [ObservableProperty]
+    private bool showBoxTitle = true;
+
+    [ObservableProperty]
     private int boxCornerRadius = 8;
 
     [ObservableProperty]
@@ -198,6 +201,7 @@ public partial class SettingsPageViewModel : ViewModelBase
             case "customization":
                 BoxHeaderHeight = 40;
                 ShowBoxHeader = true;
+                ShowBoxTitle = true;
                 BoxCornerRadius = 8;
                 BoxIconSize = 48;
                 ShowShortcutLabels = true;
@@ -239,6 +243,7 @@ public partial class SettingsPageViewModel : ViewModelBase
             RecentBoxBackgroundColors = RecentBoxBackgroundColors.Select(c => $"#{c.R:X2}{c.G:X2}{c.B:X2}").ToList(),
             BoxHeaderHeight = BoxHeaderHeight,
             ShowBoxHeader = ShowBoxHeader,
+            ShowBoxTitle = ShowBoxTitle,
             BoxCornerRadius = BoxCornerRadius,
             BoxIconSize = BoxIconSize,
             ShowShortcutLabels = ShowShortcutLabels,
@@ -309,6 +314,7 @@ public partial class SettingsPageViewModel : ViewModelBase
         // Box customization
         BoxHeaderHeight = settings.BoxHeaderHeight;
         ShowBoxHeader = settings.ShowBoxHeader;
+        ShowBoxTitle = settings.ShowBoxTitle;
         BoxCornerRadius = settings.BoxCornerRadius;
         BoxIconSize = settings.BoxIconSize;
         ShowShortcutLabels = settings.ShowShortcutLabels;
@@ -320,6 +326,7 @@ public partial class SettingsPageViewModel : ViewModelBase
     // Auto-save box customization when changed
     partial void OnBoxHeaderHeightChanged(int value) => _ = SaveBoxCustomizationAsync();
     partial void OnShowBoxHeaderChanged(bool value) => _ = SaveBoxCustomizationAsync();
+    partial void OnShowBoxTitleChanged(bool value) => _ = SaveBoxCustomizationAsync();
     partial void OnBoxCornerRadiusChanged(int value) => _ = SaveBoxCustomizationAsync();
     partial void OnBoxIconSizeChanged(int value) => _ = SaveBoxCustomizationAsync();
     partial void OnShowShortcutLabelsChanged(bool value) => _ = SaveBoxCustomizationAsync();
@@ -331,6 +338,7 @@ public partial class SettingsPageViewModel : ViewModelBase
         var current = await AppServices.SettingsService.GetAsync();
         current.BoxHeaderHeight = BoxHeaderHeight;
         current.ShowBoxHeader = ShowBoxHeader;
+        current.ShowBoxTitle = ShowBoxTitle;
         current.BoxCornerRadius = BoxCornerRadius;
         current.BoxIconSize = BoxIconSize;
         current.ShowShortcutLabels = ShowShortcutLabels;

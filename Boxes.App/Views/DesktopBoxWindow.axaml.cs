@@ -36,7 +36,9 @@ public partial class DesktopBoxWindow : Window
         private double _savedContentHeight = 240;
         private double _savedWindowHeight = 240;
         private DispatcherTimer? _expandAnimationTimer;
+        private bool _isAnimating;
         private readonly Border? _snapIndicator;
+        private readonly StackPanel? _titlePanel;
         private const string DragDataFormat = "application/x-boxes-shortcut-id";
         private Point _dragStartPoint;
         private DesktopFileViewModel? _draggedItem;
@@ -59,6 +61,7 @@ public partial class DesktopBoxWindow : Window
         _rootGrid = this.FindControl<Grid>("RootGrid");
         _headerBar = this.FindControl<Border>("HeaderBar");
         _snapIndicator = this.FindControl<Border>("SnapIndicator");
+        _titlePanel = this.FindControl<StackPanel>("TitlePanel");
         
         // Apply desktop icon metrics
         ApplyDesktopIconMetrics();
@@ -199,8 +202,10 @@ public partial class DesktopBoxWindow : Window
             // Apply header settings
             if (_headerBar != null)
             {
-                // Show/hide header
-                _headerBar.IsVisible = settings.ShowBoxHeader;
+                // Header bar is always visible and interactive for collapse animation, right-click menu, etc.
+                // ShowBoxHeader controls whether the header background is visible
+                // ShowBoxTitle controls whether the title text is visible (independent of header)
+                _headerBar.IsHitTestVisible = true;
                 
                 // Apply header height
                 var headerHeight = Math.Clamp(settings.BoxHeaderHeight, 30, 60);
@@ -243,7 +248,17 @@ public partial class DesktopBoxWindow : Window
                         (byte)(bgColor.B * 0.8)
                     );
                 }
-                _headerBar.Background = new SolidColorBrush(headerColor, opacity);
+                
+                // When ShowBoxHeader is off, make background transparent but keep header functional
+                _headerBar.Background = settings.ShowBoxHeader 
+                    ? new SolidColorBrush(headerColor, opacity)
+                    : Brushes.Transparent;
+            }
+
+            // Apply title visibility (independent of header bar visibility)
+            if (_titlePanel != null)
+            {
+                _titlePanel.Opacity = settings.ShowBoxTitle ? 1.0 : 0.0;
             }
 
             // Apply icon size and label visibility to shortcut items
@@ -681,9 +696,11 @@ public partial class DesktopBoxWindow : Window
             return;
         }
 
-        // Cancel any ongoing animation
-        _expandAnimationTimer?.Stop();
-        _expandAnimationTimer = null;
+        // Debounce: ignore clicks while animation is in progress
+        if (_isAnimating)
+        {
+            return;
+        }
 
         var targetExpanded = !_isContentExpanded;
         AnimateContentExpansion(targetExpanded);
@@ -695,6 +712,9 @@ public partial class DesktopBoxWindow : Window
         {
             return;
         }
+
+        // Mark animation as in progress for debouncing
+        _isAnimating = true;
 
         // Stop any ongoing animation
         _expandAnimationTimer?.Stop();
@@ -838,6 +858,7 @@ public partial class DesktopBoxWindow : Window
                     }
                 }
                 _isContentExpanded = expand;
+                _isAnimating = false;
                 
                 sw.Stop();
             }
