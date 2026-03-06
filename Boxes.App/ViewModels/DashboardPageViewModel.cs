@@ -193,6 +193,7 @@ public partial class DashboardPageViewModel : ViewModelBase
     {
         await AppServices.BoxService.InitializeAsync().ConfigureAwait(false);
         var boxes = await AppServices.BoxService.GetBoxesAsync();
+        await EnsureStartupShortcutDataAsync(boxes).ConfigureAwait(false);
         var notepads = await AppServices.NotepadCatalogService.GetNotepadsAsync();
 
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
@@ -220,6 +221,38 @@ public partial class DashboardPageViewModel : ViewModelBase
         {
             await AppServices.WidgetWindowManager.ShowNotepadAsync(notepad);
         }
+    }
+
+    private static async Task EnsureStartupShortcutDataAsync(IReadOnlyList<DesktopBox> boxes)
+    {
+        if (boxes.Count == 0)
+        {
+            return;
+        }
+
+        var requiredShortcutIds = boxes
+            .SelectMany(box => box.ShortcutIds)
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToHashSet();
+
+        if (requiredShortcutIds.Count == 0)
+        {
+            return;
+        }
+
+        var scannedFiles = await AppServices.ScannedFileService.GetScannedFilesAsync().ConfigureAwait(false);
+        var availableIds = scannedFiles
+            .Select(file => file.Id)
+            .Where(id => id != Guid.Empty)
+            .ToHashSet();
+
+        if (requiredShortcutIds.IsSubsetOf(availableIds))
+        {
+            return;
+        }
+
+        await AppServices.ScannedFileService.ScanAndSaveAsync().ConfigureAwait(false);
     }
 
 

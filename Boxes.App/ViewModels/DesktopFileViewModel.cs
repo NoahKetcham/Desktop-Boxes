@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using Boxes.App.Models;
 using Boxes.App.Services;
 
@@ -86,17 +87,26 @@ public class DesktopFileViewModel : ViewModelBase
             }
 
             var icon = await iconService.GetIconAsync(pathToResolve, ItemType == ScannedItemType.Folder);
-            Icon = icon;
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                Icon = icon;
+            });
         }
         catch
         {
-            Icon = null;
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                Icon = null;
+            });
         }
     }
 
     public async Task RefreshIconAsync()
     {
-        Icon = null;
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            Icon = null;
+        });
         await LoadIconAsync().ConfigureAwait(false);
     }
 

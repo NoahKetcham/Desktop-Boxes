@@ -78,6 +78,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
 
     private DesktopBoxWindow? _view;
     private CancellationTokenSource? _pendingLoadCts;
+    private CancellationTokenSource? _pendingIconRefreshCts;
     private bool _suspendStateSync;
     private static readonly Guid RootOrderKey = Guid.Empty;
 
@@ -239,6 +240,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
     public void PrepareForStagedLoad()
     {
         CancelPendingLoad();
+        CancelPendingIconRefresh();
         Shortcuts.Clear();
         CurrentItems.Clear();
         NavigationStack.Clear();
@@ -359,11 +361,26 @@ public class DesktopBoxWindowViewModel : ViewModelBase
 
     public async Task RefreshIconsAsync()
     {
-        var refreshTasks = Shortcuts.Select(item => item.RefreshIconAsync()).ToList();
+        List<DesktopFileViewModel> shortcuts = new();
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            shortcuts = Shortcuts.ToList();
+        });
+
+        if (shortcuts.Count == 0)
+        {
+            return;
+        }
+
+        var refreshTasks = shortcuts.Select(item => item.RefreshIconAsync()).ToList();
         await Task.WhenAll(refreshTasks).ConfigureAwait(false);
 
-        var activeParent = NavigationStack.LastOrDefault();
-        NavigateAndSyncCurrentItems(activeParent?.Id);
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var activeParent = NavigationStack.LastOrDefault();
+            NavigateAndSyncCurrentItems(activeParent?.Id);
+            _view?.InvalidateShortcutsLayout();
+        });
     }
 
     public void NavigateHome()
@@ -513,6 +530,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
 
     private void ApplyShortcuts(IEnumerable<ScannedFile> shortcuts, bool resetNavigation)
     {
+        CancelPendingIconRefresh();
         var ordered = OrderShortcutsWithStoredOrder(shortcuts);
 
         LogDuplicateWarnings(ordered);
@@ -532,6 +550,7 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         Model.CurrentPath = SerializedPath;
         SyncWindowState();
         _view?.InvalidateShortcutsLayout();
+        ScheduleIconRefresh();
     }
 
     private void CancelPendingLoad()
@@ -544,6 +563,54 @@ public class DesktopBoxWindowViewModel : ViewModelBase
         _pendingLoadCts.Cancel();
         _pendingLoadCts.Dispose();
         _pendingLoadCts = null;
+    }
+
+    private void ScheduleIconRefresh()
+    {
+        CancelPendingIconRefresh();
+
+        if (Shortcuts.Count == 0)
+        {
+            return;
+        }
+
+        var cts = new CancellationTokenSource();
+        _pendingIconRefreshCts = cts;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(75), cts.Token).ConfigureAwait(false);
+                if (!cts.IsCancellationRequested)
+                {
+                    await RefreshIconsAsync().ConfigureAwait(false);
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                // ignore, superseded by a newer refresh
+            }
+            finally
+            {
+                if (_pendingIconRefreshCts == cts)
+                {
+                    CancelPendingIconRefresh();
+                }
+            }
+        });
+    }
+
+    private void CancelPendingIconRefresh()
+    {
+        if (_pendingIconRefreshCts is null)
+        {
+            return;
+        }
+
+        _pendingIconRefreshCts.Cancel();
+        _pendingIconRefreshCts.Dispose();
+        _pendingIconRefreshCts = null;
     }
 
     private void RestoreNavigation(IReadOnlyList<Guid> breadcrumb)

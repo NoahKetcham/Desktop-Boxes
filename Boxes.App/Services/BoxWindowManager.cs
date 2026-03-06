@@ -267,8 +267,7 @@ public class BoxWindowManager
                 if (existing.DataContext is DesktopBoxWindowViewModel vmExisting)
                 {
                     vmExisting.Update(box);
-                    vmExisting.PrepareForStagedLoad();
-                    vmExisting.StageLoadShortcuts(filteredShortcuts, TimeSpan.FromMilliseconds(150));
+                    vmExisting.RefreshShortcuts(filteredShortcuts);
                 }
                 if (!existing.IsVisible && _areWindowsVisible)
                 {
@@ -280,7 +279,7 @@ public class BoxWindowManager
             }
 
             var vm = new DesktopBoxWindowViewModel(box);
-            vm.PrepareForStagedLoad();
+            vm.SetShortcuts(filteredShortcuts);
             var window = new DesktopBoxWindow
             {
                 DataContext = vm
@@ -344,8 +343,6 @@ public class BoxWindowManager
             {
                 window.Hide();
             }
-
-            vm.StageLoadShortcuts(filteredShortcuts, TimeSpan.FromMilliseconds(150));
         });
     }
 
