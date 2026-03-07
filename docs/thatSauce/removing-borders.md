@@ -13,14 +13,14 @@ Removing only one of them was not enough.
 
 ## Final Fix Applied
 
-### 1) Remove OS window decorations in AXAML
+### 1) Keep resize support in AXAML
 
 In `Boxes.App/Views/Widgets/CommandCenterWindow.axaml`:
 
-- Set `SystemDecorations="None"`  
-  (was `BorderOnly`)
+- Keep `SystemDecorations="BorderOnly"`
 
-This removes standard window chrome/border behavior from Avalonia's side.
+`SystemDecorations="None"` removes native resize behavior.  
+For this window, `BorderOnly` + DWM border suppression is the working combination.
 
 ### 2) Force content border to be invisible
 
@@ -52,7 +52,7 @@ This removes the compositor-drawn gray outline on Windows 11.
 For any floating/transparent Avalonia window that still shows a gray frame:
 
 1. In that window's `.axaml`:
-   - Use `SystemDecorations="None"`
+   - Keep `SystemDecorations="BorderOnly"` if you want native resizing
    - Keep transparency settings (`TransparencyLevelHint="Transparent"`, etc.) as needed
 2. In code-behind (`.axaml.cs`):
    - Ensure any outer `Border` is transparent or thickness `0`
@@ -62,8 +62,10 @@ For any floating/transparent Avalonia window that still shows a gray frame:
 5. Verify:
    - No faint edge at corners
    - No thin line along sides
+   - Window still resizes normally
 
 ## Notes / Caveats
 
 - This DWM border fix is **Windows-only** and safely no-ops on non-Windows platforms.
-- If a border still appears after all of the above, check whether resizing behavior or other native window flags are reintroducing non-client frame styling.
+- `SystemDecorations="None"` may look correct visually, but it can remove native resize behavior.
+- Preferred pattern for resizable transparent windows: keep `BorderOnly`, hide app border, then call `HideDwmBorder()`.

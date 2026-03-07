@@ -75,12 +75,16 @@ public partial class CommandCenterWindow : Window
             var cornerRadius = Math.Clamp(settings.BoxCornerRadius, 0, 24);
             _outerBorder.CornerRadius = new CornerRadius(cornerRadius);
             _outerBorder.Background = new SolidColorBrush(bgColor, opacity);
+            CanResize = !settings.CommandCenterLocked;
 
-            // Force a borderless shell so no outline is visible.
-            _outerBorder.BorderBrush = Brushes.Transparent;
-            _outerBorder.BorderThickness = new Thickness(0);
+            _outerBorder.BorderBrush = settings.CommandCenterShowBorder
+                ? new SolidColorBrush(bgColor)
+                : Brushes.Transparent;
+            _outerBorder.BorderThickness = settings.CommandCenterShowBorder ? new Thickness(1) : new Thickness(0);
         });
     }
+
+    private bool IsLocked => DataContext is CommandCenterWindowViewModel vm && vm.IsLocked;
 
     private void ScheduleStateSave()
     {
@@ -100,6 +104,11 @@ public partial class CommandCenterWindow : Window
 
     private void Chrome_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        if (IsLocked)
+        {
+            return;
+        }
+
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
             BeginMoveDrag(e);
@@ -114,6 +123,11 @@ public partial class CommandCenterWindow : Window
 
     private void ResizeHandle_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        if (IsLocked)
+        {
+            return;
+        }
+
         if (sender is not Border border || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
             return;

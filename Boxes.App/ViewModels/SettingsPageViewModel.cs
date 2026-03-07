@@ -73,6 +73,9 @@ public partial class SettingsPageViewModel : ViewModelBase
     private bool commandCenterShowBorder;
 
     [ObservableProperty]
+    private bool commandCenterLocked;
+
+    [ObservableProperty]
     private bool commandCenterShowTitles = true;
 
     public ObservableCollection<CommandCenterActionItemViewModel> CommandCenterActions { get; } = new();
@@ -234,6 +237,7 @@ public partial class SettingsPageViewModel : ViewModelBase
                 break;
             case "commandcenter":
                 CommandCenterShowBorder = false;
+                CommandCenterLocked = false;
                 CommandCenterShowTitles = true;
                 LoadCommandCenterActions(CommandCenterActionCatalog.CreateDefaultSettings());
                 break;
@@ -273,6 +277,7 @@ public partial class SettingsPageViewModel : ViewModelBase
             BoxContentVerticalPadding = BoxContentVerticalPadding,
             NoteHubDirectoryPath = string.IsNullOrWhiteSpace(NoteHubDirectoryPath) ? null : NoteHubDirectoryPath.Trim(),
             CommandCenterShowBorder = CommandCenterShowBorder,
+            CommandCenterLocked = CommandCenterLocked,
             CommandCenterShowTitles = CommandCenterShowTitles,
             CommandCenterActions = BuildCommandCenterActionSettings()
         };
@@ -350,6 +355,7 @@ public partial class SettingsPageViewModel : ViewModelBase
             BoxContentVerticalPadding = settings.BoxContentVerticalPadding;
             NoteHubDirectoryPath = settings.NoteHubDirectoryPath;
             CommandCenterShowBorder = settings.CommandCenterShowBorder;
+            CommandCenterLocked = settings.CommandCenterLocked;
             CommandCenterShowTitles = settings.CommandCenterShowTitles;
             LoadCommandCenterActions(settings.CommandCenterActions);
         }
@@ -369,6 +375,7 @@ public partial class SettingsPageViewModel : ViewModelBase
     partial void OnBoxContentPaddingChanged(int value) => _ = SaveBoxCustomizationAsync();
     partial void OnBoxContentVerticalPaddingChanged(int value) => _ = SaveBoxCustomizationAsync();
     partial void OnCommandCenterShowBorderChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
+    partial void OnCommandCenterLockedChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
     partial void OnCommandCenterShowTitlesChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
 
     private async Task SaveBoxCustomizationAsync()
@@ -464,6 +471,7 @@ public partial class SettingsPageViewModel : ViewModelBase
 
         var current = await AppServices.SettingsService.GetAsync();
         current.CommandCenterShowBorder = CommandCenterShowBorder;
+        current.CommandCenterLocked = CommandCenterLocked;
         current.CommandCenterShowTitles = CommandCenterShowTitles;
         current.CommandCenterActions = BuildCommandCenterActionSettings();
         await AppServices.SettingsService.SaveAsync(current);

@@ -241,6 +241,7 @@ public class SettingsService
         BoxContentVerticalPadding = settings.BoxContentVerticalPadding,
         NoteHubDirectoryPath = settings.NoteHubDirectoryPath,
         CommandCenterShowBorder = settings.CommandCenterShowBorder,
+        CommandCenterLocked = settings.CommandCenterLocked,
         CommandCenterShowTitles = settings.CommandCenterShowTitles,
         CommandCenterActions = CommandCenterActionCatalog.Normalize(settings.CommandCenterActions)
     };

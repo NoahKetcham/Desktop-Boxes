@@ -15,18 +15,21 @@ public partial class CommandCenterWindowViewModel : ViewModelBase
     public ObservableCollection<CommandCenterActionButtonViewModel> Actions { get; } = new();
 
     [ObservableProperty]
+    private bool _isLocked;
+
+    [ObservableProperty]
     private bool _showTitles = true;
 
-    public IRelayCommand CloseCommand { get; }
+    public string PinButtonText => IsLocked ? "📌" : "📍";
+
+    public IAsyncRelayCommand ToggleLockCommand { get; }
     public IAsyncRelayCommand OpenNoteHubCommand { get; }
     public IAsyncRelayCommand ToggleBoxesCommand { get; }
     public IAsyncRelayCommand ToggleDesktopIconsCommand { get; }
 
-    public event EventHandler? RequestClose;
-
     public CommandCenterWindowViewModel()
     {
-        CloseCommand = new RelayCommand(() => RequestClose?.Invoke(this, EventArgs.Empty));
+        ToggleLockCommand = new AsyncRelayCommand(ToggleLockAsync);
         OpenNoteHubCommand = new AsyncRelayCommand(OpenNoteHubAsync);
         ToggleBoxesCommand = new AsyncRelayCommand(ToggleBoxesAsync);
         ToggleDesktopIconsCommand = new AsyncRelayCommand(ToggleDesktopIconsAsync);
@@ -50,6 +53,7 @@ public partial class CommandCenterWindowViewModel : ViewModelBase
 
     private void RebuildActions(ApplicationSettings settings)
     {
+        IsLocked = settings.CommandCenterLocked;
         ShowTitles = settings.CommandCenterShowTitles;
         var configuredActions = CommandCenterActionCatalog.Normalize(settings.CommandCenterActions);
 
@@ -92,6 +96,11 @@ public partial class CommandCenterWindowViewModel : ViewModelBase
         }
     }
 
+    partial void OnIsLockedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(PinButtonText));
+    }
+
     private async Task RefreshActionStateAsync()
     {
         var isDesktopClean = await AppServices.DesktopCleanupService.IsDesktopCleanAsync().ConfigureAwait(false);
@@ -118,6 +127,13 @@ public partial class CommandCenterWindowViewModel : ViewModelBase
     private async Task OpenNoteHubAsync()
     {
         await AppServices.WidgetWindowManager.ShowNoteHubAsync().ConfigureAwait(false);
+    }
+
+    private async Task ToggleLockAsync()
+    {
+        var current = await AppServices.SettingsService.GetAsync().ConfigureAwait(false);
+        current.CommandCenterLocked = !current.CommandCenterLocked;
+        await AppServices.SettingsService.SaveAsync(current).ConfigureAwait(false);
     }
 
     private async Task ToggleBoxesAsync()

@@ -345,6 +345,13 @@
                             </Grid>
                         </Border>
 
+                        <Border Classes="setting-row" ToolTip.Tip="Lock the Command Center position and size until you unpin it" ToolTip.ShowDelay="2000">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Lock Position And Size" FontWeight="Medium" VerticalAlignment="Center"/>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding CommandCenterLocked, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
                         <Border Classes="setting-row" ToolTip.Tip="Show action titles below each Command Center icon" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Text="Show Titles" FontWeight="Medium" VerticalAlignment="Center"/>

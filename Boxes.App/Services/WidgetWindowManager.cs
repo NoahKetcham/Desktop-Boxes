@@ -332,10 +332,8 @@ public class WidgetWindowManager
                 }
             }
 
-            viewModel.RequestClose += OnCommandCenterRequestClose;
             window.Closed += async (_, _) =>
             {
-                viewModel.RequestClose -= OnCommandCenterRequestClose;
                 await SaveCommandCenterStateAsync(window).ConfigureAwait(false);
                 _commandCenterWindow = null;
                 _commandCenterViewModel = null;
@@ -472,10 +470,5 @@ public class WidgetWindowManager
             window.Show();
             window.Activate();
         });
-    }
-
-    private void OnCommandCenterRequestClose(object? sender, EventArgs e)
-    {
-        _commandCenterWindow?.Close();
     }
 }

@@ -4,16 +4,16 @@
         x:Class="Boxes.App.Views.Widgets.CommandCenterWindow"
         x:DataType="widgetsVm:CommandCenterWindowViewModel"
         Width="360"
-        Height="190"
+        Height="178"
         MinWidth="240"
-        MinHeight="120"
+        MinHeight="110"
         CanResize="True"
         CanMinimize="False"
         CanMaximize="False"
         ShowActivated="True"
         ShowInTaskbar="False"
         WindowStartupLocation="Manual"
-        SystemDecorations="None"
+        SystemDecorations="BorderOnly"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="NoChrome"
         ExtendClientAreaTitleBarHeightHint="-1"
@@ -26,14 +26,14 @@
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
 
-        <Style Selector="Button.command-center-close">
+        <Style Selector="Button.command-center-top-button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="6"/>
             <Setter Property="Opacity" Value="0.75"/>
         </Style>
 
-        <Style Selector="Button.command-center-close:pointerover">
+        <Style Selector="Button.command-center-top-button:pointerover">
             <Setter Property="Opacity" Value="1"/>
             <Setter Property="Background" Value="#18FFFFFF"/>
         </Style>
@@ -53,71 +53,58 @@
     </Window.Styles>
 
     <Grid x:Name="RootGrid" PointerPressed="Chrome_PointerPressed">
-        <Border x:Name="OuterBorder" Classes="command-center-shell" Padding="12">
+        <Border x:Name="OuterBorder" Classes="command-center-shell" Padding="12,10,12,12">
             <Grid RowDefinitions="Auto,*">
                 <Grid ColumnDefinitions="*,Auto">
-                    <Border Grid.Column="0"
-                            x:Name="DragGrip"
-                            Width="42"
-                            Height="6"
-                            CornerRadius="3"
-                            Background="#40FFFFFF"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"/>
                     <Button Grid.Column="1"
-                            Classes="command-center-close"
-                            Command="{Binding CloseCommand}"
-                            ToolTip.Tip="Close"
+                            Classes="command-center-top-button"
+                            Command="{Binding ToggleLockCommand}"
+                            ToolTip.Tip="Lock or unlock position and size"
                             PointerPressed="Button_OnPointerPressed">
-                        <TextBlock Text="X" FontSize="12"/>
+                        <TextBlock Text="{Binding PinButtonText}" FontSize="12"/>
                     </Button>
                 </Grid>
 
-                <ScrollViewer Grid.Row="1"
-                              Margin="0,10,0,0"
-                              HorizontalScrollBarVisibility="Disabled"
-                              VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding Actions}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel Orientation="Horizontal" ItemWidth="78" ItemHeight="78"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="widgetsVm:CommandCenterActionButtonViewModel">
-                                <Button Classes="command-center-action"
-                                        Command="{Binding Command}"
-                                        ToolTip.Tip="{Binding Title}"
-                                        PointerPressed="Button_OnPointerPressed">
-                                    <StackPanel Spacing="7"
-                                                HorizontalAlignment="Center"
-                                                VerticalAlignment="Center">
-                                        <Border Width="34"
-                                                Height="34"
-                                                CornerRadius="10"
-                                                Background="#20FFFFFF"
-                                                HorizontalAlignment="Center">
-                                            <TextBlock Text="{Binding Icon}"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       FontSize="15"
-                                                       FontWeight="Bold"/>
-                                        </Border>
-                                        <TextBlock Text="{Binding Title}"
-                                                   IsVisible="{Binding ShowTitle}"
+                <ItemsControl Grid.Row="1" Margin="0,8,0,0" ItemsSource="{Binding Actions}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" ItemWidth="70" ItemHeight="68"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="widgetsVm:CommandCenterActionButtonViewModel">
+                            <Button Classes="command-center-action"
+                                    Command="{Binding Command}"
+                                    ToolTip.Tip="{Binding Title}"
+                                    PointerPressed="Button_OnPointerPressed">
+                                <StackPanel Spacing="5"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center">
+                                    <Border Width="32"
+                                            Height="32"
+                                            CornerRadius="10"
+                                            Background="#20FFFFFF"
+                                            HorizontalAlignment="Center">
+                                        <TextBlock Text="{Binding Icon}"
                                                    HorizontalAlignment="Center"
-                                                   TextAlignment="Center"
-                                                   MaxWidth="62"
-                                                   TextWrapping="Wrap"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   FontSize="12"
-                                                   FontWeight="SemiBold"/>
-                                    </StackPanel>
-                                </Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
+                                                   VerticalAlignment="Center"
+                                                   FontSize="14"
+                                                   FontWeight="Bold"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding Title}"
+                                               IsVisible="{Binding ShowTitle}"
+                                               HorizontalAlignment="Center"
+                                               TextAlignment="Center"
+                                               MaxWidth="58"
+                                               TextWrapping="Wrap"
+                                               TextTrimming="CharacterEllipsis"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </Grid>
         </Border>
 
@@ -127,6 +114,7 @@
                 Width="6"
                 Background="Transparent"
                 Cursor="SizeWestEast"
+                IsHitTestVisible="{Binding !IsLocked}"
                 PointerPressed="ResizeHandle_OnPointerPressed"/>
         <Border Tag="Bottom"
                 HorizontalAlignment="Stretch"
@@ -134,6 +122,7 @@
                 Height="6"
                 Background="Transparent"
                 Cursor="SizeNorthSouth"
+                IsHitTestVisible="{Binding !IsLocked}"
                 PointerPressed="ResizeHandle_OnPointerPressed"/>
         <Border Tag="BottomRight"
                 HorizontalAlignment="Right"
@@ -142,6 +131,7 @@
                 Height="12"
                 Background="Transparent"
                 Cursor="SizeAll"
+                IsHitTestVisible="{Binding !IsLocked}"
                 PointerPressed="ResizeHandle_OnPointerPressed"/>
     </Grid>
 </Window>

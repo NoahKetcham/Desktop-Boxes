@@ -31,6 +31,7 @@ public class ApplicationSettings
 
     // Command Center
     public bool CommandCenterShowBorder { get; set; }
+    public bool CommandCenterLocked { get; set; }
     public bool CommandCenterShowTitles { get; set; } = true;
     public List<CommandCenterActionSetting> CommandCenterActions { get; set; } = CommandCenterActionCatalog.CreateDefaultSettings();
 
