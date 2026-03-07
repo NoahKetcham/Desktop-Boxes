@@ -74,6 +74,7 @@ public partial class DashboardPageViewModel : ViewModelBase
     public IAsyncRelayCommand<NotepadSummaryViewModel?> OpenNotepadCommand { get; }
     public IAsyncRelayCommand<NotepadSummaryViewModel?> DeleteNotepadCommand { get; }
     public IAsyncRelayCommand OpenNoteHubCommand { get; }
+    public IAsyncRelayCommand OpenCommandCenterCommand { get; }
 
     public DashboardPageViewModel()
     {
@@ -99,6 +100,7 @@ public partial class DashboardPageViewModel : ViewModelBase
         OpenNotepadCommand = new AsyncRelayCommand<NotepadSummaryViewModel?>(OpenNotepadAsync);
         DeleteNotepadCommand = new AsyncRelayCommand<NotepadSummaryViewModel?>(DeleteNotepadAsync, param => param != null);
         OpenNoteHubCommand = new AsyncRelayCommand(OpenNoteHubAsync);
+        OpenCommandCenterCommand = new AsyncRelayCommand(OpenCommandCenterAsync);
 
         ScannedFiles.CollectionChanged += OnScannedFilesCollectionChanged;
 
@@ -221,6 +223,7 @@ public partial class DashboardPageViewModel : ViewModelBase
         {
             await AppServices.WidgetWindowManager.ShowNotepadAsync(notepad);
         }
+        await AppServices.WidgetWindowManager.ShowCommandCenterAsync().ConfigureAwait(false);
     }
 
     private static async Task EnsureStartupShortcutDataAsync(IReadOnlyList<DesktopBox> boxes)
@@ -334,6 +337,11 @@ public partial class DashboardPageViewModel : ViewModelBase
     private async Task OpenNoteHubAsync()
     {
         await AppServices.WidgetWindowManager.ShowNoteHubAsync().ConfigureAwait(false);
+    }
+
+    private async Task OpenCommandCenterAsync()
+    {
+        await AppServices.WidgetWindowManager.ShowCommandCenterAsync().ConfigureAwait(false);
     }
 
     private async Task OpenBoxAsync(BoxSummaryViewModel? viewModel)

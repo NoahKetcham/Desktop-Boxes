@@ -28,5 +28,15 @@ public class ApplicationSettings
 
     // NoteHub
     public string? NoteHubDirectoryPath { get; set; }
+
+    // Command Center
+    public bool CommandCenterShowBorder { get; set; }
+    public bool CommandCenterShowTitles { get; set; } = true;
+    public List<CommandCenterActionSetting> CommandCenterActions { get; set; } = CommandCenterActionCatalog.CreateDefaultSettings();
+
+    public void NormalizeCommandCenterSettings()
+    {
+        CommandCenterActions = CommandCenterActionCatalog.Normalize(CommandCenterActions);
+    }
 }
 

@@ -54,6 +54,28 @@ public static class WindowExtensions
         return platformHandle is null ? IntPtr.Zero : platformHandle.Handle;
     }
 
+    public static void HideDwmBorder(this Window window)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var platformHandle = window.TryGetPlatformHandle();
+        if (platformHandle is null || platformHandle.Handle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        // Windows 11: request no compositor-drawn border for this top-level window.
+        var colorNone = unchecked((int)0xFFFFFFFE);
+        NativeMethods.DwmSetWindowAttribute(
+            platformHandle.Handle,
+            NativeMethods.DWMWA_BORDER_COLOR,
+            ref colorNone,
+            sizeof(int));
+    }
+
     public static void SendToDesktopBackground(this Window window)
     {
         if (!OperatingSystem.IsWindows())
@@ -121,6 +143,9 @@ internal static class NativeMethods
     public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam,
         SendMessageTimeoutFlags fuFlags, uint uTimeout, out IntPtr lpdwResult);
 
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmSetWindowAttribute(IntPtr hwnd, uint dwAttribute, ref int pvAttribute, int cbAttribute);
+
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
     public const uint SWP_NOSIZE = 0x0001;
@@ -129,6 +154,7 @@ internal static class NativeMethods
     public const uint SWP_NOZORDER = 0x0004;
 
     public const uint WM_SPAWN_WORKER = 0x052C;
+    public const uint DWMWA_BORDER_COLOR = 34;
 
     [Flags]
     public enum SendMessageTimeoutFlags : uint

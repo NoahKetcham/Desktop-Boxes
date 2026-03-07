@@ -52,6 +52,7 @@ public class SettingsService
                 var settings = await JsonSerializer.DeserializeAsync<ApplicationSettings>(stream, _serializerOptions).ConfigureAwait(false);
                 if (settings != null)
                 {
+                    settings.NormalizeCommandCenterSettings();
                     _cache = settings;
                 }
             }
@@ -238,7 +239,10 @@ public class SettingsService
         ShowShortcutLabels = settings.ShowShortcutLabels,
         BoxContentPadding = settings.BoxContentPadding,
         BoxContentVerticalPadding = settings.BoxContentVerticalPadding,
-        NoteHubDirectoryPath = settings.NoteHubDirectoryPath
+        NoteHubDirectoryPath = settings.NoteHubDirectoryPath,
+        CommandCenterShowBorder = settings.CommandCenterShowBorder,
+        CommandCenterShowTitles = settings.CommandCenterShowTitles,
+        CommandCenterActions = CommandCenterActionCatalog.Normalize(settings.CommandCenterActions)
     };
 
     private void RaiseChanged()

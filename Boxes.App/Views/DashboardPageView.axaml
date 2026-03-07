@@ -277,6 +277,38 @@
                                                HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
+
+                            <Border Background="{StaticResource SurfaceElevatedBrush}"
+                                    CornerRadius="{StaticResource RadiusL}"
+                                    Padding="24"
+                                    BoxShadow="{StaticResource ShadowBase}">
+                                <StackPanel Spacing="16">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Border Width="52" Height="52" CornerRadius="16" Background="{StaticResource SurfaceBrush}">
+                                            <TextBlock Text="⌘" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Spacing="4" VerticalAlignment="Center">
+                                            <TextBlock Text="Command Center" FontSize="20" FontWeight="Bold"/>
+                                            <TextBlock Text="A compact desktop control surface for quick actions."
+                                                       Classes="subtitle"
+                                                       TextWrapping="Wrap"
+                                                       MaxWidth="340"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <WrapPanel Orientation="Horizontal" ItemWidth="160" ItemHeight="28">
+                                        <TextBlock Text="Open NoteHub" Opacity="0.8"/>
+                                        <TextBlock Text="Hide or show boxes" Opacity="0.8"/>
+                                        <TextBlock Text="Clean desktop icons" Opacity="0.8"/>
+                                    </WrapPanel>
+
+                                    <Button Classes="btn-primary"
+                                            Command="{Binding OpenCommandCenterCommand}"
+                                            HorizontalAlignment="Left"
+                                            Padding="20,10"
+                                            Content="Open Command Center"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

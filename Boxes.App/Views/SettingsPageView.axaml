@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Boxes.App.ViewModels"
              xmlns:controls="using:Avalonia.Controls"
+             xmlns:widgetsVm="using:Boxes.App.ViewModels.Widgets"
              x:Class="Boxes.App.Views.SettingsPageView"
              x:DataType="vm:SettingsPageViewModel"
              x:Name="SettingsView">
@@ -45,6 +46,14 @@
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <TextBlock Text="📦" FontSize="16"/>
                         <TextBlock Text="Box Customization"/>
+                    </StackPanel>
+                </Button>
+
+                <Button x:Name="NavCommandCenter" Classes="nav-item"
+                        Command="{Binding SelectCategoryCommand}" CommandParameter="commandcenter">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="⌘" FontSize="16"/>
+                        <TextBlock Text="Command Center"/>
                     </StackPanel>
                 </Button>
 
@@ -310,6 +319,66 @@
                                 <TextBlock Grid.Column="2" Text="{Binding BoxContentVerticalPadding, StringFormat='{}{0}px'}" 
                                            VerticalAlignment="Center" HorizontalAlignment="Right"/>
                             </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- COMMAND CENTER SECTION -->
+                <Border x:Name="CommandCenterSection" Classes="card" IsVisible="{Binding IsCategoryVisible, ConverterParameter=commandcenter, FallbackValue=True}">
+                    <StackPanel Spacing="16">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="⌘" FontSize="20"/>
+                            <TextBlock Text="Command Center" FontWeight="SemiBold" FontSize="18"/>
+                            <Button Classes="btn-subtle" Command="{Binding ResetCategoryCommand}" CommandParameter="commandcenter"
+                                    HorizontalAlignment="Right" Margin="20,0,0,0">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="↩" FontSize="12"/>
+                                    <TextBlock Text="Reset"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <Border Classes="setting-row" ToolTip.Tip="Show a thin outline around the Command Center window" ToolTip.ShowDelay="2000">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Show Border" FontWeight="Medium" VerticalAlignment="Center"/>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding CommandCenterShowBorder, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Classes="setting-row" ToolTip.Tip="Show action titles below each Command Center icon" ToolTip.ShowDelay="2000">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Show Titles" FontWeight="Medium" VerticalAlignment="Center"/>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding CommandCenterShowTitles, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Classes="setting-row" ToolTip.Tip="Enable and reorder the buttons shown in Command Center" ToolTip.ShowDelay="2000">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Actions" FontWeight="Medium"/>
+                                <ItemsControl ItemsSource="{Binding CommandCenterActions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="widgetsVm:CommandCenterActionItemViewModel">
+                                            <Border Background="{StaticResource SurfaceBrush}"
+                                                    CornerRadius="{StaticResource RadiusM}"
+                                                    Padding="14"
+                                                    Margin="0,0,0,8">
+                                                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="12">
+                                                    <Border Width="30" Height="30" CornerRadius="8" Background="{StaticResource SurfaceElevatedBrush}">
+                                                        <TextBlock Text="{Binding Icon}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
+                                                        <TextBlock Text="{Binding Description}" FontSize="11" Opacity="0.65"/>
+                                                    </StackPanel>
+                                                    <ToggleSwitch Grid.Column="2" IsChecked="{Binding IsEnabled, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                                    <Button Grid.Column="3" Classes="btn-subtle" Command="{Binding MoveUpCommand}" Content="Up" MinWidth="48"/>
+                                                    <Button Grid.Column="4" Classes="btn-subtle" Command="{Binding MoveDownCommand}" Content="Down" MinWidth="56"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
                         </Border>
                     </StackPanel>
                 </Border>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Threading;
+using Boxes.App.Extensions;
 using Boxes.App.Models;
 using Boxes.App.ViewModels.Widgets;
 using Boxes.App.Views.Widgets;
@@ -21,6 +22,8 @@ public class WidgetWindowManager
     private NoteHubPreviewWindow? _noteHubPreview;
     private NoteHubEditorWindow? _noteHubEditor;
     private NoteHubWindowViewModel? _noteHubViewModel;
+    private CommandCenterWindow? _commandCenterWindow;
+    private CommandCenterWindowViewModel? _commandCenterViewModel;
 
     public async Task ShowNotepadAsync(Notepad notepad)
     {
@@ -292,6 +295,110 @@ public class WidgetWindowManager
         });
     }
 
+    public async Task ShowCommandCenterAsync()
+    {
+        if (_commandCenterWindow != null)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _commandCenterWindow.Show();
+                _commandCenterWindow.Activate();
+            });
+            return;
+        }
+
+        var state = await AppServices.WidgetStateService.GetAsync("commandCenter").ConfigureAwait(false);
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var viewModel = new CommandCenterWindowViewModel();
+            _commandCenterViewModel = viewModel;
+            var window = new CommandCenterWindow
+            {
+                DataContext = viewModel
+            };
+
+            if (state is not null)
+            {
+                if (state.Width > 0 && state.Height > 0)
+                {
+                    window.Width = state.Width;
+                    window.Height = state.Height;
+                }
+
+                if (!double.IsNaN(state.X) && !double.IsNaN(state.Y))
+                {
+                    window.Position = new PixelPoint((int)state.X, (int)state.Y);
+                }
+            }
+
+            viewModel.RequestClose += OnCommandCenterRequestClose;
+            window.Closed += async (_, _) =>
+            {
+                viewModel.RequestClose -= OnCommandCenterRequestClose;
+                await SaveCommandCenterStateAsync(window).ConfigureAwait(false);
+                _commandCenterWindow = null;
+                _commandCenterViewModel = null;
+            };
+
+            _commandCenterWindow = window;
+            window.Show();
+            window.Activate();
+        });
+    }
+
+    public async Task CloseCommandCenterAsync()
+    {
+        if (_commandCenterWindow == null)
+        {
+            return;
+        }
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            _commandCenterWindow?.Close();
+        });
+    }
+
+    public async Task SaveCommandCenterStateAsync(CommandCenterWindow window)
+    {
+        var state = await Dispatcher.UIThread.InvokeAsync(() => new WidgetStateData
+        {
+            Width = window.Width,
+            Height = window.Height,
+            X = window.Position.X,
+            Y = window.Position.Y
+        });
+
+        await AppServices.WidgetStateService.SaveAsync("commandCenter", state).ConfigureAwait(false);
+    }
+
+    public void SetCommandCenterTopMost(bool enable)
+    {
+        if (_commandCenterWindow == null)
+        {
+            return;
+        }
+
+        _commandCenterWindow.SetTopMost(enable);
+    }
+
+    public void RestoreCommandCenterBelowApps()
+    {
+        if (_commandCenterWindow == null)
+        {
+            return;
+        }
+
+        _commandCenterWindow.SetTopMost(false);
+        _commandCenterWindow.SetAlwaysBelowApps();
+    }
+
+    public bool OwnsCommandCenterWindow(IntPtr handle)
+    {
+        return _commandCenterWindow?.GetWindowHandle() == handle;
+    }
+
     private void OnNoteHubRequestClose(object? sender, EventArgs e)
     {
         _noteHubPreview?.Close();
@@ -365,5 +472,10 @@ public class WidgetWindowManager
             window.Show();
             window.Activate();
         });
+    }
+
+    private void OnCommandCenterRequestClose(object? sender, EventArgs e)
+    {
+        _commandCenterWindow?.Close();
     }
 }

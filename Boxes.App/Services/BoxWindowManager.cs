@@ -61,6 +61,7 @@ public class BoxWindowManager
             {
                 w.SetTopMost(true);
             }
+            AppServices.WidgetWindowManager.SetCommandCenterTopMost(true);
             // Install global mouse hook to end burst on outside click
             EnsureGlobalMouseHook();
         });
@@ -97,6 +98,7 @@ public class BoxWindowManager
                     w.SetTopMost(false);
                     w.SetAlwaysBelowApps();
                 }
+                AppServices.WidgetWindowManager.RestoreCommandCenterBelowApps();
                 _burstCts = null;
                 ReleaseGlobalMouseHook();
             });
@@ -127,6 +129,7 @@ public class BoxWindowManager
                 w.SetTopMost(false);
                 w.SetAlwaysBelowApps();
             }
+            AppServices.WidgetWindowManager.RestoreCommandCenterBelowApps();
             ReleaseGlobalMouseHook();
         });
     }
@@ -164,6 +167,10 @@ public class BoxWindowManager
                     break;
                 }
             }
+        }
+        if (!isOurWindow && AppServices.WidgetWindowManager.OwnsCommandCenterWindow(clickedHwnd))
+        {
+            isOurWindow = true;
         }
 
         if (!isOurWindow)

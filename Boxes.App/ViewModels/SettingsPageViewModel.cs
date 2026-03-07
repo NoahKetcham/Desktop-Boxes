@@ -1,6 +1,8 @@
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -8,6 +10,7 @@ using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Boxes.App.Models;
 using Boxes.App.Services;
+using Boxes.App.ViewModels.Widgets;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -65,6 +68,15 @@ public partial class SettingsPageViewModel : ViewModelBase
     [ObservableProperty]
     private string? noteHubDirectoryPath;
 
+    // Command Center
+    [ObservableProperty]
+    private bool commandCenterShowBorder;
+
+    [ObservableProperty]
+    private bool commandCenterShowTitles = true;
+
+    public ObservableCollection<CommandCenterActionItemViewModel> CommandCenterActions { get; } = new();
+
     // Box Customization
     [ObservableProperty]
     private int boxHeaderHeight = 40;
@@ -106,6 +118,9 @@ public partial class SettingsPageViewModel : ViewModelBase
 
     [ObservableProperty]
     private ObservableCollection<Color> recentBoxBackgroundColors = new();
+
+    private bool _updatingCommandCenterActions;
+    private bool _loadingCommandCenterSettings;
 
     // Commands
     public IAsyncRelayCommand SaveCommand { get; }
@@ -217,6 +232,11 @@ public partial class SettingsPageViewModel : ViewModelBase
             case "notehub":
                 NoteHubDirectoryPath = null;
                 break;
+            case "commandcenter":
+                CommandCenterShowBorder = false;
+                CommandCenterShowTitles = true;
+                LoadCommandCenterActions(CommandCenterActionCatalog.CreateDefaultSettings());
+                break;
         }
 
         await SaveAsync();
@@ -251,7 +271,10 @@ public partial class SettingsPageViewModel : ViewModelBase
             ShowShortcutLabels = ShowShortcutLabels,
             BoxContentPadding = BoxContentPadding,
             BoxContentVerticalPadding = BoxContentVerticalPadding,
-            NoteHubDirectoryPath = string.IsNullOrWhiteSpace(NoteHubDirectoryPath) ? null : NoteHubDirectoryPath.Trim()
+            NoteHubDirectoryPath = string.IsNullOrWhiteSpace(NoteHubDirectoryPath) ? null : NoteHubDirectoryPath.Trim(),
+            CommandCenterShowBorder = CommandCenterShowBorder,
+            CommandCenterShowTitles = CommandCenterShowTitles,
+            CommandCenterActions = BuildCommandCenterActionSettings()
         };
 
         await AppServices.SettingsService.SaveAsync(model);
@@ -268,61 +291,72 @@ public partial class SettingsPageViewModel : ViewModelBase
 
     private void Apply(ApplicationSettings settings)
     {
-        ThemePreference = settings.ThemePreference;
-        AutoSnapEnabled = settings.AutoSnapEnabled;
-        ShowBoxOutlines = settings.ShowBoxOutlines;
-        RunAtStartup = settings.RunAtStartup;
-        OneDriveLinked = settings.OneDriveLinked;
-        GoogleDriveLinked = settings.GoogleDriveLinked;
-        BoxesTransparencyPercent = settings.BoxesTransparencyPercent;
-
-        if (!string.IsNullOrWhiteSpace(settings.AccentHex) && Color.TryParse(settings.AccentHex, out var accentColor))
+        _loadingCommandCenterSettings = true;
+        try
         {
-            SelectedAccentColor = accentColor;
-            AccentService.ApplyAccent(accentColor);
-        }
+            ThemePreference = settings.ThemePreference;
+            AutoSnapEnabled = settings.AutoSnapEnabled;
+            ShowBoxOutlines = settings.ShowBoxOutlines;
+            RunAtStartup = settings.RunAtStartup;
+            OneDriveLinked = settings.OneDriveLinked;
+            GoogleDriveLinked = settings.GoogleDriveLinked;
+            BoxesTransparencyPercent = settings.BoxesTransparencyPercent;
 
-        BoxBackgroundColorHex = settings.BoxBackgroundColor ?? "#1C2235";
-        if (Color.TryParse(BoxBackgroundColorHex, out var color))
-        {
-            SelectedBoxBackgroundColor = color;
-        }
-
-        // Load recent colors
-        RecentAccentColors.Clear();
-        if (settings.RecentAccentColors != null)
-        {
-            foreach (var hex in settings.RecentAccentColors.Take(5))
+            if (!string.IsNullOrWhiteSpace(settings.AccentHex) && Color.TryParse(settings.AccentHex, out var accentColor))
             {
-                if (Color.TryParse(hex, out var recentColor))
+                SelectedAccentColor = accentColor;
+                AccentService.ApplyAccent(accentColor);
+            }
+
+            BoxBackgroundColorHex = settings.BoxBackgroundColor ?? "#1C2235";
+            if (Color.TryParse(BoxBackgroundColorHex, out var color))
+            {
+                SelectedBoxBackgroundColor = color;
+            }
+
+            // Load recent colors
+            RecentAccentColors.Clear();
+            if (settings.RecentAccentColors != null)
+            {
+                foreach (var hex in settings.RecentAccentColors.Take(5))
                 {
-                    RecentAccentColors.Add(recentColor);
+                    if (Color.TryParse(hex, out var recentColor))
+                    {
+                        RecentAccentColors.Add(recentColor);
+                    }
                 }
             }
-        }
 
-        RecentBoxBackgroundColors.Clear();
-        if (settings.RecentBoxBackgroundColors != null)
-        {
-            foreach (var hex in settings.RecentBoxBackgroundColors.Take(5))
+            RecentBoxBackgroundColors.Clear();
+            if (settings.RecentBoxBackgroundColors != null)
             {
-                if (Color.TryParse(hex, out var recentColor))
+                foreach (var hex in settings.RecentBoxBackgroundColors.Take(5))
                 {
-                    RecentBoxBackgroundColors.Add(recentColor);
+                    if (Color.TryParse(hex, out var recentColor))
+                    {
+                        RecentBoxBackgroundColors.Add(recentColor);
+                    }
                 }
             }
-        }
 
-        // Box customization
-        BoxHeaderHeight = settings.BoxHeaderHeight;
-        ShowBoxHeader = settings.ShowBoxHeader;
-        ShowBoxTitle = settings.ShowBoxTitle;
-        BoxCornerRadius = settings.BoxCornerRadius;
-        BoxIconSize = settings.BoxIconSize;
-        ShowShortcutLabels = settings.ShowShortcutLabels;
-        BoxContentPadding = settings.BoxContentPadding;
-        BoxContentVerticalPadding = settings.BoxContentVerticalPadding;
-        NoteHubDirectoryPath = settings.NoteHubDirectoryPath;
+            // Box customization
+            BoxHeaderHeight = settings.BoxHeaderHeight;
+            ShowBoxHeader = settings.ShowBoxHeader;
+            ShowBoxTitle = settings.ShowBoxTitle;
+            BoxCornerRadius = settings.BoxCornerRadius;
+            BoxIconSize = settings.BoxIconSize;
+            ShowShortcutLabels = settings.ShowShortcutLabels;
+            BoxContentPadding = settings.BoxContentPadding;
+            BoxContentVerticalPadding = settings.BoxContentVerticalPadding;
+            NoteHubDirectoryPath = settings.NoteHubDirectoryPath;
+            CommandCenterShowBorder = settings.CommandCenterShowBorder;
+            CommandCenterShowTitles = settings.CommandCenterShowTitles;
+            LoadCommandCenterActions(settings.CommandCenterActions);
+        }
+        finally
+        {
+            _loadingCommandCenterSettings = false;
+        }
     }
 
     // Auto-save box customization when changed
@@ -334,6 +368,8 @@ public partial class SettingsPageViewModel : ViewModelBase
     partial void OnShowShortcutLabelsChanged(bool value) => _ = SaveBoxCustomizationAsync();
     partial void OnBoxContentPaddingChanged(int value) => _ = SaveBoxCustomizationAsync();
     partial void OnBoxContentVerticalPaddingChanged(int value) => _ = SaveBoxCustomizationAsync();
+    partial void OnCommandCenterShowBorderChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
+    partial void OnCommandCenterShowTitlesChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
 
     private async Task SaveBoxCustomizationAsync()
     {
@@ -346,6 +382,90 @@ public partial class SettingsPageViewModel : ViewModelBase
         current.ShowShortcutLabels = ShowShortcutLabels;
         current.BoxContentPadding = BoxContentPadding;
         current.BoxContentVerticalPadding = BoxContentVerticalPadding;
+        await AppServices.SettingsService.SaveAsync(current);
+    }
+
+    private List<CommandCenterActionSetting> BuildCommandCenterActionSettings()
+    {
+        return CommandCenterActionCatalog.Normalize(CommandCenterActions.Select(action => new CommandCenterActionSetting
+        {
+            Key = action.Key,
+            IsEnabled = action.IsEnabled
+        }));
+    }
+
+    private void LoadCommandCenterActions(IEnumerable<CommandCenterActionSetting>? actionSettings)
+    {
+        _updatingCommandCenterActions = true;
+        try
+        {
+            foreach (var action in CommandCenterActions)
+            {
+                action.PropertyChanged -= OnCommandCenterActionPropertyChanged;
+            }
+
+            CommandCenterActions.Clear();
+            var normalized = CommandCenterActionCatalog.Normalize(actionSettings);
+            for (var i = 0; i < normalized.Count; i++)
+            {
+                var action = normalized[i];
+                var definition = CommandCenterActionCatalog.GetDefinition(action.Key);
+                var key = action.Key;
+                var item = new CommandCenterActionItemViewModel(
+                    key,
+                    definition.Title,
+                    definition.Description,
+                    definition.Icon,
+                    action.IsEnabled,
+                    () => MoveCommandCenterAction(key, -1),
+                    () => MoveCommandCenterAction(key, 1));
+                item.PropertyChanged += OnCommandCenterActionPropertyChanged;
+                CommandCenterActions.Add(item);
+            }
+        }
+        finally
+        {
+            _updatingCommandCenterActions = false;
+        }
+    }
+
+    private void MoveCommandCenterAction(string key, int delta)
+    {
+        var index = CommandCenterActions.ToList().FindIndex(action => action.Key == key);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var newIndex = index + delta;
+        if (newIndex < 0 || newIndex >= CommandCenterActions.Count)
+        {
+            return;
+        }
+
+        CommandCenterActions.Move(index, newIndex);
+        _ = SaveCommandCenterSettingsAsync();
+    }
+
+    private void OnCommandCenterActionPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(CommandCenterActionItemViewModel.IsEnabled))
+        {
+            _ = SaveCommandCenterSettingsAsync();
+        }
+    }
+
+    private async Task SaveCommandCenterSettingsAsync()
+    {
+        if (_updatingCommandCenterActions || _loadingCommandCenterSettings)
+        {
+            return;
+        }
+
+        var current = await AppServices.SettingsService.GetAsync();
+        current.CommandCenterShowBorder = CommandCenterShowBorder;
+        current.CommandCenterShowTitles = CommandCenterShowTitles;
+        current.CommandCenterActions = BuildCommandCenterActionSettings();
         await AppServices.SettingsService.SaveAsync(current);
     }
 

@@ -99,10 +99,16 @@ sealed class Program
             return;
         }
 
-        // For opennotepad, start full app so notepad can be shown
+        // For widget-opening commands, start the full app if no instance is already listening.
         if (string.Equals(command, "opennotepad", StringComparison.OrdinalIgnoreCase))
         {
             PendingCommand = "opennotepad";
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            return;
+        }
+        if (string.Equals(command, "opencommandcenter", StringComparison.OrdinalIgnoreCase))
+        {
+            PendingCommand = "opencommandcenter";
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
             return;
         }
@@ -123,6 +129,10 @@ sealed class Program
             else if (string.Equals(command, "showburst", StringComparison.OrdinalIgnoreCase))
             {
                 await AppServices.BoxWindowManager.ToggleBurstAsync(TimeSpan.FromSeconds(5));
+            }
+            else if (string.Equals(command, "opencommandcenter", StringComparison.OrdinalIgnoreCase))
+            {
+                await AppServices.WidgetWindowManager.ShowCommandCenterAsync();
             }
             else
             {

@@ -93,6 +93,13 @@ public partial class App : Application
                     }
                 });
             }
+            else if (string.Equals(pendingCommand, "opencommandcenter", StringComparison.OrdinalIgnoreCase))
+            {
+                Dispatcher.UIThread.Post(async () =>
+                {
+                    await AppServices.WidgetWindowManager.ShowCommandCenterAsync();
+                });
+            }
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -140,6 +147,13 @@ public partial class App : Application
                 {
                     await AppServices.WidgetWindowManager.ShowNotepadAsync(notepads[0]);
                 }
+            });
+        }
+        else if (string.Equals(command, "opencommandcenter", StringComparison.OrdinalIgnoreCase))
+        {
+            Dispatcher.UIThread.Post(async () =>
+            {
+                await AppServices.WidgetWindowManager.ShowCommandCenterAsync();
             });
         }
         else if (string.Equals(command, "stop", StringComparison.OrdinalIgnoreCase))

@@ -1,0 +1,147 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:widgetsVm="using:Boxes.App.ViewModels.Widgets"
+        x:Class="Boxes.App.Views.Widgets.CommandCenterWindow"
+        x:DataType="widgetsVm:CommandCenterWindowViewModel"
+        Width="360"
+        Height="190"
+        MinWidth="240"
+        MinHeight="120"
+        CanResize="True"
+        CanMinimize="False"
+        CanMaximize="False"
+        ShowActivated="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="Manual"
+        SystemDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent">
+
+    <Window.Styles>
+        <Style Selector="Border.command-center-shell">
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Button.command-center-close">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="Opacity" Value="0.75"/>
+        </Style>
+
+        <Style Selector="Button.command-center-close:pointerover">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Background" Value="#18FFFFFF"/>
+        </Style>
+
+        <Style Selector="Button.command-center-action">
+            <Setter Property="Background" Value="#14000000"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="Button.command-center-action:pointerover">
+            <Setter Property="Background" Value="#22FFFFFF"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid x:Name="RootGrid" PointerPressed="Chrome_PointerPressed">
+        <Border x:Name="OuterBorder" Classes="command-center-shell" Padding="12">
+            <Grid RowDefinitions="Auto,*">
+                <Grid ColumnDefinitions="*,Auto">
+                    <Border Grid.Column="0"
+                            x:Name="DragGrip"
+                            Width="42"
+                            Height="6"
+                            CornerRadius="3"
+                            Background="#40FFFFFF"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"/>
+                    <Button Grid.Column="1"
+                            Classes="command-center-close"
+                            Command="{Binding CloseCommand}"
+                            ToolTip.Tip="Close"
+                            PointerPressed="Button_OnPointerPressed">
+                        <TextBlock Text="X" FontSize="12"/>
+                    </Button>
+                </Grid>
+
+                <ScrollViewer Grid.Row="1"
+                              Margin="0,10,0,0"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Actions}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" ItemWidth="78" ItemHeight="78"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="widgetsVm:CommandCenterActionButtonViewModel">
+                                <Button Classes="command-center-action"
+                                        Command="{Binding Command}"
+                                        ToolTip.Tip="{Binding Title}"
+                                        PointerPressed="Button_OnPointerPressed">
+                                    <StackPanel Spacing="7"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center">
+                                        <Border Width="34"
+                                                Height="34"
+                                                CornerRadius="10"
+                                                Background="#20FFFFFF"
+                                                HorizontalAlignment="Center">
+                                            <TextBlock Text="{Binding Icon}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="15"
+                                                       FontWeight="Bold"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding Title}"
+                                                   IsVisible="{Binding ShowTitle}"
+                                                   HorizontalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   MaxWidth="62"
+                                                   TextWrapping="Wrap"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <Border Tag="Right"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Stretch"
+                Width="6"
+                Background="Transparent"
+                Cursor="SizeWestEast"
+                PointerPressed="ResizeHandle_OnPointerPressed"/>
+        <Border Tag="Bottom"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Bottom"
+                Height="6"
+                Background="Transparent"
+                Cursor="SizeNorthSouth"
+                PointerPressed="ResizeHandle_OnPointerPressed"/>
+        <Border Tag="BottomRight"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Width="12"
+                Height="12"
+                Background="Transparent"
+                Cursor="SizeAll"
+                PointerPressed="ResizeHandle_OnPointerPressed"/>
+    </Grid>
+</Window>

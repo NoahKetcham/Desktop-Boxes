@@ -9,6 +9,12 @@
 ## Ideas
 - Website for advertising, download and payment handling.
 - Tier based subscription system.
+- Control panel widget
+    - general controls
+    - mode switcher
+    - settings
+    - box switcher
+    - notehub access
 
 ## Design Themes
 - Acetate

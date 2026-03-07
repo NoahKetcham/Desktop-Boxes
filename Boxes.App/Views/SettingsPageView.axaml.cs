@@ -135,6 +135,7 @@ public partial class SettingsPageView : UserControl
         _navButtons["appearance"] = this.FindControl<Button>("NavAppearance")!;
         _navButtons["behavior"] = this.FindControl<Button>("NavBehavior")!;
         _navButtons["customization"] = this.FindControl<Button>("NavCustomization")!;
+        _navButtons["commandcenter"] = this.FindControl<Button>("NavCommandCenter")!;
         _navButtons["integrations"] = this.FindControl<Button>("NavIntegrations")!;
         _navButtons["notehub"] = this.FindControl<Button>("NavNoteHub")!;
         _navButtons["developer"] = this.FindControl<Button>("NavDeveloper")!;
@@ -142,6 +143,7 @@ public partial class SettingsPageView : UserControl
         _sections["appearance"] = this.FindControl<Border>("AppearanceSection")!;
         _sections["behavior"] = this.FindControl<Border>("BehaviorSection")!;
         _sections["customization"] = this.FindControl<Border>("CustomizationSection")!;
+        _sections["commandcenter"] = this.FindControl<Border>("CommandCenterSection")!;
         _sections["integrations"] = this.FindControl<Border>("IntegrationsSection")!;
         _sections["notehub"] = this.FindControl<Border>("NoteHubSection")!;
         _sections["developer"] = this.FindControl<Border>("DeveloperSection")!;
