@@ -15,7 +15,7 @@ namespace Boxes.App.Views.Widgets;
 public partial class CommandCenterWindow : Window
 {
     private const double ActionCellSize = 52;
-    private const double ShellHorizontalPadding = 8;
+    private const double ShellHorizontalPadding = 11;
     private const double ShellVerticalPadding = 8;
 
     private Border? _outerBorder;

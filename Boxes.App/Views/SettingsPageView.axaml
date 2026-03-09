@@ -174,7 +174,7 @@
                         <Border Classes="setting-row" ToolTip.Tip="Adjust window transparency level" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,150,50">
                                 <TextBlock Text="Box Transparency" FontWeight="Medium" VerticalAlignment="Center"/>
-                                <Slider Grid.Column="1" Minimum="20" Maximum="100" 
+                                <Slider Grid.Column="1" Minimum="0" Maximum="100" 
                                         Value="{Binding BoxesTransparencyPercent, Mode=TwoWay}"
                                         TickFrequency="10" IsSnapToTickEnabled="True"/>
                                 <TextBlock Grid.Column="2" Text="{Binding BoxesTransparencyPercent, StringFormat='{}{0}%'}" 

@@ -5,7 +5,7 @@
         x:DataType="widgetsVm:CommandCenterWindowViewModel"
         Width="360"
         Height="108"
-        MinWidth="60"
+        MinWidth="63"
         MinHeight="60"
         CanResize="False"
         CanMinimize="False"
@@ -41,7 +41,7 @@
     </Window.Styles>
 
     <Grid x:Name="RootGrid" PointerPressed="Chrome_PointerPressed">
-        <Border x:Name="OuterBorder" Classes="command-center-shell" Padding="4,4,4,4">
+        <Border x:Name="OuterBorder" Classes="command-center-shell" Padding="7,4,4,4">
             <ItemsControl ItemsSource="{Binding Actions}" HorizontalAlignment="Center">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
