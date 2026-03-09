@@ -44,6 +44,9 @@ public class ApplicationSettings
     /// <summary>Show background color on action buttons. When false, buttons are transparent.</summary>
     public bool CommandCenterActionButtonShowBackground { get; set; } = true;
 
+    /// <summary>When true, padding and spacing are auto-computed from monitor; when false, manual slider values are used.</summary>
+    public bool CommandCenterAutoScale { get; set; } = true;
+
     /// <summary>Left padding around action buttons, in pixels.</summary>
     public int CommandCenterPaddingLeft { get; set; } = 6;
 

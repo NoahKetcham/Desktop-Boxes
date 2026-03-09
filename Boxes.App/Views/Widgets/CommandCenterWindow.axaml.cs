@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Platform;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -26,6 +27,7 @@ public partial class CommandCenterWindow : Window
     private ResizeDragMode _resizeDragMode;
     private IPointer? _activeResizePointer;
     private bool _hasInitializedLayout;
+    private PixelRect _lastScreenBounds;
 
     private enum ResizeDragMode
     {
@@ -47,7 +49,7 @@ public partial class CommandCenterWindow : Window
                 this.SetAlwaysBelowApps();
             }
         };
-        PositionChanged += (_, _) => ScheduleStateSave();
+        PositionChanged += OnPositionChanged;
         _outerBorder = this.FindControl<Border>("OuterBorder");
         Resources["CommandCenterActionMargin"] = new Thickness(0, 0, 0, 0);
         AppServices.SettingsService.SettingsChanged += OnSettingsChanged;
@@ -68,9 +70,47 @@ public partial class CommandCenterWindow : Window
         Dispatcher.UIThread.Post(() => SnapToNearestLayout(force: true));
     }
 
+    private void OnPositionChanged(object? sender, EventArgs e)
+    {
+        ScheduleStateSave();
+        var screen = GetCurrentScreen();
+        if (screen != null && screen.Bounds != _lastScreenBounds)
+        {
+            _lastScreenBounds = screen.Bounds;
+            _ = AppServices.SettingsService.GetAsync().ContinueWith(task =>
+            {
+                if (task.Status == System.Threading.Tasks.TaskStatus.RanToCompletion && task.Result is { } settings &&
+                    settings.CommandCenterAutoScale)
+                {
+                    Dispatcher.UIThread.Post(() => ApplyAllSettings(settings));
+                }
+            });
+        }
+    }
+
     private void OnSettingsChanged(object? sender, ApplicationSettings settings)
     {
         ApplyAllSettings(settings);
+    }
+
+    private Screen? GetCurrentScreen()
+    {
+        var screens = Screens;
+        if (screens?.All is not { } allScreens)
+        {
+            return null;
+        }
+
+        var position = Position;
+        foreach (var screen in allScreens)
+        {
+            if (screen.Bounds.Contains(position))
+            {
+                return screen;
+            }
+        }
+
+        return null;
     }
 
     private void ApplySettingsFromService()
@@ -111,13 +151,45 @@ public partial class CommandCenterWindow : Window
                 : Brushes.Transparent;
             _outerBorder.BorderThickness = settings.CommandCenterShowBorder ? new Thickness(1) : new Thickness(0);
 
-            var padLeft = Math.Clamp(settings.CommandCenterPaddingLeft, -16, 32);
-            var padRight = Math.Clamp(settings.CommandCenterPaddingRight, -16, 32);
-            var padV = Math.Clamp(settings.CommandCenterPaddingVertical, 0, 32);
+            int padLeft, padRight, padV;
+            double spacingH, spacingV;
+
+            if (settings.CommandCenterAutoScale)
+            {
+                var screen = GetCurrentScreen();
+                if (screen != null)
+                {
+                    var (padL, padR, padVVal, spH, spV) = CommandCenterScaleService.ComputeForScreen(
+                        screen.Bounds.Width, screen.Bounds.Height, RenderScaling);
+                    padLeft = Math.Clamp(padL, -16, 32);
+                    padRight = Math.Clamp(padR, -16, 32);
+                    padV = Math.Clamp(padVVal, 0, 32);
+                    spacingH = Math.Clamp(spH, -16, 24);
+                    spacingV = Math.Clamp(spV, -16, 24);
+                    _lastScreenBounds = screen.Bounds;
+                }
+                else
+                {
+                    padLeft = Math.Clamp(settings.CommandCenterPaddingLeft, -16, 32);
+                    padRight = Math.Clamp(settings.CommandCenterPaddingRight, -16, 32);
+                    padV = Math.Clamp(settings.CommandCenterPaddingVertical, 0, 32);
+                    spacingH = Math.Clamp(settings.CommandCenterActionSpacingHorizontal, -16, 24);
+                    spacingV = Math.Clamp(settings.CommandCenterActionSpacingVertical, -16, 24);
+                }
+            }
+            else
+            {
+                padLeft = Math.Clamp(settings.CommandCenterPaddingLeft, -16, 32);
+                padRight = Math.Clamp(settings.CommandCenterPaddingRight, -16, 32);
+                padV = Math.Clamp(settings.CommandCenterPaddingVertical, 0, 32);
+                spacingH = Math.Clamp(settings.CommandCenterActionSpacingHorizontal, -16, 24);
+                spacingV = Math.Clamp(settings.CommandCenterActionSpacingVertical, -16, 24);
+            }
+
             _outerBorder.Padding = new Thickness(padLeft, padV, padRight, padV);
 
-            _actionSpacingHorizontal = Math.Clamp(settings.CommandCenterActionSpacingHorizontal, -16, 24);
-            _actionSpacingVertical = Math.Clamp(settings.CommandCenterActionSpacingVertical, -16, 24);
+            _actionSpacingHorizontal = spacingH;
+            _actionSpacingVertical = spacingV;
             var marginH = _actionSpacingHorizontal / 2.0;
             var marginV = _actionSpacingVertical / 2.0;
             Resources["CommandCenterActionMargin"] = new Thickness(marginH, marginV, marginH, marginV);

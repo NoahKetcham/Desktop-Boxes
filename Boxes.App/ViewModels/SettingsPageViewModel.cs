@@ -97,6 +97,9 @@ public partial class SettingsPageViewModel : ViewModelBase
     private bool commandCenterActionButtonShowBackground = true;
 
     [ObservableProperty]
+    private bool commandCenterAutoScale = true;
+
+    [ObservableProperty]
     private int commandCenterPaddingLeft = 6;
 
     [ObservableProperty]
@@ -286,6 +289,7 @@ public partial class SettingsPageViewModel : ViewModelBase
                 CommandCenterActionButtonCustomColorHex = "#3A8DFF";
                 SelectedCommandCenterActionButtonCustomColor = Color.Parse("#3A8DFF");
                 CommandCenterActionButtonShowBackground = true;
+                CommandCenterAutoScale = true;
                 CommandCenterPaddingLeft = 6;
                 CommandCenterPaddingRight = 6;
                 CommandCenterPaddingVertical = 4;
@@ -335,6 +339,7 @@ public partial class SettingsPageViewModel : ViewModelBase
             CommandCenterActionButtonColorSource = CommandCenterActionButtonColorSource,
             CommandCenterActionButtonCustomColor = IsCommandCenterCustomColorMode ? CommandCenterActionButtonCustomColorHex : null,
             CommandCenterActionButtonShowBackground = CommandCenterActionButtonShowBackground,
+            CommandCenterAutoScale = CommandCenterAutoScale,
             CommandCenterPaddingLeft = CommandCenterPaddingLeft,
             CommandCenterPaddingRight = CommandCenterPaddingRight,
             CommandCenterPaddingVertical = CommandCenterPaddingVertical,
@@ -418,6 +423,7 @@ public partial class SettingsPageViewModel : ViewModelBase
             CommandCenterLocked = settings.CommandCenterLocked;
             CommandCenterShowTitles = settings.CommandCenterShowTitles;
             CommandCenterActionButtonShowBackground = settings.CommandCenterActionButtonShowBackground;
+            CommandCenterAutoScale = settings.CommandCenterAutoScale;
             CommandCenterPaddingLeft = settings.CommandCenterPaddingLeft;
             CommandCenterPaddingRight = settings.CommandCenterPaddingRight;
             CommandCenterPaddingVertical = settings.CommandCenterPaddingVertical;
@@ -451,6 +457,7 @@ public partial class SettingsPageViewModel : ViewModelBase
     partial void OnCommandCenterLockedChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
     partial void OnCommandCenterShowTitlesChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
     partial void OnCommandCenterActionButtonShowBackgroundChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
+    partial void OnCommandCenterAutoScaleChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
     partial void OnCommandCenterPaddingLeftChanged(int value) => _ = SaveCommandCenterSettingsAsync();
     partial void OnCommandCenterPaddingRightChanged(int value) => _ = SaveCommandCenterSettingsAsync();
     partial void OnCommandCenterPaddingVerticalChanged(int value) => _ = SaveCommandCenterSettingsAsync();
@@ -562,6 +569,7 @@ public partial class SettingsPageViewModel : ViewModelBase
         current.CommandCenterLocked = CommandCenterLocked;
         current.CommandCenterShowTitles = CommandCenterShowTitles;
         current.CommandCenterActionButtonShowBackground = CommandCenterActionButtonShowBackground;
+        current.CommandCenterAutoScale = CommandCenterAutoScale;
         current.CommandCenterPaddingLeft = CommandCenterPaddingLeft;
         current.CommandCenterPaddingRight = CommandCenterPaddingRight;
         current.CommandCenterPaddingVertical = CommandCenterPaddingVertical;

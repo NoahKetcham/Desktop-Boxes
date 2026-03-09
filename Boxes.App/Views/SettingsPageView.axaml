@@ -359,7 +359,14 @@
                             </Grid>
                         </Border>
 
-                        <Border Classes="setting-row" ToolTip.Tip="Left padding around action buttons" ToolTip.ShowDelay="2000">
+                        <Border Classes="setting-row" ToolTip.Tip="Auto-compute padding and spacing from the current monitor; when off, use manual slider values" ToolTip.ShowDelay="2000">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Auto-Scale to Monitor" FontWeight="Medium" VerticalAlignment="Center"/>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding CommandCenterAutoScale, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Classes="setting-row" IsEnabled="{Binding !CommandCenterAutoScale}" ToolTip.Tip="Left padding around action buttons" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,120,50">
                                 <TextBlock Text="Padding (Left)" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <Slider Grid.Column="1" Minimum="-16" Maximum="32"
@@ -370,7 +377,7 @@
                             </Grid>
                         </Border>
 
-                        <Border Classes="setting-row" ToolTip.Tip="Right padding around action buttons" ToolTip.ShowDelay="2000">
+                        <Border Classes="setting-row" IsEnabled="{Binding !CommandCenterAutoScale}" ToolTip.Tip="Right padding around action buttons" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,120,50">
                                 <TextBlock Text="Padding (Right)" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <Slider Grid.Column="1" Minimum="-16" Maximum="32"
@@ -381,7 +388,7 @@
                             </Grid>
                         </Border>
 
-                        <Border Classes="setting-row" ToolTip.Tip="Vertical space around action buttons" ToolTip.ShowDelay="2000">
+                        <Border Classes="setting-row" IsEnabled="{Binding !CommandCenterAutoScale}" ToolTip.Tip="Vertical space around action buttons" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,120,50">
                                 <TextBlock Text="Vertical Padding" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <Slider Grid.Column="1" Minimum="0" Maximum="32"
@@ -392,7 +399,7 @@
                             </Grid>
                         </Border>
 
-                        <Border Classes="setting-row" ToolTip.Tip="Horizontal gap between action buttons. Negative values overlap buttons." ToolTip.ShowDelay="2000">
+                        <Border Classes="setting-row" IsEnabled="{Binding !CommandCenterAutoScale}" ToolTip.Tip="Horizontal gap between action buttons. Negative values overlap buttons." ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,120,50">
                                 <TextBlock Text="Spacing Between Buttons (Horizontal)" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <Slider Grid.Column="1" Minimum="-16" Maximum="24"
@@ -403,7 +410,7 @@
                             </Grid>
                         </Border>
 
-                        <Border Classes="setting-row" ToolTip.Tip="Vertical gap between action buttons. Negative values overlap buttons." ToolTip.ShowDelay="2000">
+                        <Border Classes="setting-row" IsEnabled="{Binding !CommandCenterAutoScale}" ToolTip.Tip="Vertical gap between action buttons. Negative values overlap buttons." ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,120,50">
                                 <TextBlock Text="Spacing Between Buttons (Vertical)" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <Slider Grid.Column="1" Minimum="-16" Maximum="24"
