@@ -1,5 +1,6 @@
-using System.Threading.Tasks;
+using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.ComponentModel;
@@ -98,6 +99,9 @@ public partial class SettingsPageViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool commandCenterAutoScale = true;
+
+    [ObservableProperty]
+    private double commandCenterButtonScaleMultiplier = 1.0;
 
     [ObservableProperty]
     private int commandCenterPaddingLeft = 6;
@@ -290,6 +294,7 @@ public partial class SettingsPageViewModel : ViewModelBase
                 SelectedCommandCenterActionButtonCustomColor = Color.Parse("#3A8DFF");
                 CommandCenterActionButtonShowBackground = true;
                 CommandCenterAutoScale = true;
+                CommandCenterButtonScaleMultiplier = 1.0;
                 CommandCenterPaddingLeft = 6;
                 CommandCenterPaddingRight = 6;
                 CommandCenterPaddingVertical = 4;
@@ -340,6 +345,7 @@ public partial class SettingsPageViewModel : ViewModelBase
             CommandCenterActionButtonCustomColor = IsCommandCenterCustomColorMode ? CommandCenterActionButtonCustomColorHex : null,
             CommandCenterActionButtonShowBackground = CommandCenterActionButtonShowBackground,
             CommandCenterAutoScale = CommandCenterAutoScale,
+            CommandCenterButtonScaleMultiplier = CommandCenterButtonScaleMultiplier,
             CommandCenterPaddingLeft = CommandCenterPaddingLeft,
             CommandCenterPaddingRight = CommandCenterPaddingRight,
             CommandCenterPaddingVertical = CommandCenterPaddingVertical,
@@ -424,6 +430,7 @@ public partial class SettingsPageViewModel : ViewModelBase
             CommandCenterShowTitles = settings.CommandCenterShowTitles;
             CommandCenterActionButtonShowBackground = settings.CommandCenterActionButtonShowBackground;
             CommandCenterAutoScale = settings.CommandCenterAutoScale;
+            CommandCenterButtonScaleMultiplier = Math.Clamp(settings.CommandCenterButtonScaleMultiplier, 0.5, 2.0);
             CommandCenterPaddingLeft = settings.CommandCenterPaddingLeft;
             CommandCenterPaddingRight = settings.CommandCenterPaddingRight;
             CommandCenterPaddingVertical = settings.CommandCenterPaddingVertical;
@@ -458,6 +465,7 @@ public partial class SettingsPageViewModel : ViewModelBase
     partial void OnCommandCenterShowTitlesChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
     partial void OnCommandCenterActionButtonShowBackgroundChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
     partial void OnCommandCenterAutoScaleChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
+    partial void OnCommandCenterButtonScaleMultiplierChanged(double value) => _ = SaveCommandCenterSettingsAsync();
     partial void OnCommandCenterPaddingLeftChanged(int value) => _ = SaveCommandCenterSettingsAsync();
     partial void OnCommandCenterPaddingRightChanged(int value) => _ = SaveCommandCenterSettingsAsync();
     partial void OnCommandCenterPaddingVerticalChanged(int value) => _ = SaveCommandCenterSettingsAsync();
@@ -570,6 +578,7 @@ public partial class SettingsPageViewModel : ViewModelBase
         current.CommandCenterShowTitles = CommandCenterShowTitles;
         current.CommandCenterActionButtonShowBackground = CommandCenterActionButtonShowBackground;
         current.CommandCenterAutoScale = CommandCenterAutoScale;
+        current.CommandCenterButtonScaleMultiplier = CommandCenterButtonScaleMultiplier;
         current.CommandCenterPaddingLeft = CommandCenterPaddingLeft;
         current.CommandCenterPaddingRight = CommandCenterPaddingRight;
         current.CommandCenterPaddingVertical = CommandCenterPaddingVertical;

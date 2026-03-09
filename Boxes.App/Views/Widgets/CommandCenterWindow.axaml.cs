@@ -28,6 +28,7 @@ public partial class CommandCenterWindow : Window
     private IPointer? _activeResizePointer;
     private bool _hasInitializedLayout;
     private PixelRect _lastScreenBounds;
+    private double _buttonScaleMultiplier = 1.0;
 
     private enum ResizeDragMode
     {
@@ -190,15 +191,23 @@ public partial class CommandCenterWindow : Window
 
             _actionSpacingHorizontal = spacingH;
             _actionSpacingVertical = spacingV;
+            _buttonScaleMultiplier = Math.Clamp(settings.CommandCenterButtonScaleMultiplier, 0.5, 2.0);
             var marginH = _actionSpacingHorizontal / 2.0;
             var marginV = _actionSpacingVertical / 2.0;
             Resources["CommandCenterActionMargin"] = new Thickness(marginH, marginV, marginH, marginV);
 
+            var mult = _buttonScaleMultiplier;
+            Resources["CommandCenterActionPadding"] = new Thickness(6 * mult);
+            Resources["CommandCenterIconSize"] = 28 * mult;
+            Resources["CommandCenterIconCornerRadius"] = new CornerRadius(9 * mult);
+            Resources["CommandCenterIconFontSize"] = 13 * mult;
+
+            var effectiveCellSize = GetEffectiveCellSize();
             var actionsControl = this.FindControl<ItemsControl>("ActionsItemsControl");
             if (actionsControl?.GetVisualDescendants().OfType<WrapPanel>().FirstOrDefault() is { } wrapPanel)
             {
-                wrapPanel.ItemWidth = ActionCellSize + _actionSpacingHorizontal;
-                wrapPanel.ItemHeight = ActionCellSize + _actionSpacingVertical;
+                wrapPanel.ItemWidth = effectiveCellSize + _actionSpacingHorizontal;
+                wrapPanel.ItemHeight = effectiveCellSize + _actionSpacingVertical;
             }
 
             ApplyActionButtonColors(this, settings);
@@ -211,12 +220,14 @@ public partial class CommandCenterWindow : Window
     private void ApplyActionButtonColors(TopLevel topLevel, ApplicationSettings settings)
     {
         var primary = ResolveActionButtonPrimaryColor(topLevel, settings);
+        var primaryHover = LightenColor(primary, 0.25);
         var showBg = settings.CommandCenterActionButtonShowBackground;
         var secondary = showBg ? Color.FromArgb(0x14, primary.R, primary.G, primary.B) : Colors.Transparent;
         var secondaryHover = showBg ? Color.FromArgb(0x28, primary.R, primary.G, primary.B) : Colors.Transparent;
         var iconBg = Color.FromArgb(0x20, primary.R, primary.G, primary.B);
 
         Resources["CommandCenterActionPrimary"] = new SolidColorBrush(primary);
+        Resources["CommandCenterActionPrimaryHover"] = new SolidColorBrush(primaryHover);
         Resources["CommandCenterActionSecondary"] = new SolidColorBrush(secondary);
         Resources["CommandCenterActionSecondaryHover"] = new SolidColorBrush(secondaryHover);
         Resources["CommandCenterActionIconBg"] = new SolidColorBrush(iconBg);
@@ -255,6 +266,14 @@ public partial class CommandCenterWindow : Window
         }
 
         return Color.Parse("#3A8DFF");
+    }
+
+    private static Color LightenColor(Color color, double amount)
+    {
+        var r = (byte)Math.Min(255, color.R + (255 - color.R) * amount);
+        var g = (byte)Math.Min(255, color.G + (255 - color.G) * amount);
+        var b = (byte)Math.Min(255, color.B + (255 - color.B) * amount);
+        return Color.FromArgb(color.A, r, g, b);
     }
 
     private bool IsLocked => DataContext is CommandCenterWindowViewModel vm && vm.IsLocked;
@@ -423,8 +442,9 @@ public partial class CommandCenterWindow : Window
         }
 
         var point = e.GetPosition(this);
-        var targetWidth = Math.Max(GetHorizontalChrome() + ActionCellSize, point.X);
-        var targetHeight = Math.Max(GetVerticalChrome() + ActionCellSize, point.Y);
+        var effectiveCell = GetEffectiveCellSize();
+        var targetWidth = Math.Max(GetHorizontalChrome() + effectiveCell, point.X);
+        var targetHeight = Math.Max(GetVerticalChrome() + effectiveCell, point.Y);
 
         var layout = _resizeDragMode switch
         {
@@ -529,14 +549,17 @@ public partial class CommandCenterWindow : Window
         return bestLayout;
     }
 
+    private double GetEffectiveCellSize() => ActionCellSize * _buttonScaleMultiplier;
+
     private (int Columns, int Rows, double Width, double Height) GetLayoutForColumns(int actionCount, int columns)
     {
         var clampedActionCount = Math.Max(actionCount, 1);
         var clampedColumns = Math.Clamp(columns, 1, clampedActionCount);
         var rows = (int)Math.Ceiling(clampedActionCount / (double)clampedColumns);
 
-        var cellWidth = ActionCellSize + _actionSpacingHorizontal;
-        var cellHeight = ActionCellSize + _actionSpacingVertical;
+        var effectiveCell = GetEffectiveCellSize();
+        var cellWidth = effectiveCell + _actionSpacingHorizontal;
+        var cellHeight = effectiveCell + _actionSpacingVertical;
 
         return (
             clampedColumns,

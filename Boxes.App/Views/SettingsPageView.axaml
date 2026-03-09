@@ -366,6 +366,17 @@
                             </Grid>
                         </Border>
 
+                        <Border Classes="setting-row" IsEnabled="False" ToolTip.Tip="Scale factor for button size. 100% = default; increase for larger buttons, decrease for smaller. (Read-only for now)" ToolTip.ShowDelay="2000">
+                            <Grid ColumnDefinitions="*,120,50">
+                                <TextBlock Text="Button Size" FontWeight="Medium" VerticalAlignment="Center"/>
+                                <Slider Grid.Column="1" Minimum="0.5" Maximum="2"
+                                        Value="{Binding CommandCenterButtonScaleMultiplier, Mode=OneWay}"
+                                        TickFrequency="0.1" IsSnapToTickEnabled="True"/>
+                                <TextBlock Grid.Column="2" Text="{Binding CommandCenterButtonScaleMultiplier, StringFormat='{}{0:P0}'}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+
                         <Border Classes="setting-row" IsEnabled="{Binding !CommandCenterAutoScale}" ToolTip.Tip="Left padding around action buttons" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,120,50">
                                 <TextBlock Text="Padding (Left)" FontWeight="Medium" VerticalAlignment="Center"/>

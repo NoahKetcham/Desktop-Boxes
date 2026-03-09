@@ -21,9 +21,14 @@
         Background="Transparent">
     <Window.Resources>
         <SolidColorBrush x:Key="CommandCenterActionPrimary" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="CommandCenterActionPrimaryHover" Color="#FFFFFFFF"/>
         <SolidColorBrush x:Key="CommandCenterActionSecondary" Color="#14000000"/>
         <SolidColorBrush x:Key="CommandCenterActionSecondaryHover" Color="#22FFFFFF"/>
         <SolidColorBrush x:Key="CommandCenterActionIconBg" Color="#20FFFFFF"/>
+        <Thickness x:Key="CommandCenterActionPadding">6</Thickness>
+        <x:Double x:Key="CommandCenterIconSize">28</x:Double>
+        <CornerRadius x:Key="CommandCenterIconCornerRadius">9</CornerRadius>
+        <x:Double x:Key="CommandCenterIconFontSize">13</x:Double>
     </Window.Resources>
 
     <Window.Styles>
@@ -35,15 +40,27 @@
         <Style Selector="Button.command-center-action">
             <Setter Property="Background" Value="{DynamicResource CommandCenterActionSecondary}"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="6"/>
+            <Setter Property="Padding" Value="{DynamicResource CommandCenterActionPadding}"/>
             <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Margin" Value="{DynamicResource CommandCenterActionMargin}"/>
         </Style>
 
-        <Style Selector="Button.command-center-action:pointerover">
-            <Setter Property="Background" Value="{DynamicResource CommandCenterActionSecondaryHover}"/>
+        <Style Selector="Button.command-center-action /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="ClipToBounds" Value="False"/>
+        </Style>
+
+        <Style Selector="Button.command-center-action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource CommandCenterActionSecondary}"/>
+        </Style>
+
+        <Style Selector="Button.command-center-action:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource CommandCenterActionSecondary}"/>
+        </Style>
+
+        <Style Selector="Button.command-center-action:pointerover TextBlock.command-center-icon">
+            <Setter Property="Foreground" Value="{DynamicResource CommandCenterActionPrimaryHover}"/>
         </Style>
     </Window.Styles>
 
@@ -66,16 +83,17 @@
                             <StackPanel Spacing="0"
                                         HorizontalAlignment="Center"
                                         VerticalAlignment="Center">
-                                <Border Width="28"
-                                        Height="28"
-                                        CornerRadius="9"
+                                <Border Width="{DynamicResource CommandCenterIconSize}"
+                                        Height="{DynamicResource CommandCenterIconSize}"
+                                        CornerRadius="{DynamicResource CommandCenterIconCornerRadius}"
                                         Background="{DynamicResource CommandCenterActionIconBg}"
                                         HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding Icon}"
+                                    <TextBlock Classes="command-center-icon"
+                                               Text="{Binding Icon}"
                                                Foreground="{DynamicResource CommandCenterActionPrimary}"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
-                                               FontSize="13"
+                                               FontSize="{DynamicResource CommandCenterIconFontSize}"
                                                FontWeight="Bold"/>
                                 </Border>
                             </StackPanel>

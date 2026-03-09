@@ -248,6 +248,7 @@ public class SettingsService
         CommandCenterActionButtonCustomColor = settings.CommandCenterActionButtonCustomColor,
         CommandCenterActionButtonShowBackground = settings.CommandCenterActionButtonShowBackground,
         CommandCenterAutoScale = settings.CommandCenterAutoScale,
+        CommandCenterButtonScaleMultiplier = settings.CommandCenterButtonScaleMultiplier,
         CommandCenterPaddingLeft = settings.CommandCenterPaddingLeft,
         CommandCenterPaddingRight = settings.CommandCenterPaddingRight,
         CommandCenterPaddingVertical = settings.CommandCenterPaddingVertical,

@@ -47,6 +47,9 @@ public class ApplicationSettings
     /// <summary>When true, padding and spacing are auto-computed from monitor; when false, manual slider values are used.</summary>
     public bool CommandCenterAutoScale { get; set; } = true;
 
+    /// <summary>Button size scaling multiplier. 1.0 = default; &lt;1 = smaller, &gt;1 = larger.</summary>
+    public double CommandCenterButtonScaleMultiplier { get; set; } = 1.0;
+
     /// <summary>Left padding around action buttons, in pixels.</summary>
     public int CommandCenterPaddingLeft { get; set; } = 6;
 
