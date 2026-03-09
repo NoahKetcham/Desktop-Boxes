@@ -78,7 +78,44 @@ public partial class SettingsPageViewModel : ViewModelBase
     [ObservableProperty]
     private bool commandCenterShowTitles = true;
 
+    [ObservableProperty]
+    private string commandCenterActionButtonColorSource = "App Accent";
+
+    [ObservableProperty]
+    private Color selectedCommandCenterActionButtonCustomColor = Color.Parse("#3A8DFF");
+
+    [ObservableProperty]
+    private string? commandCenterActionButtonCustomColorHex = "#3A8DFF";
+
+    [ObservableProperty]
+    private bool isCommandCenterActionButtonColorPickerOpen;
+
+    [ObservableProperty]
+    private Color? originalCommandCenterActionButtonCustomColor;
+
+    [ObservableProperty]
+    private bool commandCenterActionButtonShowBackground = true;
+
+    [ObservableProperty]
+    private int commandCenterPaddingLeft = 6;
+
+    [ObservableProperty]
+    private int commandCenterPaddingRight = 6;
+
+    [ObservableProperty]
+    private int commandCenterPaddingVertical = 4;
+
+    [ObservableProperty]
+    private int commandCenterActionSpacingHorizontal;
+
+    [ObservableProperty]
+    private int commandCenterActionSpacingVertical;
+
     public ObservableCollection<CommandCenterActionItemViewModel> CommandCenterActions { get; } = new();
+
+    public static string[] CommandCenterActionButtonColorSourceOptions { get; } = ["App Accent", "System Accent", "Custom"];
+
+    public bool IsCommandCenterCustomColorMode => CommandCenterActionButtonColorSource == "Custom";
 
     // Box Customization
     [ObservableProperty]
@@ -146,6 +183,9 @@ public partial class SettingsPageViewModel : ViewModelBase
     public IRelayCommand CloseAccentColorPickerPopupCommand { get; }
     public IRelayCommand<Color> SelectRecentAccentColorCommand { get; }
     public IRelayCommand<Color> SelectRecentBoxBackgroundColorCommand { get; }
+    public IRelayCommand OpenCommandCenterActionButtonColorPickerCommand { get; }
+    public IRelayCommand CloseCommandCenterActionButtonColorPickerCommand { get; }
+    public IRelayCommand ApplyCommandCenterActionButtonColorCommand { get; }
 
     public SettingsPageViewModel()
     {
@@ -169,6 +209,9 @@ public partial class SettingsPageViewModel : ViewModelBase
         CloseAccentColorPickerPopupCommand = new RelayCommand(CloseAccentColorPickerPopup);
         SelectRecentAccentColorCommand = new RelayCommand<Color>(SelectRecentAccentColor);
         SelectRecentBoxBackgroundColorCommand = new RelayCommand<Color>(SelectRecentBoxBackgroundColor);
+        OpenCommandCenterActionButtonColorPickerCommand = new RelayCommand(OpenCommandCenterActionButtonColorPicker);
+        CloseCommandCenterActionButtonColorPickerCommand = new RelayCommand(CloseCommandCenterActionButtonColorPicker);
+        ApplyCommandCenterActionButtonColorCommand = new RelayCommand(ApplyCommandCenterActionButtonColor);
 
         _ = LoadAsync();
     }
@@ -239,6 +282,15 @@ public partial class SettingsPageViewModel : ViewModelBase
                 CommandCenterShowBorder = false;
                 CommandCenterLocked = false;
                 CommandCenterShowTitles = true;
+                CommandCenterActionButtonColorSource = "App Accent";
+                CommandCenterActionButtonCustomColorHex = "#3A8DFF";
+                SelectedCommandCenterActionButtonCustomColor = Color.Parse("#3A8DFF");
+                CommandCenterActionButtonShowBackground = true;
+                CommandCenterPaddingLeft = 6;
+                CommandCenterPaddingRight = 6;
+                CommandCenterPaddingVertical = 4;
+                CommandCenterActionSpacingHorizontal = 0;
+                CommandCenterActionSpacingVertical = 0;
                 LoadCommandCenterActions(CommandCenterActionCatalog.CreateDefaultSettings());
                 break;
         }
@@ -279,7 +331,15 @@ public partial class SettingsPageViewModel : ViewModelBase
             CommandCenterShowBorder = CommandCenterShowBorder,
             CommandCenterLocked = CommandCenterLocked,
             CommandCenterShowTitles = CommandCenterShowTitles,
-            CommandCenterActions = BuildCommandCenterActionSettings()
+            CommandCenterActions = BuildCommandCenterActionSettings(),
+            CommandCenterActionButtonColorSource = CommandCenterActionButtonColorSource,
+            CommandCenterActionButtonCustomColor = IsCommandCenterCustomColorMode ? CommandCenterActionButtonCustomColorHex : null,
+            CommandCenterActionButtonShowBackground = CommandCenterActionButtonShowBackground,
+            CommandCenterPaddingLeft = CommandCenterPaddingLeft,
+            CommandCenterPaddingRight = CommandCenterPaddingRight,
+            CommandCenterPaddingVertical = CommandCenterPaddingVertical,
+            CommandCenterActionSpacingHorizontal = CommandCenterActionSpacingHorizontal,
+            CommandCenterActionSpacingVertical = CommandCenterActionSpacingVertical
         };
 
         await AppServices.SettingsService.SaveAsync(model);
@@ -357,6 +417,19 @@ public partial class SettingsPageViewModel : ViewModelBase
             CommandCenterShowBorder = settings.CommandCenterShowBorder;
             CommandCenterLocked = settings.CommandCenterLocked;
             CommandCenterShowTitles = settings.CommandCenterShowTitles;
+            CommandCenterActionButtonShowBackground = settings.CommandCenterActionButtonShowBackground;
+            CommandCenterPaddingLeft = settings.CommandCenterPaddingLeft;
+            CommandCenterPaddingRight = settings.CommandCenterPaddingRight;
+            CommandCenterPaddingVertical = settings.CommandCenterPaddingVertical;
+            CommandCenterActionSpacingHorizontal = settings.CommandCenterActionSpacingHorizontal;
+            CommandCenterActionSpacingVertical = settings.CommandCenterActionSpacingVertical;
+            CommandCenterActionButtonColorSource = settings.CommandCenterActionButtonColorSource ?? "App Accent";
+            if (!string.IsNullOrWhiteSpace(settings.CommandCenterActionButtonCustomColor) &&
+                Color.TryParse(settings.CommandCenterActionButtonCustomColor, out var ccCustomColor))
+            {
+                CommandCenterActionButtonCustomColorHex = settings.CommandCenterActionButtonCustomColor;
+                SelectedCommandCenterActionButtonCustomColor = ccCustomColor;
+            }
             LoadCommandCenterActions(settings.CommandCenterActions);
         }
         finally
@@ -377,6 +450,21 @@ public partial class SettingsPageViewModel : ViewModelBase
     partial void OnCommandCenterShowBorderChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
     partial void OnCommandCenterLockedChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
     partial void OnCommandCenterShowTitlesChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
+    partial void OnCommandCenterActionButtonShowBackgroundChanged(bool value) => _ = SaveCommandCenterSettingsAsync();
+    partial void OnCommandCenterPaddingLeftChanged(int value) => _ = SaveCommandCenterSettingsAsync();
+    partial void OnCommandCenterPaddingRightChanged(int value) => _ = SaveCommandCenterSettingsAsync();
+    partial void OnCommandCenterPaddingVerticalChanged(int value) => _ = SaveCommandCenterSettingsAsync();
+    partial void OnCommandCenterActionSpacingHorizontalChanged(int value) => _ = SaveCommandCenterSettingsAsync();
+    partial void OnCommandCenterActionSpacingVerticalChanged(int value) => _ = SaveCommandCenterSettingsAsync();
+    partial void OnCommandCenterActionButtonColorSourceChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsCommandCenterCustomColorMode));
+        _ = SaveCommandCenterSettingsAsync();
+    }
+    partial void OnSelectedCommandCenterActionButtonCustomColorChanged(Color value)
+    {
+        CommandCenterActionButtonCustomColorHex = $"#{value.R:X2}{value.G:X2}{value.B:X2}";
+    }
 
     private async Task SaveBoxCustomizationAsync()
     {
@@ -473,8 +561,39 @@ public partial class SettingsPageViewModel : ViewModelBase
         current.CommandCenterShowBorder = CommandCenterShowBorder;
         current.CommandCenterLocked = CommandCenterLocked;
         current.CommandCenterShowTitles = CommandCenterShowTitles;
+        current.CommandCenterActionButtonShowBackground = CommandCenterActionButtonShowBackground;
+        current.CommandCenterPaddingLeft = CommandCenterPaddingLeft;
+        current.CommandCenterPaddingRight = CommandCenterPaddingRight;
+        current.CommandCenterPaddingVertical = CommandCenterPaddingVertical;
+        current.CommandCenterActionSpacingHorizontal = CommandCenterActionSpacingHorizontal;
+        current.CommandCenterActionSpacingVertical = CommandCenterActionSpacingVertical;
+        current.CommandCenterActionButtonColorSource = CommandCenterActionButtonColorSource;
+        current.CommandCenterActionButtonCustomColor = IsCommandCenterCustomColorMode ? CommandCenterActionButtonCustomColorHex : null;
         current.CommandCenterActions = BuildCommandCenterActionSettings();
         await AppServices.SettingsService.SaveAsync(current);
+    }
+
+    private void OpenCommandCenterActionButtonColorPicker()
+    {
+        OriginalCommandCenterActionButtonCustomColor = SelectedCommandCenterActionButtonCustomColor;
+        IsCommandCenterActionButtonColorPickerOpen = true;
+    }
+
+    private void CloseCommandCenterActionButtonColorPicker()
+    {
+        if (OriginalCommandCenterActionButtonCustomColor.HasValue)
+        {
+            SelectedCommandCenterActionButtonCustomColor = OriginalCommandCenterActionButtonCustomColor.Value;
+        }
+        IsCommandCenterActionButtonColorPickerOpen = false;
+    }
+
+    private async void ApplyCommandCenterActionButtonColor()
+    {
+        CommandCenterActionButtonCustomColorHex = $"#{SelectedCommandCenterActionButtonCustomColor.R:X2}{SelectedCommandCenterActionButtonCustomColor.G:X2}{SelectedCommandCenterActionButtonCustomColor.B:X2}";
+        OriginalCommandCenterActionButtonCustomColor = null;
+        IsCommandCenterActionButtonColorPickerOpen = false;
+        await SaveCommandCenterSettingsAsync();
     }
 
     private async Task ResetDataAsync()

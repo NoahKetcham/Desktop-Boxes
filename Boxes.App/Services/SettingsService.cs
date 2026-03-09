@@ -243,7 +243,15 @@ public class SettingsService
         CommandCenterShowBorder = settings.CommandCenterShowBorder,
         CommandCenterLocked = settings.CommandCenterLocked,
         CommandCenterShowTitles = settings.CommandCenterShowTitles,
-        CommandCenterActions = CommandCenterActionCatalog.Normalize(settings.CommandCenterActions)
+        CommandCenterActions = CommandCenterActionCatalog.Normalize(settings.CommandCenterActions),
+        CommandCenterActionButtonColorSource = settings.CommandCenterActionButtonColorSource,
+        CommandCenterActionButtonCustomColor = settings.CommandCenterActionButtonCustomColor,
+        CommandCenterActionButtonShowBackground = settings.CommandCenterActionButtonShowBackground,
+        CommandCenterPaddingLeft = settings.CommandCenterPaddingLeft,
+        CommandCenterPaddingRight = settings.CommandCenterPaddingRight,
+        CommandCenterPaddingVertical = settings.CommandCenterPaddingVertical,
+        CommandCenterActionSpacingHorizontal = settings.CommandCenterActionSpacingHorizontal,
+        CommandCenterActionSpacingVertical = settings.CommandCenterActionSpacingVertical
     };
 
     private void RaiseChanged()

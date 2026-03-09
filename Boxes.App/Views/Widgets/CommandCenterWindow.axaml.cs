@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Specialized;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Boxes.App.Extensions;
 using Boxes.App.Models;
 using Boxes.App.Services;
@@ -15,10 +17,10 @@ namespace Boxes.App.Views.Widgets;
 public partial class CommandCenterWindow : Window
 {
     private const double ActionCellSize = 52;
-    private const double ShellHorizontalPadding = 11;
-    private const double ShellVerticalPadding = 8;
 
     private Border? _outerBorder;
+    private double _actionSpacingHorizontal;
+    private double _actionSpacingVertical;
     private DispatcherTimer? _stateSaveTimer;
     private CommandCenterWindowViewModel? _boundViewModel;
     private ResizeDragMode _resizeDragMode;
@@ -47,6 +49,7 @@ public partial class CommandCenterWindow : Window
         };
         PositionChanged += (_, _) => ScheduleStateSave();
         _outerBorder = this.FindControl<Border>("OuterBorder");
+        Resources["CommandCenterActionMargin"] = new Thickness(0, 0, 0, 0);
         AppServices.SettingsService.SettingsChanged += OnSettingsChanged;
     }
 
@@ -107,9 +110,79 @@ public partial class CommandCenterWindow : Window
                 ? new SolidColorBrush(bgColor)
                 : Brushes.Transparent;
             _outerBorder.BorderThickness = settings.CommandCenterShowBorder ? new Thickness(1) : new Thickness(0);
+
+            var padLeft = Math.Clamp(settings.CommandCenterPaddingLeft, -16, 32);
+            var padRight = Math.Clamp(settings.CommandCenterPaddingRight, -16, 32);
+            var padV = Math.Clamp(settings.CommandCenterPaddingVertical, 0, 32);
+            _outerBorder.Padding = new Thickness(padLeft, padV, padRight, padV);
+
+            _actionSpacingHorizontal = Math.Clamp(settings.CommandCenterActionSpacingHorizontal, -16, 24);
+            _actionSpacingVertical = Math.Clamp(settings.CommandCenterActionSpacingVertical, -16, 24);
+            var marginH = _actionSpacingHorizontal / 2.0;
+            var marginV = _actionSpacingVertical / 2.0;
+            Resources["CommandCenterActionMargin"] = new Thickness(marginH, marginV, marginH, marginV);
+
+            var actionsControl = this.FindControl<ItemsControl>("ActionsItemsControl");
+            if (actionsControl?.GetVisualDescendants().OfType<WrapPanel>().FirstOrDefault() is { } wrapPanel)
+            {
+                wrapPanel.ItemWidth = ActionCellSize + _actionSpacingHorizontal;
+                wrapPanel.ItemHeight = ActionCellSize + _actionSpacingVertical;
+            }
+
+            ApplyActionButtonColors(this, settings);
+
             UpdateLayoutBounds();
             SnapToNearestLayout(force: _hasInitializedLayout);
         });
+    }
+
+    private void ApplyActionButtonColors(TopLevel topLevel, ApplicationSettings settings)
+    {
+        var primary = ResolveActionButtonPrimaryColor(topLevel, settings);
+        var showBg = settings.CommandCenterActionButtonShowBackground;
+        var secondary = showBg ? Color.FromArgb(0x14, primary.R, primary.G, primary.B) : Colors.Transparent;
+        var secondaryHover = showBg ? Color.FromArgb(0x28, primary.R, primary.G, primary.B) : Colors.Transparent;
+        var iconBg = Color.FromArgb(0x20, primary.R, primary.G, primary.B);
+
+        Resources["CommandCenterActionPrimary"] = new SolidColorBrush(primary);
+        Resources["CommandCenterActionSecondary"] = new SolidColorBrush(secondary);
+        Resources["CommandCenterActionSecondaryHover"] = new SolidColorBrush(secondaryHover);
+        Resources["CommandCenterActionIconBg"] = new SolidColorBrush(iconBg);
+    }
+
+    private static Color ResolveActionButtonPrimaryColor(TopLevel? topLevel, ApplicationSettings settings)
+    {
+        var source = settings.CommandCenterActionButtonColorSource ?? "App Accent";
+
+        if (source == "Custom" && !string.IsNullOrWhiteSpace(settings.CommandCenterActionButtonCustomColor) &&
+            Color.TryParse(settings.CommandCenterActionButtonCustomColor, out var customColor))
+        {
+            return customColor;
+        }
+
+        if (source == "System Accent" && topLevel != null)
+        {
+            try
+            {
+                var colorValues = topLevel.PlatformSettings?.GetColorValues();
+                if (colorValues is { } cv)
+                {
+                    return cv.AccentColor1;
+                }
+            }
+            catch
+            {
+                // Fall through to app accent
+            }
+        }
+
+        // App Accent (default)
+        if (!string.IsNullOrWhiteSpace(settings.AccentHex) && Color.TryParse(settings.AccentHex, out var accentColor))
+        {
+            return accentColor;
+        }
+
+        return Color.Parse("#3A8DFF");
     }
 
     private bool IsLocked => DataContext is CommandCenterWindowViewModel vm && vm.IsLocked;
@@ -390,11 +463,14 @@ public partial class CommandCenterWindow : Window
         var clampedColumns = Math.Clamp(columns, 1, clampedActionCount);
         var rows = (int)Math.Ceiling(clampedActionCount / (double)clampedColumns);
 
+        var cellWidth = ActionCellSize + _actionSpacingHorizontal;
+        var cellHeight = ActionCellSize + _actionSpacingVertical;
+
         return (
             clampedColumns,
             rows,
-            GetHorizontalChrome() + (clampedColumns * ActionCellSize),
-            GetVerticalChrome() + (rows * ActionCellSize));
+            GetHorizontalChrome() + (clampedColumns * cellWidth),
+            GetVerticalChrome() + (rows * cellHeight));
     }
 
     private int ComputeColumnsFromRows(int actionCount, int rows)
@@ -411,12 +487,14 @@ public partial class CommandCenterWindow : Window
     private double GetHorizontalChrome()
     {
         var borderThickness = _outerBorder?.BorderThickness ?? default;
-        return ShellHorizontalPadding + borderThickness.Left + borderThickness.Right;
+        var padding = _outerBorder?.Padding ?? default;
+        return padding.Left + padding.Right + borderThickness.Left + borderThickness.Right;
     }
 
     private double GetVerticalChrome()
     {
         var borderThickness = _outerBorder?.BorderThickness ?? default;
-        return ShellVerticalPadding + borderThickness.Top + borderThickness.Bottom;
+        var padding = _outerBorder?.Padding ?? default;
+        return padding.Top + padding.Bottom + borderThickness.Top + borderThickness.Bottom;
     }
 }

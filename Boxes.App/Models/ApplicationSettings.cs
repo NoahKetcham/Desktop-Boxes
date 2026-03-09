@@ -35,6 +35,30 @@ public class ApplicationSettings
     public bool CommandCenterShowTitles { get; set; } = true;
     public List<CommandCenterActionSetting> CommandCenterActions { get; set; } = CommandCenterActionCatalog.CreateDefaultSettings();
 
+    /// <summary>Source for action button colors: App Accent, System Accent, or Custom.</summary>
+    public string CommandCenterActionButtonColorSource { get; set; } = "App Accent";
+
+    /// <summary>Custom hex color when CommandCenterActionButtonColorSource is Custom.</summary>
+    public string? CommandCenterActionButtonCustomColor { get; set; }
+
+    /// <summary>Show background color on action buttons. When false, buttons are transparent.</summary>
+    public bool CommandCenterActionButtonShowBackground { get; set; } = true;
+
+    /// <summary>Left padding around action buttons, in pixels.</summary>
+    public int CommandCenterPaddingLeft { get; set; } = 6;
+
+    /// <summary>Right padding around action buttons, in pixels.</summary>
+    public int CommandCenterPaddingRight { get; set; } = 6;
+
+    /// <summary>Vertical padding (top/bottom) around action buttons, in pixels.</summary>
+    public int CommandCenterPaddingVertical { get; set; } = 4;
+
+    /// <summary>Horizontal gap between action buttons, in pixels.</summary>
+    public int CommandCenterActionSpacingHorizontal { get; set; }
+
+    /// <summary>Vertical gap between action buttons, in pixels.</summary>
+    public int CommandCenterActionSpacingVertical { get; set; }
+
     public void NormalizeCommandCenterSettings()
     {
         CommandCenterActions = CommandCenterActionCatalog.Normalize(CommandCenterActions);
