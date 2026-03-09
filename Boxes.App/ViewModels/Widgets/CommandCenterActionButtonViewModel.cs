@@ -6,6 +6,9 @@ namespace Boxes.App.ViewModels.Widgets;
 public partial class CommandCenterActionButtonViewModel : ObservableObject
 {
     [ObservableProperty]
+    private string _icon;
+
+    [ObservableProperty]
     private string _title;
 
     [ObservableProperty]
@@ -14,17 +17,16 @@ public partial class CommandCenterActionButtonViewModel : ObservableObject
     [ObservableProperty]
     private bool _showTitle = true;
 
-    public string Icon { get; }
     public string Key { get; }
     public ICommand Command { get; }
 
     public CommandCenterActionButtonViewModel(string key, string title, string description, string icon, bool showTitle, ICommand command)
     {
         Key = key;
+        _icon = icon;
         _title = title;
         _description = description;
         _showTitle = showTitle;
-        Icon = icon;
         Command = command;
     }
 }

@@ -6,6 +6,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Avalonia.Threading;
 using Boxes.App.Models;
 using Boxes.App.Services;
+using Boxes.App.ViewModels;
+using Boxes.App.Views;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Boxes.App.ViewModels.Widgets;
@@ -20,19 +22,21 @@ public partial class CommandCenterWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _showTitles = true;
 
-    public string PinButtonText => IsLocked ? "📌" : "📍";
-
     public IAsyncRelayCommand ToggleLockCommand { get; }
+    public IAsyncRelayCommand OpenSettingsCommand { get; }
     public IAsyncRelayCommand OpenNoteHubCommand { get; }
     public IAsyncRelayCommand ToggleBoxesCommand { get; }
     public IAsyncRelayCommand ToggleDesktopIconsCommand { get; }
+    public IAsyncRelayCommand PlaceholderCommand { get; }
 
     public CommandCenterWindowViewModel()
     {
         ToggleLockCommand = new AsyncRelayCommand(ToggleLockAsync);
+        OpenSettingsCommand = new AsyncRelayCommand(OpenSettingsAsync);
         OpenNoteHubCommand = new AsyncRelayCommand(OpenNoteHubAsync);
         ToggleBoxesCommand = new AsyncRelayCommand(ToggleBoxesAsync);
         ToggleDesktopIconsCommand = new AsyncRelayCommand(ToggleDesktopIconsAsync);
+        PlaceholderCommand = new AsyncRelayCommand(() => Task.CompletedTask);
 
         AppServices.SettingsService.SettingsChanged += OnSettingsChanged;
         _ = InitializeAsync();
@@ -65,9 +69,15 @@ public partial class CommandCenterWindowViewModel : ViewModelBase
                 var definition = CommandCenterActionCatalog.GetDefinition(configuredAction.Key);
                 var command = configuredAction.Key switch
                 {
+                    CommandCenterActionCatalog.ToggleLock => ToggleLockCommand,
+                    CommandCenterActionCatalog.OpenSettings => OpenSettingsCommand,
                     CommandCenterActionCatalog.OpenNoteHub => OpenNoteHubCommand,
                     CommandCenterActionCatalog.ToggleBoxes => ToggleBoxesCommand,
                     CommandCenterActionCatalog.ToggleDesktopIcons => ToggleDesktopIconsCommand,
+                    CommandCenterActionCatalog.Placeholder1 => PlaceholderCommand,
+                    CommandCenterActionCatalog.Placeholder2 => PlaceholderCommand,
+                    CommandCenterActionCatalog.Placeholder3 => PlaceholderCommand,
+                    CommandCenterActionCatalog.Placeholder4 => PlaceholderCommand,
                     _ => null
                 };
 
@@ -96,11 +106,6 @@ public partial class CommandCenterWindowViewModel : ViewModelBase
         }
     }
 
-    partial void OnIsLockedChanged(bool value)
-    {
-        OnPropertyChanged(nameof(PinButtonText));
-    }
-
     private async Task RefreshActionStateAsync()
     {
         var isDesktopClean = await AppServices.DesktopCleanupService.IsDesktopCleanAsync().ConfigureAwait(false);
@@ -108,6 +113,14 @@ public partial class CommandCenterWindowViewModel : ViewModelBase
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
+            var toggleLock = Actions.FirstOrDefault(action => action.Key == CommandCenterActionCatalog.ToggleLock);
+            if (toggleLock != null)
+            {
+                toggleLock.Title = IsLocked ? "Unlock" : "Lock";
+                toggleLock.Description = IsLocked ? "Unlock" : "Lock";
+                toggleLock.Icon = IsLocked ? "📌" : "📍";
+            }
+
             var toggleBoxes = Actions.FirstOrDefault(action => action.Key == CommandCenterActionCatalog.ToggleBoxes);
             if (toggleBoxes != null)
             {
@@ -127,6 +140,35 @@ public partial class CommandCenterWindowViewModel : ViewModelBase
     private async Task OpenNoteHubAsync()
     {
         await AppServices.WidgetWindowManager.ShowNoteHubAsync().ConfigureAwait(false);
+    }
+
+    private async Task OpenSettingsAsync()
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var mainWindow = AppServices.MainWindowOwner as MainWindow;
+            if (mainWindow == null)
+            {
+                mainWindow = new MainWindow
+                {
+                    DataContext = new MainWindowViewModel()
+                };
+                AppServices.MainWindowOwner = mainWindow;
+                DialogService.Initialize(mainWindow);
+            }
+
+            mainWindow.Show();
+            mainWindow.Activate();
+
+            if (mainWindow.DataContext is MainWindowViewModel mainVm)
+            {
+                var settingsNav = mainVm.NavigationItems.FirstOrDefault(n => n.Content is SettingsPageViewModel);
+                if (settingsNav != null)
+                {
+                    mainVm.SelectedNavigationItem = settingsNav;
+                }
+            }
+        });
     }
 
     private async Task ToggleLockAsync()

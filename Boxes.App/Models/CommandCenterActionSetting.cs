@@ -13,15 +13,27 @@ public sealed record CommandCenterActionDefinition(string Key, string Title, str
 
 public static class CommandCenterActionCatalog
 {
+    public const string ToggleLock = "toggle-lock";
+    public const string OpenSettings = "open-settings";
     public const string OpenNoteHub = "open-notehub";
     public const string ToggleBoxes = "toggle-boxes";
     public const string ToggleDesktopIcons = "toggle-desktop-icons";
+    public const string Placeholder1 = "placeholder-1";
+    public const string Placeholder2 = "placeholder-2";
+    public const string Placeholder3 = "placeholder-3";
+    public const string Placeholder4 = "placeholder-4";
 
     private static readonly IReadOnlyList<CommandCenterActionDefinition> DefinitionsInternal =
     [
-        new(OpenNoteHub, "NoteHub", "Open your notes workspace", "[]"),
-        new(ToggleBoxes, "Boxes", "Show or hide desktop boxes", "##"),
-        new(ToggleDesktopIcons, "Desktop", "Clean or restore icons", "**")
+        new(ToggleLock, "Lock", "Lock window position and size", "📌"),
+        new(OpenSettings, "Settings", "Open the main settings page", "⚙"),
+        new(OpenNoteHub, "NoteHub", "Open your notes workspace", "📝"),
+        new(ToggleBoxes, "Boxes", "Show or hide desktop boxes", "⌂"),
+        new(ToggleDesktopIcons, "Desktop", "Clean or restore icons", "✦"),
+        new(Placeholder1, "Slot 1", "Placeholder action", "•"),
+        new(Placeholder2, "Slot 2", "Placeholder action", "•"),
+        new(Placeholder3, "Slot 3", "Placeholder action", "•"),
+        new(Placeholder4, "Slot 4", "Placeholder action", "•")
     ];
 
     public static IReadOnlyList<CommandCenterActionDefinition> Definitions => DefinitionsInternal;
