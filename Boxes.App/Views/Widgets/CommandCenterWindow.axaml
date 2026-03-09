@@ -5,9 +5,9 @@
         x:DataType="widgetsVm:CommandCenterWindowViewModel"
         Width="360"
         Height="108"
-        MinWidth="240"
-        MinHeight="88"
-        CanResize="True"
+        MinWidth="60"
+        MinHeight="60"
+        CanResize="False"
         CanMinimize="False"
         CanMaximize="False"
         ShowActivated="True"
@@ -41,11 +41,11 @@
     </Window.Styles>
 
     <Grid x:Name="RootGrid" PointerPressed="Chrome_PointerPressed">
-        <Border x:Name="OuterBorder" Classes="command-center-shell" Padding="10,8,10,10">
+        <Border x:Name="OuterBorder" Classes="command-center-shell" Padding="4,4,4,4">
             <ItemsControl ItemsSource="{Binding Actions}" HorizontalAlignment="Center">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <WrapPanel Orientation="Horizontal" ItemWidth="52" ItemHeight="52"/>
+                        <WrapPanel Orientation="Horizontal" ItemWidth="52" ItemHeight="52" ItemsAlignment="Center"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>

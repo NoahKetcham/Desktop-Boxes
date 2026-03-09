@@ -342,6 +342,7 @@ public class WidgetWindowManager
             _commandCenterWindow = window;
             window.Show();
             window.Activate();
+            window.SnapToCurrentLayout();
         });
     }
 
