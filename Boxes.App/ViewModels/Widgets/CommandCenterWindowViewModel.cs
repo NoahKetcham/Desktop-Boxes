@@ -146,18 +146,29 @@ public partial class CommandCenterWindowViewModel : ViewModelBase
     {
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            var mainWindow = AppServices.MainWindowOwner as MainWindow;
-            if (mainWindow == null)
+            MainWindow CreateMainWindow()
             {
-                mainWindow = new MainWindow
+                var window = new MainWindow
                 {
                     DataContext = new MainWindowViewModel()
                 };
-                AppServices.MainWindowOwner = mainWindow;
-                DialogService.Initialize(mainWindow);
+                AppServices.MainWindowOwner = window;
+                DialogService.Initialize(window);
+                return window;
             }
 
-            mainWindow.Show();
+            var mainWindow = AppServices.MainWindowOwner as MainWindow ?? CreateMainWindow();
+            try
+            {
+                mainWindow.Show();
+            }
+            catch (InvalidOperationException)
+            {
+                // Avalonia cannot re-show a closed window instance.
+                mainWindow = CreateMainWindow();
+                mainWindow.Show();
+            }
+
             mainWindow.Activate();
 
             if (mainWindow.DataContext is MainWindowViewModel mainVm)
