@@ -66,6 +66,7 @@
         </Style>
     </Window.Styles>
 
+    <Border x:Name="OuterBorder" BorderBrush="#33FFFFFF" BorderThickness="1" CornerRadius="8">
     <Grid x:Name="RootGrid" Background="#1C2235" ClipToBounds="True"
           DragDrop.AllowDrop="True"
           DragDrop.DragEnter="Content_OnDragEnter"
@@ -190,5 +191,6 @@
         <Border Tag="BottomRight" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="12" Height="12" Background="Transparent"
                 Cursor="SizeAll" PointerPressed="ResizeHandle_OnPointerPressed"/>
     </Grid>
+    </Border>
 
 </Window>

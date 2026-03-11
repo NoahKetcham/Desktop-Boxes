@@ -29,6 +29,7 @@ public partial class DesktopBoxWindow : Window
         private bool _isDraggingWindow;
         private int _snapCheckCounter;
         private readonly Border? _contentArea;
+        private readonly Border? _outerBorder;
         private readonly Grid? _rootGrid;
         private readonly Border? _headerBar;
         private readonly RowDefinition? _contentRow;
@@ -58,6 +59,7 @@ public partial class DesktopBoxWindow : Window
         AddHandler(InputElement.PointerMovedEvent, (_, __) => AppServices.BoxWindowManager.NotifyHover(), RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
         _shortcutsItemsControl = this.FindControl<ItemsControl>("ShortcutsItemsControl");
         _contentArea = this.FindControl<Border>("ContentArea");
+        _outerBorder = this.FindControl<Border>("OuterBorder");
         _rootGrid = this.FindControl<Grid>("RootGrid");
         _headerBar = this.FindControl<Border>("HeaderBar");
         _snapIndicator = this.FindControl<Border>("SnapIndicator");
@@ -135,6 +137,7 @@ public partial class DesktopBoxWindow : Window
     {
         _lastKnownPosition = Position;
         this.SetAlwaysBelowApps();
+        this.HideDwmBorder();
         ApplyTransparencyFromSettings();
         if (DataContext is DesktopBoxWindowViewModel vm)
         {
@@ -194,6 +197,20 @@ public partial class DesktopBoxWindow : Window
 
             // Apply corner radius
             var cornerRadius = Math.Clamp(settings.BoxCornerRadius, 0, 20);
+            if (_outerBorder != null)
+            {
+                _outerBorder.CornerRadius = new CornerRadius(cornerRadius);
+                _outerBorder.BorderBrush = settings.ShowBoxOutlines
+                    ? new SolidColorBrush(Color.FromArgb(90, 255, 255, 255))
+                    : Brushes.Transparent;
+                _outerBorder.BorderThickness = settings.ShowBoxOutlines ? new Thickness(1) : new Thickness(0);
+            }
+
+            if (!settings.ShowBoxOutlines)
+            {
+                this.HideDwmBorder();
+            }
+
             if (_contentArea != null)
             {
                 _contentArea.CornerRadius = new CornerRadius(0, 0, cornerRadius, cornerRadius);

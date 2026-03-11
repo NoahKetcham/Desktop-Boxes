@@ -225,13 +225,13 @@ public partial class SettingsPageViewModel : ViewModelBase
                 break;
             case "behavior":
                 AutoSnapEnabled = true;
-                ShowBoxOutlines = true;
                 RunAtStartup = false;
                 break;
             case "customization":
                 BoxHeaderHeight = 40;
                 ShowBoxHeader = true;
                 ShowBoxTitle = true;
+                ShowBoxOutlines = true;
                 BoxCornerRadius = 8;
                 BoxIconSize = 48;
                 ShowShortcutLabels = true;
@@ -423,6 +423,7 @@ public partial class SettingsPageViewModel : ViewModelBase
     partial void OnBoxHeaderHeightChanged(int value) => _ = SaveBoxCustomizationAsync();
     partial void OnShowBoxHeaderChanged(bool value) => _ = SaveBoxCustomizationAsync();
     partial void OnShowBoxTitleChanged(bool value) => _ = SaveBoxCustomizationAsync();
+    partial void OnShowBoxOutlinesChanged(bool value) { if (!_isLoading) _ = SaveBoxCustomizationAsync(); }
     partial void OnBoxCornerRadiusChanged(int value) => _ = SaveBoxCustomizationAsync();
     partial void OnBoxIconSizeChanged(int value) => _ = SaveBoxCustomizationAsync();
     partial void OnShowShortcutLabelsChanged(bool value) => _ = SaveBoxCustomizationAsync();
@@ -456,7 +457,6 @@ public partial class SettingsPageViewModel : ViewModelBase
 
     // Auto-save behavior when changed
     partial void OnAutoSnapEnabledChanged(bool value) { if (!_isLoading) _ = SaveBehaviorAsync(); }
-    partial void OnShowBoxOutlinesChanged(bool value) { if (!_isLoading) _ = SaveBehaviorAsync(); }
     partial void OnRunAtStartupChanged(bool value) { if (!_isLoading) _ = SaveBehaviorAsync(); }
 
     // Auto-save integrations when changed
@@ -472,6 +472,7 @@ public partial class SettingsPageViewModel : ViewModelBase
         current.BoxHeaderHeight = BoxHeaderHeight;
         current.ShowBoxHeader = ShowBoxHeader;
         current.ShowBoxTitle = ShowBoxTitle;
+        current.ShowBoxOutlines = ShowBoxOutlines;
         current.BoxCornerRadius = BoxCornerRadius;
         current.BoxIconSize = BoxIconSize;
         current.ShowShortcutLabels = ShowShortcutLabels;
@@ -587,7 +588,6 @@ public partial class SettingsPageViewModel : ViewModelBase
     {
         var current = await AppServices.SettingsService.GetAsync();
         current.AutoSnapEnabled = AutoSnapEnabled;
-        current.ShowBoxOutlines = ShowBoxOutlines;
         current.RunAtStartup = RunAtStartup;
         await AppServices.SettingsService.SaveAsync(current);
 
