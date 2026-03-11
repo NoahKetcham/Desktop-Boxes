@@ -89,12 +89,6 @@ public partial class SettingsPageViewModel : ViewModelBase
     private string? commandCenterActionButtonCustomColorHex = "#3A8DFF";
 
     [ObservableProperty]
-    private bool isCommandCenterActionButtonColorPickerOpen;
-
-    [ObservableProperty]
-    private Color? originalCommandCenterActionButtonCustomColor;
-
-    [ObservableProperty]
     private bool commandCenterActionButtonShowBackground = true;
 
     [ObservableProperty]
@@ -149,16 +143,6 @@ public partial class SettingsPageViewModel : ViewModelBase
     [ObservableProperty]
     private int boxContentVerticalPadding = 12;
 
-    // Popup State
-    [ObservableProperty]
-    private bool isAccentColorPickerPopupOpen;
-
-    [ObservableProperty]
-    private bool isColorPickerPopupOpen;
-
-    [ObservableProperty]
-    private Color? originalAccentColor;
-
     // Recent Colors
     [ObservableProperty]
     private ObservableCollection<Color> recentAccentColors = new();
@@ -168,6 +152,7 @@ public partial class SettingsPageViewModel : ViewModelBase
 
     private bool _updatingCommandCenterActions;
     private bool _loadingCommandCenterSettings;
+    private bool _isLoading;
 
     // Commands
     public IAsyncRelayCommand SaveCommand { get; }
@@ -181,18 +166,6 @@ public partial class SettingsPageViewModel : ViewModelBase
     public IAsyncRelayCommand<string> SelectCategoryCommand { get; }
     public IAsyncRelayCommand<string> ResetCategoryCommand { get; }
 
-    public IRelayCommand ApplyBoxBackgroundColorCommand { get; }
-    public IRelayCommand ResetBoxBackgroundColorCommand { get; }
-    public IRelayCommand OpenColorPickerPopupCommand { get; }
-    public IRelayCommand CloseColorPickerPopupCommand { get; }
-    public IRelayCommand ApplyAccentColorCommand { get; }
-    public IRelayCommand OpenAccentColorPickerPopupCommand { get; }
-    public IRelayCommand CloseAccentColorPickerPopupCommand { get; }
-    public IRelayCommand<Color> SelectRecentAccentColorCommand { get; }
-    public IRelayCommand<Color> SelectRecentBoxBackgroundColorCommand { get; }
-    public IRelayCommand OpenCommandCenterActionButtonColorPickerCommand { get; }
-    public IRelayCommand CloseCommandCenterActionButtonColorPickerCommand { get; }
-    public IRelayCommand ApplyCommandCenterActionButtonColorCommand { get; }
 
     public SettingsPageViewModel()
     {
@@ -206,19 +179,6 @@ public partial class SettingsPageViewModel : ViewModelBase
         BrowseNoteHubPathCommand = new AsyncRelayCommand(BrowseNoteHubPathAsync);
         SelectCategoryCommand = new AsyncRelayCommand<string>(SelectCategoryAsync);
         ResetCategoryCommand = new AsyncRelayCommand<string>(ResetCategoryAsync);
-
-        ApplyBoxBackgroundColorCommand = new RelayCommand(ApplyBoxBackgroundColor);
-        ResetBoxBackgroundColorCommand = new RelayCommand(ResetBoxBackgroundColor);
-        OpenColorPickerPopupCommand = new RelayCommand(() => IsColorPickerPopupOpen = true);
-        CloseColorPickerPopupCommand = new RelayCommand(() => IsColorPickerPopupOpen = false);
-        ApplyAccentColorCommand = new RelayCommand(ApplyAccentColor);
-        OpenAccentColorPickerPopupCommand = new RelayCommand(OpenAccentColorPickerPopup);
-        CloseAccentColorPickerPopupCommand = new RelayCommand(CloseAccentColorPickerPopup);
-        SelectRecentAccentColorCommand = new RelayCommand<Color>(SelectRecentAccentColor);
-        SelectRecentBoxBackgroundColorCommand = new RelayCommand<Color>(SelectRecentBoxBackgroundColor);
-        OpenCommandCenterActionButtonColorPickerCommand = new RelayCommand(OpenCommandCenterActionButtonColorPicker);
-        CloseCommandCenterActionButtonColorPickerCommand = new RelayCommand(CloseCommandCenterActionButtonColorPicker);
-        ApplyCommandCenterActionButtonColorCommand = new RelayCommand(ApplyCommandCenterActionButtonColor);
 
         _ = LoadAsync();
     }
@@ -309,8 +269,16 @@ public partial class SettingsPageViewModel : ViewModelBase
 
     private async Task LoadAsync()
     {
-        var settings = await AppServices.SettingsService.GetAsync();
-        Apply(settings);
+        _isLoading = true;
+        try
+        {
+            var settings = await AppServices.SettingsService.GetAsync();
+            Apply(settings);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
     private async Task SaveAsync()
@@ -479,7 +447,24 @@ public partial class SettingsPageViewModel : ViewModelBase
     partial void OnSelectedCommandCenterActionButtonCustomColorChanged(Color value)
     {
         CommandCenterActionButtonCustomColorHex = $"#{value.R:X2}{value.G:X2}{value.B:X2}";
+        if (!_isLoading) _ = SaveCommandCenterSettingsAsync();
     }
+
+    // Auto-save appearance when changed
+    partial void OnThemePreferenceChanged(string value) { if (!_isLoading) _ = SaveAppearanceAsync(); }
+    partial void OnBoxesTransparencyPercentChanged(int value) { if (!_isLoading) _ = SaveAppearanceAsync(); }
+
+    // Auto-save behavior when changed
+    partial void OnAutoSnapEnabledChanged(bool value) { if (!_isLoading) _ = SaveBehaviorAsync(); }
+    partial void OnShowBoxOutlinesChanged(bool value) { if (!_isLoading) _ = SaveBehaviorAsync(); }
+    partial void OnRunAtStartupChanged(bool value) { if (!_isLoading) _ = SaveBehaviorAsync(); }
+
+    // Auto-save integrations when changed
+    partial void OnOneDriveLinkedChanged(bool value) { if (!_isLoading) _ = SaveIntegrationsAsync(); }
+    partial void OnGoogleDriveLinkedChanged(bool value) { if (!_isLoading) _ = SaveIntegrationsAsync(); }
+
+    // Auto-save notehub when changed
+    partial void OnNoteHubDirectoryPathChanged(string? value) { if (!_isLoading) _ = SaveNoteHubAsync(); }
 
     private async Task SaveBoxCustomizationAsync()
     {
@@ -590,28 +575,43 @@ public partial class SettingsPageViewModel : ViewModelBase
         await AppServices.SettingsService.SaveAsync(current);
     }
 
-    private void OpenCommandCenterActionButtonColorPicker()
+    private async Task SaveAppearanceAsync()
     {
-        OriginalCommandCenterActionButtonCustomColor = SelectedCommandCenterActionButtonCustomColor;
-        IsCommandCenterActionButtonColorPickerOpen = true;
+        var current = await AppServices.SettingsService.GetAsync();
+        current.ThemePreference = ThemePreference;
+        current.BoxesTransparencyPercent = BoxesTransparencyPercent;
+        await AppServices.SettingsService.SaveAsync(current);
     }
 
-    private void CloseCommandCenterActionButtonColorPicker()
+    private async Task SaveBehaviorAsync()
     {
-        if (OriginalCommandCenterActionButtonCustomColor.HasValue)
-        {
-            SelectedCommandCenterActionButtonCustomColor = OriginalCommandCenterActionButtonCustomColor.Value;
-        }
-        IsCommandCenterActionButtonColorPickerOpen = false;
+        var current = await AppServices.SettingsService.GetAsync();
+        current.AutoSnapEnabled = AutoSnapEnabled;
+        current.ShowBoxOutlines = ShowBoxOutlines;
+        current.RunAtStartup = RunAtStartup;
+        await AppServices.SettingsService.SaveAsync(current);
+
+        if (RunAtStartup)
+            _ = DesktopIntegrationService.EnableRunAtStartup();
+        else
+            DesktopIntegrationService.DisableRunAtStartup();
     }
 
-    private async void ApplyCommandCenterActionButtonColor()
+    private async Task SaveIntegrationsAsync()
     {
-        CommandCenterActionButtonCustomColorHex = $"#{SelectedCommandCenterActionButtonCustomColor.R:X2}{SelectedCommandCenterActionButtonCustomColor.G:X2}{SelectedCommandCenterActionButtonCustomColor.B:X2}";
-        OriginalCommandCenterActionButtonCustomColor = null;
-        IsCommandCenterActionButtonColorPickerOpen = false;
-        await SaveCommandCenterSettingsAsync();
+        var current = await AppServices.SettingsService.GetAsync();
+        current.OneDriveLinked = OneDriveLinked;
+        current.GoogleDriveLinked = GoogleDriveLinked;
+        await AppServices.SettingsService.SaveAsync(current);
     }
+
+    private async Task SaveNoteHubAsync()
+    {
+        var current = await AppServices.SettingsService.GetAsync();
+        current.NoteHubDirectoryPath = string.IsNullOrWhiteSpace(NoteHubDirectoryPath) ? null : NoteHubDirectoryPath.Trim();
+        await AppServices.SettingsService.SaveAsync(current);
+    }
+
 
     private async Task ResetDataAsync()
     {
@@ -638,67 +638,13 @@ public partial class SettingsPageViewModel : ViewModelBase
         await AppServices.BoxWindowManager.CloseAllWindowsAsync().ConfigureAwait(false);
     }
 
-    private void OpenAccentColorPickerPopup()
-    {
-        OriginalAccentColor = SelectedAccentColor;
-        IsAccentColorPickerPopupOpen = true;
-    }
-
-    private void CloseAccentColorPickerPopup()
-    {
-        if (OriginalAccentColor.HasValue)
-        {
-            SelectedAccentColor = OriginalAccentColor.Value;
-            AccentService.ApplyAccent(OriginalAccentColor.Value);
-        }
-        IsAccentColorPickerPopupOpen = false;
-    }
-
-    private async void ApplyAccentColor()
-    {
-        AccentService.ApplyAccent(SelectedAccentColor);
-        AddToRecentAccentColors(SelectedAccentColor);
-
-        var current = await AppServices.SettingsService.GetAsync();
-        current.AccentHex = $"#{SelectedAccentColor.R:X2}{SelectedAccentColor.G:X2}{SelectedAccentColor.B:X2}";
-        current.RecentAccentColors = RecentAccentColors.Select(c => $"#{c.R:X2}{c.G:X2}{c.B:X2}").ToList();
-        await AppServices.SettingsService.SaveAsync(current);
-
-        OriginalAccentColor = null;
-        IsAccentColorPickerPopupOpen = false;
-    }
-
-    private void SelectRecentAccentColor(Color color)
-    {
-        SelectedAccentColor = color;
-        AccentService.ApplyAccent(color);
-        AddToRecentAccentColors(color);
-        _ = SaveRecentAccentColorsAsync();
-    }
-
-    private void AddToRecentAccentColors(Color color)
-    {
-        var existing = RecentAccentColors.FirstOrDefault(c => c.R == color.R && c.G == color.G && c.B == color.B);
-        if (existing != default)
-        {
-            RecentAccentColors.Remove(existing);
-        }
-
-        RecentAccentColors.Insert(0, color);
-
-        while (RecentAccentColors.Count > 5)
-        {
-            RecentAccentColors.RemoveAt(RecentAccentColors.Count - 1);
-        }
-    }
-
-    private async Task SaveRecentAccentColorsAsync()
+    private async Task SaveAccentColorAsync()
     {
         var current = await AppServices.SettingsService.GetAsync();
         current.AccentHex = $"#{SelectedAccentColor.R:X2}{SelectedAccentColor.G:X2}{SelectedAccentColor.B:X2}";
-        current.RecentAccentColors = RecentAccentColors.Select(c => $"#{c.R:X2}{c.G:X2}{c.B:X2}").ToList();
         await AppServices.SettingsService.SaveAsync(current);
     }
+
 
     private async Task ResetAccentAsync()
     {
@@ -746,64 +692,21 @@ public partial class SettingsPageViewModel : ViewModelBase
     partial void OnSelectedBoxBackgroundColorChanged(Color value)
     {
         BoxBackgroundColorHex = $"#{value.R:X2}{value.G:X2}{value.B:X2}";
+        if (!_isLoading) _ = SaveBoxBackgroundColorAsync();
     }
 
     partial void OnSelectedAccentColorChanged(Color value)
     {
         AccentService.ApplyAccent(value);
+        if (!_isLoading) _ = SaveAccentColorAsync();
     }
 
-    private async void ApplyBoxBackgroundColor()
-    {
-        AddToRecentBoxBackgroundColors(SelectedBoxBackgroundColor);
-
-        var current = await AppServices.SettingsService.GetAsync();
-        current.BoxBackgroundColor = BoxBackgroundColorHex ?? "#1C2235";
-        current.RecentBoxBackgroundColors = RecentBoxBackgroundColors.Select(c => $"#{c.R:X2}{c.G:X2}{c.B:X2}").ToList();
-        await AppServices.SettingsService.SaveAsync(current);
-
-        IsColorPickerPopupOpen = false;
-    }
-
-    private void SelectRecentBoxBackgroundColor(Color color)
-    {
-        SelectedBoxBackgroundColor = color;
-        BoxBackgroundColorHex = $"#{color.R:X2}{color.G:X2}{color.B:X2}";
-        AddToRecentBoxBackgroundColors(color);
-        _ = SaveRecentBoxBackgroundColorsAsync();
-    }
-
-    private void AddToRecentBoxBackgroundColors(Color color)
-    {
-        var existing = RecentBoxBackgroundColors.FirstOrDefault(c => c.R == color.R && c.G == color.G && c.B == color.B);
-        if (existing != default)
-        {
-            RecentBoxBackgroundColors.Remove(existing);
-        }
-
-        RecentBoxBackgroundColors.Insert(0, color);
-
-        while (RecentBoxBackgroundColors.Count > 5)
-        {
-            RecentBoxBackgroundColors.RemoveAt(RecentBoxBackgroundColors.Count - 1);
-        }
-    }
-
-    private async Task SaveRecentBoxBackgroundColorsAsync()
+    private async Task SaveBoxBackgroundColorAsync()
     {
         var current = await AppServices.SettingsService.GetAsync();
         current.BoxBackgroundColor = BoxBackgroundColorHex ?? "#1C2235";
-        current.RecentBoxBackgroundColors = RecentBoxBackgroundColors.Select(c => $"#{c.R:X2}{c.G:X2}{c.B:X2}").ToList();
         await AppServices.SettingsService.SaveAsync(current);
     }
 
-    private async void ResetBoxBackgroundColor()
-    {
-        BoxBackgroundColorHex = "#1C2235";
-        SelectedBoxBackgroundColor = Color.Parse("#1C2235");
 
-        var current = await AppServices.SettingsService.GetAsync();
-        current.BoxBackgroundColor = "#1C2235";
-        await AppServices.SettingsService.SaveAsync(current);
-    }
 }

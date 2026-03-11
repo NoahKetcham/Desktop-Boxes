@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Boxes.App.ViewModels;
 
 namespace Boxes.App.Views;
@@ -149,20 +148,6 @@ public partial class SettingsPageView : UserControl
         _sections["developer"] = this.FindControl<Border>("DeveloperSection")!;
 
         UpdateActiveNavButton("appearance");
-
-        var colorPickerButton = this.FindControl<Button>("ColorPickerButton");
-        var colorPickerPopup = this.FindControl<Popup>("ColorPickerPopup");
-        if (colorPickerButton != null && colorPickerPopup != null)
-        {
-            colorPickerPopup.PlacementTarget = colorPickerButton;
-        }
-
-        var accentColorPickerButton = this.FindControl<Button>("AccentColorPickerButton");
-        var accentColorPickerPopup = this.FindControl<Popup>("AccentColorPickerPopup");
-        if (accentColorPickerButton != null && accentColorPickerPopup != null)
-        {
-            accentColorPickerPopup.PlacementTarget = accentColorPickerButton;
-        }
     }
 }
 

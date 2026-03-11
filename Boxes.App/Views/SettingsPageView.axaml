@@ -142,15 +142,21 @@
                         <Border Classes="setting-row" ToolTip.Tip="Primary highlight color for the app" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Text="Accent Color" FontWeight="Medium" VerticalAlignment="Center"/>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
-                                    <Border Width="32" Height="32" CornerRadius="6" 
-                                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="2">
+                                <Button Grid.Column="1" Width="36" Height="36" Padding="2" CornerRadius="6"
+                                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="2"
+                                        Background="Transparent">
+                                    <Border Width="28" Height="28" CornerRadius="4">
                                         <Border.Background>
                                             <SolidColorBrush Color="{Binding SelectedAccentColor}"/>
                                         </Border.Background>
                                     </Border>
-                                    <Button Classes="btn-subtle" Command="{Binding OpenAccentColorPickerPopupCommand}" Content="Change"/>
-                                </StackPanel>
+                                    <Button.Flyout>
+                                        <Flyout Placement="BottomEdgeAlignedRight">
+                                            <controls:ColorPicker Color="{Binding SelectedAccentColor, Mode=TwoWay}"
+                                                                  IsAlphaEnabled="False" IsAlphaVisible="False"/>
+                                        </Flyout>
+                                    </Button.Flyout>
+                                </Button>
                             </Grid>
                         </Border>
 
@@ -158,15 +164,21 @@
                         <Border Classes="setting-row" ToolTip.Tip="Default background color for boxes" ToolTip.ShowDelay="2000">
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Text="Box Background" FontWeight="Medium" VerticalAlignment="Center"/>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
-                                    <Border Width="32" Height="32" CornerRadius="6"
-                                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="2">
+                                <Button Grid.Column="1" Width="36" Height="36" Padding="2" CornerRadius="6"
+                                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="2"
+                                        Background="Transparent">
+                                    <Border Width="28" Height="28" CornerRadius="4">
                                         <Border.Background>
                                             <SolidColorBrush Color="{Binding SelectedBoxBackgroundColor}"/>
                                         </Border.Background>
                                     </Border>
-                                    <Button Classes="btn-subtle" Command="{Binding OpenColorPickerPopupCommand}" Content="Change"/>
-                                </StackPanel>
+                                    <Button.Flyout>
+                                        <Flyout Placement="BottomEdgeAlignedRight">
+                                            <controls:ColorPicker Color="{Binding SelectedBoxBackgroundColor, Mode=TwoWay}"
+                                                                  IsAlphaEnabled="False" IsAlphaVisible="False"/>
+                                        </Flyout>
+                                    </Button.Flyout>
+                                </Button>
                             </Grid>
                         </Border>
 
@@ -452,14 +464,21 @@
                                         Classes="setting-row">
                                     <Grid ColumnDefinitions="*,Auto">
                                         <TextBlock Text="Custom Color" FontWeight="Medium" VerticalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
-                                            <Border Width="32" Height="32" CornerRadius="6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="2">
+                                        <Button Grid.Column="1" Width="36" Height="36" Padding="2" CornerRadius="6"
+                                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="2"
+                                                Background="Transparent">
+                                            <Border Width="28" Height="28" CornerRadius="4">
                                                 <Border.Background>
                                                     <SolidColorBrush Color="{Binding SelectedCommandCenterActionButtonCustomColor}"/>
                                                 </Border.Background>
                                             </Border>
-                                            <Button Classes="btn-subtle" Command="{Binding OpenCommandCenterActionButtonColorPickerCommand}" Content="Change"/>
-                                        </StackPanel>
+                                            <Button.Flyout>
+                                                <Flyout Placement="BottomEdgeAlignedRight">
+                                                    <controls:ColorPicker Color="{Binding SelectedCommandCenterActionButtonCustomColor, Mode=TwoWay}"
+                                                                          IsAlphaEnabled="False" IsAlphaVisible="False"/>
+                                                </Flyout>
+                                            </Button.Flyout>
+                                        </Button>
                                     </Grid>
                                 </Border>
                             </StackPanel>
@@ -588,49 +607,6 @@
             </StackPanel>
         </ScrollViewer>
         </Grid>
-
-        <!-- Color Picker Popups -->
-        <Popup x:Name="ColorPickerPopup" IsOpen="{Binding IsColorPickerPopupOpen}" Placement="Bottom" HorizontalOffset="0" VerticalOffset="4">
-        <Border Background="{StaticResource SurfaceElevatedBrush}" BorderBrush="{StaticResource BorderBrush}" 
-                BorderThickness="1" CornerRadius="12" Padding="20" MinWidth="320">
-            <StackPanel Spacing="16">
-                <TextBlock Text="Select Box Background Color" FontWeight="SemiBold" FontSize="16"/>
-                <controls:ColorPicker Color="{Binding SelectedBoxBackgroundColor, Mode=TwoWay}"/>
-                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                    <Button Classes="btn-subtle" Command="{Binding CloseColorPickerPopupCommand}" Content="Cancel"/>
-                    <Button Classes="btn-primary" Command="{Binding ApplyBoxBackgroundColorCommand}" Content="Apply"/>
-                </StackPanel>
-            </StackPanel>
-        </Border>
-        </Popup>
-
-        <Popup x:Name="AccentColorPickerPopup" IsOpen="{Binding IsAccentColorPickerPopupOpen}" Placement="Bottom" HorizontalOffset="0" VerticalOffset="4">
-        <Border Background="{StaticResource SurfaceElevatedBrush}" BorderBrush="{StaticResource BorderBrush}" 
-                BorderThickness="1" CornerRadius="12" Padding="20" MinWidth="320">
-            <StackPanel Spacing="16">
-                <TextBlock Text="Select Accent Color" FontWeight="SemiBold" FontSize="16"/>
-                <controls:ColorPicker Color="{Binding SelectedAccentColor, Mode=TwoWay}"/>
-                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                    <Button Classes="btn-subtle" Command="{Binding CloseAccentColorPickerPopupCommand}" Content="Cancel"/>
-                    <Button Classes="btn-primary" Command="{Binding ApplyAccentColorCommand}" Content="Apply"/>
-                </StackPanel>
-            </StackPanel>
-        </Border>
-        </Popup>
-
-        <Popup x:Name="CommandCenterActionButtonColorPickerPopup" IsOpen="{Binding IsCommandCenterActionButtonColorPickerOpen}" Placement="Bottom" HorizontalOffset="0" VerticalOffset="4">
-        <Border Background="{StaticResource SurfaceElevatedBrush}" BorderBrush="{StaticResource BorderBrush}" 
-                BorderThickness="1" CornerRadius="12" Padding="20" MinWidth="320">
-            <StackPanel Spacing="16">
-                <TextBlock Text="Select Action Button Color" FontWeight="SemiBold" FontSize="16"/>
-                <controls:ColorPicker Color="{Binding SelectedCommandCenterActionButtonCustomColor, Mode=TwoWay}"/>
-                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                    <Button Classes="btn-subtle" Command="{Binding CloseCommandCenterActionButtonColorPickerCommand}" Content="Cancel"/>
-                    <Button Classes="btn-primary" Command="{Binding ApplyCommandCenterActionButtonColorCommand}" Content="Apply"/>
-                </StackPanel>
-            </StackPanel>
-        </Border>
-        </Popup>
 
     </Grid>
 </UserControl>
