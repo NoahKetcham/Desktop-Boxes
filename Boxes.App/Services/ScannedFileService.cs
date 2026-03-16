@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -195,14 +196,14 @@ public class ScannedFileService
                 var archiveName = shortcutId.ToString("N") + ".lnk";
                 var archivePath = Path.Combine(_shortcutArchivePath, archiveName);
 
-                await CreateShortcutFileAsync(file.FilePath, archivePath);
+                var shortcutCreated = await CreateShortcutFileAsync(file.FilePath, archivePath);
 
                 manifest.RemoveAll(s => s.Id == shortcutId);
                 manifest.Add(new StoredShortcut(shortcutId, shortcutName, file.FilePath, file.ParentId, ScannedItemType.Shortcut));
 
                 if (scannedLookup.TryGetValue(shortcutId, out var existing))
                 {
-                    existing.ShortcutPath = archivePath;
+                    existing.ShortcutPath = shortcutCreated ? archivePath : null;
                     existing.IsArchived = file.IsArchived;
                     existing.ParentId = file.ParentId;
                     existing.ItemType = file.ItemType;
@@ -214,7 +215,7 @@ public class ScannedFileService
                         Id = shortcutId,
                         FileName = file.FileName,
                         FilePath = file.FilePath,
-                        ShortcutPath = archivePath,
+                        ShortcutPath = shortcutCreated ? archivePath : null,
                         IsArchived = file.IsArchived,
                         ParentId = file.ParentId,
                         ItemType = file.ItemType
@@ -379,9 +380,13 @@ public class ScannedFileService
 
                 var archiveName = fileEntry.Id.ToString("N") + ".lnk";
                 var archivePath = Path.Combine(_shortcutArchivePath, archiveName);
-                fileEntry.ShortcutPath = archivePath;
+                fileEntry.ShortcutPath = null;
 
-                await CreateShortcutFileAsync(filePath, archivePath);
+                var shortcutCreated = await CreateShortcutFileAsync(filePath, archivePath);
+                if (shortcutCreated)
+                {
+                    fileEntry.ShortcutPath = archivePath;
+                }
 
                 var shortcutDisplayName = Path.GetFileNameWithoutExtension(fileEntry.FileName) + ".lnk";
                 manifest.RemoveAll(s => s.Id == fileEntry.Id);
@@ -483,33 +488,77 @@ public class ScannedFileService
         await JsonSerializer.SerializeAsync(stream, manifest, _serializerOptions);
     }
 
-    private static async Task CreateShortcutFileAsync(string targetPath, string shortcutPath)
+    private static async Task<bool> CreateShortcutFileAsync(string targetPath, string shortcutPath)
     {
-        await Task.Run(() => CreateShortcut(targetPath, shortcutPath));
+        return await Task.Run(() => CreateShortcut(targetPath, shortcutPath));
     }
 
-    private static void CreateShortcut(string targetPath, string shortcutPath)
+    private static bool CreateShortcut(string targetPath, string shortcutPath)
     {
         if (!OperatingSystem.IsWindows())
         {
-            return;
+            return false;
         }
 
-        var shellType = Type.GetTypeFromProgID("WScript.Shell");
-        if (shellType is null)
+        if (string.IsNullOrWhiteSpace(targetPath) || string.IsNullOrWhiteSpace(shortcutPath))
         {
-            return;
+            return false;
         }
 
-        dynamic? shell = Activator.CreateInstance(shellType);
-        if (shell is null)
+        try
         {
-            return;
-        }
+            var shortcutDirectory = Path.GetDirectoryName(shortcutPath);
+            if (!string.IsNullOrWhiteSpace(shortcutDirectory))
+            {
+                Directory.CreateDirectory(shortcutDirectory);
+            }
 
-        dynamic shortcut = shell.CreateShortcut(shortcutPath);
-        shortcut.TargetPath = targetPath;
-        shortcut.Save();
+            var shellType = Type.GetTypeFromProgID("WScript.Shell");
+            if (shellType is null)
+            {
+                return false;
+            }
+
+            dynamic? shell = null;
+            dynamic? shortcut = null;
+            try
+            {
+                shell = Activator.CreateInstance(shellType);
+                if (shell is null)
+                {
+                    return false;
+                }
+
+                shortcut = shell.CreateShortcut(shortcutPath);
+                shortcut.TargetPath = targetPath;
+
+                // Improve shell resolution behavior for executables and nested file targets.
+                var workingDir = Path.GetDirectoryName(targetPath);
+                if (!string.IsNullOrWhiteSpace(workingDir) && Directory.Exists(workingDir))
+                {
+                    shortcut.WorkingDirectory = workingDir;
+                }
+
+                shortcut.Save();
+                return true;
+            }
+            finally
+            {
+                if (shortcut is not null && Marshal.IsComObject(shortcut))
+                {
+                    Marshal.FinalReleaseComObject(shortcut);
+                }
+
+                if (shell is not null && Marshal.IsComObject(shell))
+                {
+                    Marshal.FinalReleaseComObject(shell);
+                }
+            }
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static IEnumerable<DirectoryInfo> SafeEnumerateDirectories(DirectoryInfo directory)
